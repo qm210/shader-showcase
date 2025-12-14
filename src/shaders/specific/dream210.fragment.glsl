@@ -78,16 +78,15 @@ const int START_ASCII = 33; // 33 if charset begins with "!"
 uniform vec3 iTextColor;
 
 struct GlyphInstance {
-    uint ascii;
+    float ascii;
     float scale;
     vec2 pos;
     vec4 color;
     vec4 effect;
 };
 layout(std140) uniform GlyphInstances {
-//    GlyphInstance letter[32];
-//    int lettersUsed;
-    GlyphInstance letter[1];
+    GlyphInstance letterInstance[32];
+    int lettersUsed;
 };
 
 // --> CLOUDS
@@ -813,8 +812,20 @@ void printYay(in vec2 uv, inout vec4 col) {
     cursor.x -= dims.x;
 }
 
-void printEventControllableText(in vec2 uv, inout vec4 col) {
+const GlyphInstance debugLetterInstance[2] = GlyphInstance[2](
+    GlyphInstance(109., 0.5, vec2(-1, 0.), vec4(0,0,0,1), vec4(1,2,3,4)),
+    GlyphInstance(113., 0.65, vec2(-0.8, 0.), vec4(0,0,0,1), vec4(1,2,3,4))
+);
 
+void printEventControllableText(in vec2 uv, inout vec4 col) {
+    vec2 pos, _unused;
+    float d;
+    for (int t = 0; t < lettersUsed; t++) {
+        pos = uv - letterInstance[t].pos;
+        d = glyph(pos, int(letterInstance[t].ascii), _unused);
+        d *= d * debugLetterInstance[t].color.a;
+        col.rgb = mix(col.rgb, debugLetterInstance[t].color.xyz, d);
+    }
 }
 
 /////
@@ -988,6 +999,15 @@ void finalComposition(in vec2 uv) {
 #define EVENT_CLEAR_FLUID 4
 
 void main() {
+    // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
+    vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
+
+    if (passIndex != _RENDER_FLUID && debugOption == 1) {
+        fragColor = debugColor;
+        printEventControllableText(uv, fragColor);
+        return;
+    }
+
     vec2 spawnRandom = hash22(vec2(1.2, 1.1) * iSpawnSeed);
     vec2 spawnCenter = vec2(spawnRandom.x, spawnRandom.y);
     float spawnSize = clamp(iSpawnAge, 0.18, 1.); // <-- put iSpawnAge in there

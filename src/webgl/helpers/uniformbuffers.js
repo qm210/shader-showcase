@@ -8,8 +8,7 @@ export function createUboForArray(gl, program, array, opt) {
     }
     opt.dataSize ??= FLOAT_SIZE;
     opt.memoryUsage ??= gl.STATIC_DRAW;
-    // gl.DYNAMIC_DRAW if data is changing often!
-    // but... suffice to say I never compared these..?
+    // gl.DYNAMIC_DRAW if data is changing often. Never compared tho.
 
     const ubo = gl.createBuffer();
     const blockSize = array.length * opt.dataSize;
@@ -23,11 +22,11 @@ export function createUboForArray(gl, program, array, opt) {
     }
 
     // seems that WebGL2 doesn't allow (std140, binding=0), only (std140)
-    const binding = gl.getActiveUniformBlockParameter(
+    const bindingPoint = gl.getActiveUniformBlockParameter(
         program, blockIndex, gl.UNIFORM_BLOCK_BINDING
     );
-    gl.uniformBlockBinding(program, blockIndex, 0);
-    gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, ubo);
+    gl.uniformBlockBinding(program, blockIndex, bindingPoint);
+    gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, ubo);
 
     gl.bindBuffer(gl.UNIFORM_BUFFER, ubo);
     gl.bufferSubData(gl.UNIFORM_BUFFER, 0, array);
@@ -35,17 +34,11 @@ export function createUboForArray(gl, program, array, opt) {
     const checkBlockSize = gl.getActiveUniformBlockParameter(
         program, blockIndex, gl.UNIFORM_BLOCK_DATA_SIZE
     );
-    console.info("[UBO]", opt.blockName, ubo, opt,
-        "Do Block Sizes in Bytes match...", checkBlockSize, blockSize,
-        "? Block Index:", blockIndex, "Binding", binding
-    );
-
-    /*
-    Update Data with:
-        gl.bindBuffer(gl.UNIFORM_BUFFER, ubo);
-        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, array);
-        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, ubo);
-     */
+    if (checkBlockSize !== blockSize) {
+        console.warn("[UBO] Block Size Mismatch!",
+            opt.blockName, blockSize, "-> actual:", checkBlockSize
+        );
+    }
 
     return ubo;
 }
@@ -57,102 +50,148 @@ export function createUboForArraylikeStruct(gl, program, opt) {
     opt.memoryUsage ??= gl.DYNAMIC_DRAW;
     opt.bindingPoint ??= 0;
 
-    const result = {
+    const block = {
+        name: opt.blockName,
+        size: null,
+        index: null,
+        binding: null,
+    };
+    const context = {
         opt,
         ubo: null,
-        block: {
-            name: opt.blockName,
-            size: null,
-            index: null,
-            binding: null,
-        },
+        block,
         error: "",
         members: {},
-        fields: []
+        memberFields: [],
+        meta: {},
     };
 
     if (opt.memberFields) {
-        result.fields = Object.entries(opt.memberFields);
+        context.memberFields = Object.entries(opt.memberFields)
+            .map(([name, values]) => [name, ...values]);
         if (!opt.dataSize) {
-            const sizesEach =
-                Object.values(opt.memberFields).map(info => info[1]);
+            const sizesEach = context.memberFields.map(info => info[2]);
             opt.dataSize = totalSizeForStd140(sizesEach);
         }
     }
 
-    opt.dataSize ??= 4;
-    opt.dataLength ??= opt.memberMap
-        ? Object.keys(opt.memberMap).length
-        : 1;
+    opt.dataSize ??= FLOAT_SIZE;
+    opt.dataLength ??= !opt.memberMap ? 1
+        : Object.keys(opt.memberMap).length;
 
     for (let i = 0; i < opt.dataLength; i++) {
         defineMember(i, opt.dataSize * i);
     }
-    for (const key in (opt.memberMap ?? {})) {
+    for (const key in opt.memberMap ?? {}) {
         defineMember(key, opt.dataSize * opt.memberMap[key]);
     }
 
-    const block = result.block;
-    block.size = opt.dataLength * opt.dataSize
-        + (opt.additionalDataSize ?? 0);
-    console.log("[UBO] Data Size", opt.dataSize, block.size, opt.dataLength * opt.dataSize, opt.additionalDataSize);
+    block.size = opt.dataLength * opt.dataSize;
 
-    result.ubo = gl.createBuffer();
-    gl.bindBuffer(gl.UNIFORM_BUFFER, result.ubo);
+    if (opt.metadata) {
+        const metadataStart = block.size;
+        if (!opt.metadata.size) {
+            console.error(`[UBO] ${block.name} metadata MUST define .size:`, opt.metadata);
+        } else {
+            block.size += opt.metadata.size;
+        }
+        for (const key in opt.metadata.fields ?? {}) {
+            const [start, size] = opt.metadata.fields[key];
+            context.meta[key] = createFieldManageObject(
+                key,
+                metadataStart + start,
+                new Int32Array(size),
+                value => {
+                    context.meta[key].workdata.fill(value);
+                    context.meta[key].write();
+                }
+            );
+        }
+    }
+
+    // CHECK ONE DAY: compare one-array-solution vs. member arrays
+    // context.workdata = new Float32Array(block.size / FLOAT_SIZE);
+
+    context.ubo = gl.createBuffer();
+    gl.bindBuffer(gl.UNIFORM_BUFFER, context.ubo);
     gl.bufferData(gl.UNIFORM_BUFFER, block.size, opt.memoryUsage);
 
     block.index = gl.getUniformBlockIndex(program, block.name);
     if (block.index === gl.INVALID_INDEX) {
-        result.error = `Found no layout(std140) uniform "${block.name}"`;
-        return result;
+        context.error = `Found no layout(std140) uniform "${block.name}"`;
+        return context;
     }
 
     block.binding = gl.getActiveUniformBlockParameter(
         program, block.index, gl.UNIFORM_BLOCK_BINDING
     );
     gl.uniformBlockBinding(program, block.index, opt.bindingPoint);
-    gl.bindBufferBase(gl.UNIFORM_BUFFER, opt.bindingPoint, result.ubo);
+    gl.bindBufferBase(gl.UNIFORM_BUFFER, opt.bindingPoint, context.ubo);
 
     if (opt.initialData) {
-        gl.bindBuffer(gl.UNIFORM_BUFFER, result.ubo);
+        gl.bindBuffer(gl.UNIFORM_BUFFER, context.ubo);
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, opt.data);
     }
 
-    result.updateMemberAt = (baseIndex, memberData) => {
-        /** Helper function that does no checks on it's own!
-         * (but probably expects memberData as array of <dataSize> length)
-         * */
-        gl.bindBuffer(gl.UNIFORM_BUFFER, result.ubo);
-        const offset = baseIndex * opt.dataSize;
-        gl.bufferSubData(gl.UNIFORM_BUFFER, offset, memberData);
+    addSanityChecks(context)
+
+    console.info("[UBO]", opt.blockName, context);
+
+    return context;
+
+    function createFieldManageObject(key, offset, workdata, updateFunc) {
+        // Note: is a makeshift "class", might re-phrase when required
+        const obj = {
+            offset,
+            workdata,
+            write: void 0,
+            update: updateFunc
+        };
+        obj.write = (data = undefined) => {
+            data ??= obj.workdata;
+            gl.bindBuffer(gl.UNIFORM_BUFFER, context.ubo);
+            gl.bufferSubData(gl.UNIFORM_BUFFER, offset, data);
+        };
+        return obj;
     }
-
-    block.actualSize = gl.getActiveUniformBlockParameter(
-        program, block.index, gl.UNIFORM_BLOCK_DATA_SIZE
-    );
-    if (block.actualSize !== block.size) {
-        console.warn("[UBO][CUSTOM STRUCTS]",
-            "Block Sizes don't match; you said", block.size,
-            "WebGL thinks differently:", block.actualSize, "..?", result
-        );
-    }
-
-    console.info("[UBO]", opt.blockName, result);
-
-    return result;
 
     function defineMember(key, offset) {
-        result.members[key] = {
+        context.members[key] = createFieldManageObject(
+            key,
             offset,
-            set: (data) =>
-                result.updateMemberAt(result.opt.memberMap[key], data),
-            // Does not have to be used, just a float32ing offer:
-            workdata: new Float32Array(opt.dataSize / FLOAT_SIZE),
-            update: constructMemberUpdater(key)
-        };
-        return result.members[key];
+            new Float32Array(opt.dataSize / FLOAT_SIZE),
+            args => updateMember(context.members[key], args),
+        );
+        return context.members[key];
     }
 
+    function updateMember(member, update) {
+        let changed = false;
+        // CAUTION! if any member fields is named "reset", this breaks
+        if (update.reset !== false) {
+            member.workdata.fill(0);
+            changed = true;
+        }
+        // somewhat optimized for performance, I believe
+        const fields = context.memberFields;
+        for (let f = 0; f < fields.length; f++) {
+            const [field, start, size] = fields[f];
+            if (!(field in update)) {
+                continue;
+            }
+            if (size > 1) {
+                member.workdata.set(update[field], start);
+            } else {
+                member.workdata[start] = update[field];
+            }
+            changed = true;
+        }
+        if (changed) {
+            member.write();
+        }
+    }
+
+    /*
     function constructMemberUpdater(key) {
         let changed;
         // the update object can contain all the fields, and
@@ -178,9 +217,39 @@ export function createUboForArraylikeStruct(gl, program, opt) {
                 changed = true;
             }
             if (changed) {
-                gl.bindBuffer(gl.UNIFORM_BUFFER, result.ubo);
-                gl.bufferSubData(gl.UNIFORM_BUFFER, member.offset, member.workdata);
+                member.setBuffer(member.workdata);
             }
         };
+    }
+    */
+
+    function addSanityChecks() {
+        block.actualSize = gl.getActiveUniformBlockParameter(
+            program, block.index, gl.UNIFORM_BLOCK_DATA_SIZE
+        );
+        if (block.actualSize !== block.size) {
+            console.warn("[UBO][CUSTOM STRUCTS]",
+                "Block Sizes don't match; you said", block.size,
+                "WebGL thinks differently:", block.actualSize, "..?", context
+            );
+        }
+
+        const debugLayout = [];
+        let collisionFound = false;
+        for (const [name, start, size] of context.memberFields) {
+            for (let s = 0; s < size; s++) {
+                if (!debugLayout[start + s]) {
+                    debugLayout[start + s] = name;
+                } else {
+                    collisionFound = true;
+                    debugLayout[start + s] += "|" + name;
+                }
+            }
+        }
+        if (collisionFound) {
+            console.warn("[UBO][CUSTOM STRUCTS]",
+                "Layout Conflict:", debugLayout, context.memberFields
+            );
+        }
     }
 }

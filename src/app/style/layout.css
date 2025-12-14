@@ -201,6 +201,7 @@
 .free-row button {
     padding: 0.25rem 0.5rem;
     flex: 1;
+    font-size: 0.9em;
 }
 
 .free-row .full-spacer {

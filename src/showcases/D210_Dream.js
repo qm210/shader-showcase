@@ -1,9 +1,5 @@
 import {initBasicState, startRenderLoop} from "./common.js";
-import {
-    createTextureFromImage,
-    createTextureFromLoadedImage,
-    loadImagesByVite
-} from "../webgl/helpers/textures.js";
+import {createTextureFromImage, createTextureFromLoadedImage, loadImagesByVite} from "../webgl/helpers/textures.js";
 
 import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
@@ -11,12 +7,15 @@ import spiceSaleMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 import spiceSaleMsdfJson from "../textures/dream210/SpicySale.msdf.json";
 import {resolutionScaled, updateResolutionInState} from "../webgl/helpers/resolution.js";
 import {
-    createFramebufferWithTexture, createFramebufferWithTextureArray,
-    createPingPongFramebuffersWithTexture, halfFloatOptions
+    createFramebufferWithTexture,
+    createFramebufferWithTextureArray,
+    createPingPongFramebuffersWithTexture,
+    halfFloatOptions
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
 import {createUboForArray, createUboForArraylikeStruct} from "../webgl/helpers/uniformbuffers.js";
-import {binarySearchInsert, createGlyphDef} from "../app/algorithms.js";
+import {createGlyphDef} from "../app/algorithms.js";
+import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream_management.js";
 
 // This secret move is presented to you by... vite :)
 const monaImages =
@@ -94,7 +93,7 @@ export default {
         };
         state.glyphs = {
             msdf,
-            ubo: createUboForArraylikeStruct(gl, state.program, {
+            ...createUboForArraylikeStruct(gl, state.program, {
                 blockName: "GlyphInstances",
                 bindingPoint: 2,
                 memoryUsage: gl.DYNAMIC_DRAW,
@@ -106,12 +105,17 @@ export default {
                     effect: [8, 4],
                 },
                 dataLength: 32,
-                // there is one additional int, which gives this struct one further base alignment
-                additionalDataSize: 4,
+                metadata: {
+                    fields: {
+                        lettersUsed: [0, 1],
+                    },
+                    size: 4,
+                },
             }),
             // only for debugging:
             glyphDef,
         }
+        state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -327,7 +331,7 @@ export default {
                     state.debug.fb.toggle(-1),
             }, {
                 label: () =>
-                    "Test some Event...",
+                    "Test Event...",
                 onClick: () => {
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,
@@ -340,7 +344,19 @@ export default {
                     });
                 },
                 onRightClick: () => {
-                    console.info("[EVENTS]", state.events, "- Queue:", state.events.queue);
+                    console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
+                },
+            }, {
+                label: () =>
+                    "Glyph Instances",
+                onClick: () => {
+                    const text = window.prompt("Set the Glyph Instances to... (max 32. characters)");
+                    if (text !== null) {
+                        state.glyphs.manager.replaceWhole(text);
+                    }
+                },
+                onRightClick: () => {
+                    console.info("[GLYPHS]", state.glyphs, "- Manager:", state.glyphs.manager);
                 },
             }, {
                 label: () => {
@@ -1621,99 +1637,4 @@ function createUniforms() {
             max: 2,
         }
     ];
-}
-
-function createEventsManager(state, events) {
-    const scheduled = [];
-    const manager = {
-        queue: {
-            immediate: [],
-            scheduled,
-        },
-        events,
-        launch: void 0,
-        manage: void 0,
-        flag: {
-            debug: false,
-        }
-    };
-    const schedule = (event) =>
-        binarySearchInsert(event, scheduled, "timeSec");
-
-    manager.launch = (event) => {
-        /** This is the public callee.
-         *  event can contain the fields {type, subtype, coords, args}
-         *  from the actual struct, and for scheduling
-         *  launch: {in? , at?} and expire: {in? , at?} in seconds each
-         *  */
-        event.timeSec = asScheduled(event.launch);
-        if (event.timeSec > 0) {
-            schedule(event);
-        } else {
-            manager.queue.immediate.push(event);
-        }
-        // FOR NOW
-        manager.flag.debug = true;
-    };
-
-    const handle = (event) => {
-        const members = event.members || (event.members = [event.member]);
-        // for (let m = 0; m < members.length; m++) {
-        //     members[m].update(event.data);
-        // }
-        // <-- class for loops are 2-4x faster than for...of -- worth it?
-        for (const member of members) {
-            member.update(event.data);
-        }
-        if (event.expire) {
-            schedule({
-                ...event,
-                data: { ...event.data, type: null },
-                timeSec: asScheduled(event.expire, state.time),
-                expire: null
-            });
-        }
-    };
-
-    manager.manage = (state) => {
-        /** This is the public method for the render loop.
-         *  The internal queue handling is done so that at this one manage() call,
-         *  we can have somewhat of a synchronization for a short time.
-         *  (other than that, events might get spawned via buttons, mouse, keyboard, etc...)
-         *  */
-        for (const event of manager.queue.immediate) {
-            handle(event);
-            console.info("[EVENT][IMMEDIATE] Handle", event, "Expire?", event.expire);
-        }
-        manager.queue.immediate.length = 0;
-
-        while (scheduled.length > 0 && scheduled[0].timeSec <= state.time) {
-            const event = scheduled.shift();
-            handle(event);
-            console.info("[EVENT][SCHEDULED] Handle", event);
-        }
-
-        if (manager.flag.debug && scheduled.length === 0) {
-            console.info("[EVENT MANAGER] Schedule Empty.", manager.queue, manager.events);
-            manager.flag.debug = false;
-        }
-    };
-
-    return manager;
-}
-
-/**
- * @param {object=} [given] - Optional scheduling info
- * @param {number} [given.in] - Delay in seconds from "current" or "at"
- * @param {number} [given.at] - Absolute launch time (or reference for "in")
- * @param {object=} [current] - current time as reference for "in" (unless "at")
- * @returns {number} - absolutely scheduled time in seconds.
- */
-function asScheduled(given, current) {
-    if (!given) {
-        return undefined;
-    }
-    return given.in
-        ? (given.in + (given.at ?? current))
-        : given.at;
 }
