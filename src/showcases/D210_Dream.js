@@ -1,4 +1,4 @@
-import {createGlyphDef, initBasicState, startRenderLoop} from "./common.js";
+import {initBasicState, startRenderLoop} from "./common.js";
 import {
     createTextureFromImage,
     createTextureFromLoadedImage,
@@ -15,8 +15,8 @@ import {
     createPingPongFramebuffersWithTexture, halfFloatOptions
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
-import {createUboForArray, createUboForStruct} from "../webgl/helpers/uniformbuffers.js";
-import {binarySearchInsert} from "../app/algorithms.js";
+import {createUboForArray, createUboForArraylikeStruct} from "../webgl/helpers/uniformbuffers.js";
+import {binarySearchInsert, createGlyphDef} from "../app/algorithms.js";
 
 // This secret move is presented to you by... vite :)
 const monaImages =
@@ -70,15 +70,14 @@ export default {
         state.framebuffer = {
             clouds: createPingPongFramebuffersWithTexture(gl, state.opt.floatImage),
             noiseBase: createFramebufferWithTexture(gl, state.opt.image),
+            // Texts: Handling unclear. The Framebuffer with Array is meant to store
+            //        the results of as many rendering passes as required, but maybe
+            //        we go with the GlyphInstances anyway.
             texts: createFramebufferWithTextureArray(gl, 2, state.opt.image),
         };
 
-        const {glyphDef, glyphDebug} = createGlyphDef(spiceSaleMsdfJson);
-        const ubo = createUboForArray(gl, state.program, glyphDef, {
-            blockName: "Glyphs",
-            dataSize: 4,
-        });
-        state.msdf = {
+        const glyphDef = createGlyphDef(spiceSaleMsdfJson);
+        const msdf = {
             tex: createTextureFromImage(gl, spiceSaleMsdfPng, {
                 wrapS: gl.CLAMP_TO_EDGE,
                 wrapT: gl.CLAMP_TO_EDGE,
@@ -88,11 +87,31 @@ export default {
                 dataFormat: gl.RGBA,
                 dataType: gl.UNSIGNED_BYTE,
             }),
-            json: spiceSaleMsdfJson,
-            ubo,
-            glyphDef,
-            debug: glyphDebug,
+            ubo: createUboForArray(gl, state.program, glyphDef, {
+                blockName: "Glyphs",
+                dataSize: 4,
+            }),
         };
+        state.glyphs = {
+            msdf,
+            ubo: createUboForArraylikeStruct(gl, state.program, {
+                blockName: "GlyphInstances",
+                bindingPoint: 2,
+                memoryUsage: gl.DYNAMIC_DRAW,
+                memberFields: {
+                    ascii: [0, 1],
+                    scale: [1, 1],
+                    pos: [2, 2],
+                    color: [4, 4],
+                    effect: [8, 4],
+                },
+                dataLength: 32,
+                // there is one additional int, which gives this struct one further base alignment
+                additionalDataSize: 4,
+            }),
+            // only for debugging:
+            glyphDef,
+        }
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -106,7 +125,7 @@ export default {
                 -> so we could gönn ourselves even another 2x vec4 for "free".
             };
          */
-        state.events = createUboForStruct(gl, state.program, {
+        state.events = createUboForArraylikeStruct(gl, state.program, {
             blockName: "Events",
             bindingPoint: 1,
             memoryUsage: gl.DYNAMIC_DRAW,
@@ -131,8 +150,10 @@ export default {
             SHOW_TEXTURE: 1,
             STIR_FLUID: 2,
             DISSIPATE: 3,
-            DRAIN: 4,
+            CLEAR_FLUID: 4,
             SHIFT_PALETTE: 5,
+            DRAIN: 6,
+            DRAW_TEXT: 7,
         });
         state.events.manager = createEventsManager(state, state.events);
 
@@ -231,6 +252,7 @@ export default {
                 [state.framebuffer.fluid.divergence, "Fluid Divergence"],
                 [state.framebuffer.fluid.pressure.currentRead(), "Fluid Pressure"],
                 [state.framebuffer.noiseBase, "Noise Base"],
+                [state.framebuffer.texts, "Text 2"]
             ];
             state.debug.fb.index =
                 index === undefined
@@ -262,13 +284,6 @@ export default {
         gl.clearColor(1, 1, 1, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        // Relic from the Fluid -- random input -- is not what we want!
-        state.spawn = {
-            seed: 0.,
-            last: Number.NEGATIVE_INFINITY,
-            age: 0.,
-        };
 
         // ALWAYS BOUND FOR NOW
         let unit = TEXTURE_UNITS.MONA_1;
@@ -317,10 +332,9 @@ export default {
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,
                         data: {
-                            type: state.events.types.DRAIN,
-                            t: 2,
-                            arg: 7.,
-                            coords: [10., 0.]
+                            type: state.events.types.CLEAR_FLUID,
+                            coords: [10., 0.],
+                            args: [7.]
                         },
                         expire: {in: 0.5},
                     });
@@ -474,7 +488,7 @@ function render(gl, state) {
     gl.uniform3fv(state.location.iTextColor, state.iTextColor);
 
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.OHLI_FONT);
-    gl.bindTexture(gl.TEXTURE_2D, state.msdf.tex);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.tex);
     gl.uniform1i(state.location.glyphTex, TEXTURE_UNITS.OHLI_FONT);
 
     ///// INIT_TEXTi...
@@ -495,6 +509,7 @@ function render(gl, state) {
         );
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
+
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, state.framebuffer.texts.texArray);
 
     /////
@@ -631,20 +646,7 @@ function render(gl, state) {
     }
 }
 
-const SPAWN_EVERY_SECONDS = 2;
-
 function processFluid(gl, state) {
-
-    // TODO: NICHT ZUFÄLLIG SPAWNEN!! -->
-    state.spawn.seed = -1.;
-    if (state.time - state.spawn.last > SPAWN_EVERY_SECONDS) {
-        state.spawn.seed = Math.floor(state.time / SPAWN_EVERY_SECONDS);
-        state.spawn.last = state.time;
-    }
-    state.spawn.age = Math.max(state.time - state.spawn.last, 0.);
-    gl.uniform1f(state.location.iSpawnSeed, state.spawn.seed);
-    gl.uniform1f(state.location.iSpawnAge, state.spawn.age);
-    // <-- TODO: NICHT ZUFÄLLIG SPAWNEN! RELIKT.
 
     /////////////
 
@@ -1655,7 +1657,14 @@ function createEventsManager(state, events) {
     };
 
     const handle = (event) => {
-        event.member.update(event.data);
+        const members = event.members || (event.members = [event.member]);
+        // for (let m = 0; m < members.length; m++) {
+        //     members[m].update(event.data);
+        // }
+        // <-- class for loops are 2-4x faster than for...of -- worth it?
+        for (const member of members) {
+            member.update(event.data);
+        }
         if (event.expire) {
             schedule({
                 ...event,

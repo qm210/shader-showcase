@@ -75,3 +75,86 @@ export async function evaluateReadData(buffer, mapFunc = undefined) {
         return value.toFixed(3);
     }
 }
+
+/**
+ * @param fieldSizes {[number]} struct field sizes in original order and float units (4 bytes each)
+ * cf. https://registry.khronos.org/OpenGL/specs/gl/glspec45.core.pdf#page=159 (GLSL Spec §7.6.2.2)
+ */
+export function totalSizeForStd140(fieldSizes) {
+    const baseAlignment = Math.max(...fieldSizes);
+    const count = {
+        cursor: 0,
+        base: 0,
+        previousSize: baseAlignment,
+    };
+    function countOneBase() {
+        count.base++;
+        count.cursor = 0;
+        count.previousSize = baseAlignment;
+    }
+
+    for (const size of fieldSizes) {
+        if (size === baseAlignment) {
+            if (count.cursor > 0) {
+                countOneBase();
+            }
+            countOneBase();
+        }
+        else if (count.cursor + size === baseAlignment) {
+            countOneBase();
+        }
+        else if (count.cursor + size > baseAlignment) {
+            countOneBase();
+            count.cursor = size;
+        }
+        else if (size > count.previousSize) {
+            countOneBase();
+            count.cursor = size;
+        } else {
+            count.cursor += size;
+            count.previousSize = size;
+        }
+    }
+    if (count.cursor > 0) {
+        countOneBase();
+    }
+    const FLOAT_SIZE = 4;
+    return count.base * baseAlignment * FLOAT_SIZE;
+}
+
+export function toAscii(text) {
+    return Array.from(text, char => char.charCodeAt(0));
+}
+
+export function createGlyphDef(json) {
+    // This will create an array of vec4 (glyphCenter, glyphSize)
+    // i.e. if one is used to think of u0, v0, u1, v1, then it is
+    //   glyphCenter = (uv0 + uv1) / 2;
+    //   halfSize = (uv1 - uv0) / 2;
+    // ... in relative coordinates [0..1] of the textures each!
+    const charset = json.info.charset;
+    const glyphDef = new Float32Array(charset.length * 4);
+    const atlasW = json.common.scaleW;
+    const atlasH = json.common.scaleH;
+
+    let index = 0;
+    for (const char of charset) {
+        const charCode = char.charCodeAt(0);
+        const glyph = json.chars.find(g => g.id === charCode);
+
+        if (!glyph) {
+            console.warn("This character is defined in the charset but not in the chars array: " + char);
+            continue;
+        }
+
+        const halfWidth = 0.5 * glyph.width / atlasW;
+        const halfHeight = 0.5 * glyph.height / atlasH;
+
+        glyphDef[index++] = glyph.x / atlasW + halfWidth;
+        glyphDef[index++] = glyph.y / atlasH + halfHeight;
+        glyphDef[index++] = halfWidth;
+        glyphDef[index++] = halfHeight;
+    }
+
+    return glyphDef;
+}

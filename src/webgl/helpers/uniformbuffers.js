@@ -1,3 +1,5 @@
+import {totalSizeForStd140} from "../../app/algorithms.js";
+
 const FLOAT_SIZE = 4;
 
 export function createUboForArray(gl, program, array, opt) {
@@ -48,15 +50,12 @@ export function createUboForArray(gl, program, array, opt) {
     return ubo;
 }
 
-export function createUboForStruct(gl, program, opt) {
+export function createUboForArraylikeStruct(gl, program, opt) {
     if (!opt.blockName) {
         throw Error("createUboForStruct needs at least a \"blockName\"!");
     }
-    opt.dataSize ??= 4;
-    opt.dataLength ??= 1;
     opt.memoryUsage ??= gl.DYNAMIC_DRAW;
     opt.bindingPoint ??= 0;
-    opt.initialData ??= null;
 
     const result = {
         opt,
@@ -72,29 +71,31 @@ export function createUboForStruct(gl, program, opt) {
         fields: []
     };
 
-    if (opt.structFields) {
-        result.fields = Object.entries(opt.structFields);
-        // SIDE QUEST: could read dataSize from the structFields...
-        // opt.dataSize = Math.max(opt.dataSize, structSize(result.fields));
-    }
-
-    /**
-     * Convenience: specify a map like
-     *   { member1: 0, member2: 1 }
-     * to access these by name (value is index of base alignment each)
-     */
-    if (opt.memberMap) {
-        const keys = Object.keys(opt.memberMap);
-        opt.dataLength = Math.max(opt.dataLength, keys.length);
-        for (const key of keys) {
-            // const offset = opt.dataSize * opt.memberMap[key];
-            // constructMember(key, offset);
-            constructMember(key);
+    if (opt.memberFields) {
+        result.fields = Object.entries(opt.memberFields);
+        if (!opt.dataSize) {
+            const sizesEach =
+                Object.values(opt.memberFields).map(info => info[1]);
+            opt.dataSize = totalSizeForStd140(sizesEach);
         }
     }
 
+    opt.dataSize ??= 4;
+    opt.dataLength ??= opt.memberMap
+        ? Object.keys(opt.memberMap).length
+        : 1;
+
+    for (let i = 0; i < opt.dataLength; i++) {
+        defineMember(i, opt.dataSize * i);
+    }
+    for (const key in (opt.memberMap ?? {})) {
+        defineMember(key, opt.dataSize * opt.memberMap[key]);
+    }
+
     const block = result.block;
-    block.size = opt.dataLength * opt.dataSize;
+    block.size = opt.dataLength * opt.dataSize
+        + (opt.additionalDataSize ?? 0);
+    console.log("[UBO] Data Size", opt.dataSize, block.size, opt.dataLength * opt.dataSize, opt.additionalDataSize);
 
     result.ubo = gl.createBuffer();
     gl.bindBuffer(gl.UNIFORM_BUFFER, result.ubo);
@@ -140,12 +141,11 @@ export function createUboForStruct(gl, program, opt) {
 
     return result;
 
-    function constructMember(key, offset = undefined) {
-        const memberIndex = result.opt.memberMap;
+    function defineMember(key, offset) {
         result.members[key] = {
-            offset: offset ?? result.opt.dataSize * memberIndex[key],
+            offset,
             set: (data) =>
-                result.updateMemberAt(memberIndex[key], data),
+                result.updateMemberAt(result.opt.memberMap[key], data),
             // Does not have to be used, just a float32ing offer:
             workdata: new Float32Array(opt.dataSize / FLOAT_SIZE),
             update: constructMemberUpdater(key)
@@ -168,7 +168,9 @@ export function createUboForStruct(gl, program, opt) {
             if (!update.type) {
                 update.type = -1;
             }
-            for (const [field, [start,]] of result.fields) {
+            // somewhat optimized for performance (classical for loop & .set())
+            for (let f = 0; f < result.fields.length; f++) {
+                const [field, [start,]] = result.fields[f];
                 if (!update.hasOwnProperty(field)) {
                     continue;
                 }
@@ -182,27 +184,3 @@ export function createUboForStruct(gl, program, opt) {
         };
     }
 }
-//
-// /**
-//  * @param fields {Array<[string, [number, number]]>}
-//  *               whereas start and size are given in 32bit (i.e. number of floats / ints)
-//  */
-// function structSize(fields) {
-//     const cursor = {
-//         baseAlignmentInFours: 1,
-//         counter: 0,
-//         subcounter: 0,
-//     };
-//     for (const [, [, sizeInFours]] of fields) {
-//         if (sizeInFours > cursor.baseAlignmentInFours) {
-//             cursor.baseAlignmentInFours = sizeInFours;
-//         }
-//     }
-//     /*
-//     The Rules (GLSL Spec §7.6.2.2)
-//      -- Member alignment: offset = roundUp(offset, member.baseAlign)
-//      -- Struct baseAlign = max(all member baseAligns)
-//      -- Struct size = roundUp(total_offset, baseAlign)
-//      -- Next struct offset = roundUp(prev_end, prev.baseAlign) -> vec4 stride
-//      */
-// }

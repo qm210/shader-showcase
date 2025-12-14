@@ -45,12 +45,6 @@ uniform float iMaxInitialVelocity;
 uniform float iCurlStrength;
 uniform float iPressure;
 uniform int pressureIterations;
-// TODO: Random Spawn -- should go!
-uniform float iSpawnSeed;
-uniform float iSpawnAge;
-uniform vec3 iSpawnColorHSV;
-uniform float iSpawnHueGradient;
-uniform float iSpawnRandomizeHue;
 // for post processing
 uniform float iBloomIntensity;
 uniform float iBloomThreshold;
@@ -66,6 +60,12 @@ uniform float iGamma;
 uniform float iVignetteInner;
 uniform float iVignetteOuter;
 uniform float iVignetteScale;
+// TODO: Random Spawn -- should go!
+uniform float iSpawnSeed;
+uniform float iSpawnAge;
+uniform vec3 iSpawnColorHSV;
+uniform float iSpawnHueGradient;
+uniform float iSpawnRandomizeHue;
 // <--- FLUID
 
 // --> GLYPHS
@@ -76,7 +76,19 @@ layout(std140) uniform Glyphs {
 };
 const int START_ASCII = 33; // 33 if charset begins with "!"
 uniform vec3 iTextColor;
-// <-- GLYPHS
+
+struct GlyphInstance {
+    uint ascii;
+    float scale;
+    vec2 pos;
+    vec4 color;
+    vec4 effect;
+};
+layout(std140) uniform GlyphInstances {
+//    GlyphInstance letter[32];
+//    int lettersUsed;
+    GlyphInstance letter[1];
+};
 
 // --> CLOUDS
 uniform float iCloudYDisplacement;
@@ -800,6 +812,11 @@ void printYay(in vec2 uv, inout vec4 col) {
     col = mix(col, textColor2, d);
     cursor.x -= dims.x;
 }
+
+void printEventControllableText(in vec2 uv, inout vec4 col) {
+
+}
+
 /////
 
 vec4 fluidColor;
@@ -964,9 +981,11 @@ void finalComposition(in vec2 uv) {
 #define _INIT_TEXT0 80
 #define _INIT_TEXT1 81
 #define _INIT_TEXT2 82
-#define _INIT_TEXT3 83
+#define _INIT_GLYPH_INSTANCES 88
 #define _RENDER_NOISE_BASE 90
 #define _RENDER_FINALLY_TO_SCREEN 100
+
+#define EVENT_CLEAR_FLUID 4
 
 void main() {
     vec2 spawnRandom = hash22(vec2(1.2, 1.1) * iSpawnSeed);
@@ -994,9 +1013,17 @@ void main() {
             fragColor = c.yyyy;
             printYay(uv, fragColor);
             return;
+        case _INIT_GLYPH_INSTANCES:
+            fragColor = c.yyyy;
+            printEventControllableText(uv, fragColor);
+            return;
 
         // all the fluid stuff now
         case _INIT_FLUID_COLOR: {
+                if (fluidColorEvent.type == EVENT_CLEAR_FLUID) {
+                    fragColor = fluidColorEvent.coords;
+                    return;
+                }
                 fluidColor = texture(texColor, st);
                 if (iSpawnSeed < 0.) {
                     fragColor = fluidColor;
@@ -1017,6 +1044,10 @@ void main() {
             }
             return;
         case _INIT_VELOCITY: {
+             if (fluidVelocityEvent.type == EVENT_CLEAR_FLUID) {
+                    fragColor.xy = fluidVelocityEvent.coords.xy;
+                    return;
+                }
                 fluidVelocity = texture(texVelocity, st).xy;
                 if (iSpawnSeed < 0.) {
                     fragColor.xy = fluidVelocity;
