@@ -99,6 +99,7 @@ export function createGlyphInstanceManager(state, glyphs) {
         update: void 0,
         replaceWhole: void 0,
         flag: {
+
             debug: false,
         }
     };
@@ -126,7 +127,7 @@ export function createGlyphInstanceManager(state, glyphs) {
         const lettersUsed = state.glyphs.meta.lettersUsed.workdata[0];
         const debug = {
             glyphInstances: [],
-            lettersUsed: state.glyphs.meta.lettersUsed
+            lettersUsed: state.glyphs.meta.lettersUsed,
         };
         for (let t = 0; t < lettersUsed; t++) {
             debug.glyphInstances.push(
@@ -137,14 +138,18 @@ export function createGlyphInstanceManager(state, glyphs) {
     };
 
     manager.replaceWhole = (text) => {
+        const em2uv = 0.001; // TODO
+        let cursorX = -1;
         for (let t = 0; t < text.length; t++) {
+            const ascii = text.charCodeAt(t);
             state.glyphs.members[t].update({
-                ascii: text.charCodeAt(t),
+                ascii,
                 scale: 0.5 + t * 0.15,
-                pos: [-1 + 0.2 * t, 0.],
+                pos: [cursorX, 0.],
                 color: [0, 0, 0, 1],
                 effect: [1, 2, 3, 4],
             });
+            cursorX += 0.2 + state.glyphs.detailed.advances[ascii] * em2uv;
         }
         state.glyphs.meta.lettersUsed.update(text.length);
         console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs);

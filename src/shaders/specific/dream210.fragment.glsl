@@ -69,13 +69,19 @@ uniform float iSpawnRandomizeHue;
 // <--- FLUID
 
 // --> GLYPHS
-const int N_GLYPHS = 97;
 uniform sampler2D glyphTex;
-layout(std140) uniform Glyphs {
-    vec4 glyphDef[97];
-};
+const int N_GLYPHS = 97;
 const int START_ASCII = 33; // 33 if charset begins with "!"
-uniform vec3 iTextColor;
+
+struct GlyphDef {
+    vec2 center;
+    vec2 halfSize;
+    vec2 emOffsets;
+    float emAdvance;
+};
+layout(std140) uniform Glyphs {
+    GlyphDef glyphDef[97];
+};
 
 struct GlyphInstance {
     float ascii;
@@ -164,8 +170,9 @@ uniform vec4 colFree2;
 uniform vec4 colFree3;
 
 struct Event {
-    int type;
-    int subtype;
+    // all floats because it makes WebGL state consistency... handlebar.
+    float type;
+    float subtype;
     vec4 coords;
     vec4 args;
 };
@@ -682,14 +689,14 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     if (index < 0 || index >= N_GLYPHS) {
         return 0.;
     }
-    // I chose vec4 such as:
-    vec2 center = glyphDef[index].xy;
-    vec2 halfSize = glyphDef[index].zw;
 
-    vec2 texCoord = center + clamp(uv2texSt * uv, -halfSize, halfSize);
+    GlyphDef g = glyphDef[index];
+    // TODO: try uv -> 0.02 * g.emOffset .. ?;
+    vec2 texCoord = g.center + clamp(uv2texSt * uv, -g.halfSize, g.halfSize);
     vec3 msd = texture(glyphTex, texCoord).rgb;
 
-    size = 4. * vec2(aspRatio, 1) * halfSize;
+    // TODO: try respecting 0.02 * iResolution.y * g.emAdvance in size.x .. ?;
+    size = 4. * vec2(aspRatio, 1) * g.halfSize;
 
     // unsure whether this really is the same understanding of SDF
     // as we know it from everywhere. Tried to get as good as it got.
@@ -711,7 +718,7 @@ float sdRect(in vec2 uv, in vec2 size)
 
 void printQmSaysHi(in vec2 uv, inout vec4 col) {
     vec2 dims;
-    vec4 textColor = vec4(iTextColor, 1.);
+    vec4 textColor = vec4(1, 0.3, 0.5, 1.);
     vec2 cursor = uv - vec2(-1.44, -0.7);
     cursor *= 0.8;
     float d = 100., dR = 100.;
@@ -812,19 +819,14 @@ void printYay(in vec2 uv, inout vec4 col) {
     cursor.x -= dims.x;
 }
 
-const GlyphInstance debugLetterInstance[2] = GlyphInstance[2](
-    GlyphInstance(109., 0.5, vec2(-1, 0.), vec4(0,0,0,1), vec4(1,2,3,4)),
-    GlyphInstance(113., 0.65, vec2(-0.8, 0.), vec4(0,0,0,1), vec4(1,2,3,4))
-);
-
-void printEventControllableText(in vec2 uv, inout vec4 col) {
+void printGlyphInstances(in vec2 uv, inout vec4 col) {
     vec2 pos, _unused;
     float d;
     for (int t = 0; t < lettersUsed; t++) {
         pos = uv - letterInstance[t].pos;
         d = glyph(pos, int(letterInstance[t].ascii), _unused);
-        d *= d * debugLetterInstance[t].color.a;
-        col.rgb = mix(col.rgb, debugLetterInstance[t].color.xyz, d);
+        d *= d * letterInstance[t].color.a;
+        col.rgb = mix(col.rgb, letterInstance[t].color.xyz, d);
     }
 }
 
@@ -996,7 +998,8 @@ void finalComposition(in vec2 uv) {
 #define _RENDER_NOISE_BASE 90
 #define _RENDER_FINALLY_TO_SCREEN 100
 
-#define EVENT_CLEAR_FLUID 4
+// float-valued for now because consistent UBOs are easier to manage
+#define EVENT_CLEAR_FLUID 4.0
 
 void main() {
     // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
@@ -1004,7 +1007,7 @@ void main() {
 
     if (passIndex != _RENDER_FLUID && debugOption == 1) {
         fragColor = debugColor;
-        printEventControllableText(uv, fragColor);
+        printGlyphInstances(uv, fragColor);
         return;
     }
 
@@ -1035,7 +1038,7 @@ void main() {
             return;
         case _INIT_GLYPH_INSTANCES:
             fragColor = c.yyyy;
-            printEventControllableText(uv, fragColor);
+            printGlyphInstances(uv, fragColor);
             return;
 
         // all the fluid stuff now

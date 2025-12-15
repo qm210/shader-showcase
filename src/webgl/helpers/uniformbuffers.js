@@ -8,7 +8,7 @@ export function createUboForArray(gl, program, array, opt) {
     }
     opt.dataSize ??= FLOAT_SIZE;
     opt.memoryUsage ??= gl.STATIC_DRAW;
-    // gl.DYNAMIC_DRAW if data is changing often. Never compared tho.
+    // gl.DYNAMIC_DRAW if data is changing often. Did never compared tho.
 
     const ubo = gl.createBuffer();
     const blockSize = array.length * opt.dataSize;
@@ -133,7 +133,7 @@ export function createUboForArraylikeStruct(gl, program, opt) {
         gl.bufferSubData(gl.UNIFORM_BUFFER, 0, opt.data);
     }
 
-    addSanityChecks(context)
+    context.debug = addSanityChecks(context);
 
     console.info("[UBO]", opt.blockName, context);
 
@@ -144,8 +144,8 @@ export function createUboForArraylikeStruct(gl, program, opt) {
         const obj = {
             offset,
             workdata,
+            update: updateFunc,
             write: void 0,
-            update: updateFunc
         };
         obj.write = (data = undefined) => {
             data ??= obj.workdata;
@@ -191,65 +191,43 @@ export function createUboForArraylikeStruct(gl, program, opt) {
         }
     }
 
-    /*
-    function constructMemberUpdater(key) {
-        let changed;
-        // the update object can contain all the fields, and
-        // as an additional info { reset: false } (true by default)
-        return (update) => {
-            const member = result.members[key];
-            console.log(result.members, key, member, update);
-            changed = false;
-            if (update.reset !== false) {
-                member.workdata.fill(0);
-                changed = true;
-            }
-            if (!update.type) {
-                update.type = -1;
-            }
-            // somewhat optimized for performance (classical for loop & .set())
-            for (let f = 0; f < result.fields.length; f++) {
-                const [field, [start,]] = result.fields[f];
-                if (!update.hasOwnProperty(field)) {
-                    continue;
-                }
-                member.workdata.set(update[field], start);
-                changed = true;
-            }
-            if (changed) {
-                member.setBuffer(member.workdata);
-            }
-        };
-    }
-    */
-
     function addSanityChecks() {
-        block.actualSize = gl.getActiveUniformBlockParameter(
+        const debug = {};
+
+        debug.actualSize = gl.getActiveUniformBlockParameter(
             program, block.index, gl.UNIFORM_BLOCK_DATA_SIZE
         );
-        if (block.actualSize !== block.size) {
+        if (debug.actualSize !== block.size) {
             console.warn("[UBO][CUSTOM STRUCTS]",
                 "Block Sizes don't match; you said", block.size,
-                "WebGL thinks differently:", block.actualSize, "..?", context
+                "WebGL thinks differently:", debug.actualSize, "..?", context
             );
         }
 
-        const debugLayout = [];
+        const FORBIDDEN_FIELD_NAMES = ["reset"];
+        debug.memberLayout = [];
         let collisionFound = false;
         for (const [name, start, size] of context.memberFields) {
             for (let s = 0; s < size; s++) {
-                if (!debugLayout[start + s]) {
-                    debugLayout[start + s] = name;
+                if (!debug.memberLayout[start + s]) {
+                    debug.memberLayout[start + s] = name;
                 } else {
                     collisionFound = true;
-                    debugLayout[start + s] += "|" + name;
+                    debug.memberLayout[start + s] += "|" + name;
+                }
+
+                if (FORBIDDEN_FIELD_NAMES.includes(name)) {
+                    console.error("[UBO][CUSTOM STRUCTS]",
+                        "Forbidden Field Name (used internally):", name
+                    );
                 }
             }
         }
         if (collisionFound) {
             console.warn("[UBO][CUSTOM STRUCTS]",
-                "Layout Conflict:", debugLayout, context.memberFields
+                "Layout Conflict:", debug.memberLayout, context.memberFields
             );
         }
+        return debug;
     }
 }

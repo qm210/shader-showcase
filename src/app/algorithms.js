@@ -126,21 +126,23 @@ export function toAscii(text) {
     return Array.from(text, char => char.charCodeAt(0));
 }
 
-export function createGlyphDef(json) {
-    // This will create an array of vec4 (glyphCenter, glyphSize)
+export function createGlyphDef(msdfJson) {
+    // This will create an array of (glyphCenter, glyphHalfSize, emOffset, emAdvance [plus 1 padding])
     // i.e. if one is used to think of u0, v0, u1, v1, then it is
     //   glyphCenter = (uv0 + uv1) / 2;
     //   halfSize = (uv1 - uv0) / 2;
-    // ... in relative coordinates [0..1] of the textures each!
-    const charset = json.info.charset;
-    const glyphDef = new Float32Array(charset.length * 4);
-    const atlasW = json.common.scaleW;
-    const atlasH = json.common.scaleH;
+    // (in relative coordinates [0..1] of the textures each.)
+    // emOffset & emAdvance is just passed through because I guess I'll need it.
+    const charset = msdfJson.info.charset;
+    const glyphDef = new Float32Array(charset.length * 8);
+    const atlasW = msdfJson.common.scaleW;
+    const atlasH = msdfJson.common.scaleH;
+    const PADDING = 0;
 
     let index = 0;
     for (const char of charset) {
         const charCode = char.charCodeAt(0);
-        const glyph = json.chars.find(g => g.id === charCode);
+        const glyph = msdfJson.chars.find(g => g.id === charCode);
 
         if (!glyph) {
             console.warn("This character is defined in the charset but not in the chars array: " + char);
@@ -154,7 +156,25 @@ export function createGlyphDef(json) {
         glyphDef[index++] = glyph.y / atlasH + halfHeight;
         glyphDef[index++] = halfWidth;
         glyphDef[index++] = halfHeight;
+
+        glyphDef[index++] = glyph.xoffset;
+        glyphDef[index++] = glyph.yoffset;
+        glyphDef[index++] = glyph.xadvance;
+        glyphDef[index++] = PADDING;
     }
 
     return glyphDef;
+}
+
+export function compactifyGlyphJson(msdfJson) {
+    const details = {
+        chars: msdfJson.chars,
+        info: msdfJson.info,
+        common: msdfJson.common,
+        advances: {}
+    };
+    for (const glyph of details.chars) {
+        details.advances[glyph.id] = glyph.xadvance;
+    }
+    return details;
 }

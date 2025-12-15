@@ -14,8 +14,8 @@ import {
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
 import {createUboForArray, createUboForArraylikeStruct} from "../webgl/helpers/uniformbuffers.js";
-import {createGlyphDef} from "../app/algorithms.js";
-import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream_management.js";
+import {compactifyGlyphJson, createGlyphDef} from "../app/algorithms.js";
+import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream.management.js";
 
 // This secret move is presented to you by... vite :)
 const monaImages =
@@ -57,12 +57,10 @@ export default {
             sunrays: halfFloatOptions(gl,
                 resolutionScaled(192, width, height),
                 gl.R16F,
-                gl.LINEAR
             ),
             bloom: halfFloatOptions(gl,
                 resolutionScaled(256, width, height),
                 gl.RGBA16F,
-                gl.LINEAR
             )
         };
 
@@ -112,6 +110,7 @@ export default {
                     size: 4,
                 },
             }),
+            detailed: compactifyGlyphJson(spiceSaleMsdfJson),
             // only for debugging:
             glyphDef,
         }
@@ -500,8 +499,6 @@ function render(gl, state) {
     gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
 
     // SOURCE: FONTS -- TEXTURE8 für MSDF-Png
-
-    gl.uniform3fv(state.location.iTextColor, state.iTextColor);
 
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.OHLI_FONT);
     gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.tex);
@@ -1028,14 +1025,6 @@ function renderFluid(gl, state) {
 function createUniforms() {
     return [
         {
-            separator: "Fragment Shader Uniforms"
-        }, {
-            type: "vec3",
-            name: "iTextColor",
-            defaultValue: [1, 0.3, 0.5],
-            min: 0,
-            max: 1
-        }, {
             ////////////////////////////////////////
             separator: "NR4s Wolkenquest",
             ////////////////////////////////////////
