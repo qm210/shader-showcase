@@ -76,8 +76,9 @@ const int START_ASCII = 33; // 33 if charset begins with "!"
 struct GlyphDef {
     vec2 center;
     vec2 halfSize;
-    vec2 emOffsets;
-    float emAdvance;
+    vec2 offset;
+    float advance;
+    float relAdvance;
 };
 layout(std140) uniform Glyphs {
     GlyphDef glyphDef[97];
@@ -691,12 +692,16 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     }
 
     GlyphDef g = glyphDef[index];
-    // TODO: try uv -> 0.02 * g.emOffset .. ?;
-    vec2 texCoord = g.center + clamp(uv2texSt * uv, -g.halfSize, g.halfSize);
+    vec2 bottomLeft = uv
+        - 2. * g.halfSize * vec2(aspRatio, 1)
+        - g.offset;
+    vec2 texCoord = g.center
+        + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
     vec3 msd = texture(glyphTex, texCoord).rgb;
 
     // TODO: try respecting 0.02 * iResolution.y * g.emAdvance in size.x .. ?;
     size = 4. * vec2(aspRatio, 1) * g.halfSize;
+    // TODO: replace out vec2 size -> out float advance; and here use g.advance instead of g.halfSize.
 
     // unsure whether this really is the same understanding of SDF
     // as we know it from everywhere. Tried to get as good as it got.
@@ -819,14 +824,37 @@ void printYay(in vec2 uv, inout vec4 col) {
     cursor.x -= dims.x;
 }
 
+void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 overwriteColor) {
+    vec2 pos, _unused;
+    float d;
+    for (int t = 0; t < lettersUsed; t++) {
+        GlyphInstance letter = letterInstance[t];
+        pos = letter.scale * (uv - letter.pos);
+        d = glyph(pos, int(letter.ascii), _unused);
+        d *= d * letter.color.a;
+        col.rgb = mix(col.rgb, overwriteColor.xyz, d);
+
+        // visualize bottom points
+//        d = length(vec2(pos.x, pos.y)) - 0.01;
+//        d = smoothstep(0.01, 0., d);
+//        col.rgb = mix(col.rgb, c.yxy, d);
+    }
+}
+
 void printGlyphInstances(in vec2 uv, inout vec4 col) {
     vec2 pos, _unused;
     float d;
     for (int t = 0; t < lettersUsed; t++) {
-        pos = uv - letterInstance[t].pos;
-        d = glyph(pos, int(letterInstance[t].ascii), _unused);
-        d *= d * letterInstance[t].color.a;
-        col.rgb = mix(col.rgb, letterInstance[t].color.xyz, d);
+        GlyphInstance letter = letterInstance[t];
+        pos = letter.scale * (uv - letter.pos);
+        d = glyph(pos, int(letter.ascii), _unused);
+        d *= d * letter.color.a;
+        col.rgb = mix(col.rgb, letter.color.xyz, d);
+
+        // visualize bottom points
+//        d = length(vec2(pos.x, pos.y)) - 0.01;
+//        d = smoothstep(0.01, 0., d);
+//        col.rgb = mix(col.rgb, c.yxy, d);
     }
 }
 
@@ -948,6 +976,11 @@ void finalComposition(in vec2 uv) {
 
     // fragColor.rgb += tex.a * tex.rgb;
 
+    if (debugOption == 1) {
+        printGlyphInstances(uv, fragColor, noiseBase);
+    }
+
+
     // col = noiseBase.rgb;
     col = fragColor.rgb;
     col = pow(col, vec3(1. / iGamma));
@@ -1004,12 +1037,6 @@ void finalComposition(in vec2 uv) {
 void main() {
     // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
     vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
-
-    if (passIndex != _RENDER_FLUID && debugOption == 1) {
-        fragColor = debugColor;
-        printGlyphInstances(uv, fragColor);
-        return;
-    }
 
     vec2 spawnRandom = hash22(vec2(1.2, 1.1) * iSpawnSeed);
     vec2 spawnCenter = vec2(spawnRandom.x, spawnRandom.y);

@@ -116,6 +116,10 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
 
+        setTimeout(() => {
+            state.glyphs.manager.replaceWhole("Hello Dream210");
+        }, 1);
+
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
             struct Event {      | offset | size -> aligned to next element's base size

@@ -127,7 +127,7 @@ export function toAscii(text) {
 }
 
 export function createGlyphDef(msdfJson) {
-    // This will create an array of (glyphCenter, glyphHalfSize, emOffset, emAdvance [plus 1 padding])
+    // This will create an array of (glyphCenter, glyphHalfSize, emOffset, emAdvance, relativeAdvance)
     // i.e. if one is used to think of u0, v0, u1, v1, then it is
     //   glyphCenter = (uv0 + uv1) / 2;
     //   halfSize = (uv1 - uv0) / 2;
@@ -137,7 +137,7 @@ export function createGlyphDef(msdfJson) {
     const glyphDef = new Float32Array(charset.length * 8);
     const atlasW = msdfJson.common.scaleW;
     const atlasH = msdfJson.common.scaleH;
-    const PADDING = 0;
+    const halfUnit = msdfJson.info.size / atlasH / 2;
 
     let index = 0;
     for (const char of charset) {
@@ -157,24 +157,23 @@ export function createGlyphDef(msdfJson) {
         glyphDef[index++] = halfWidth;
         glyphDef[index++] = halfHeight;
 
-        glyphDef[index++] = glyph.xoffset;
-        glyphDef[index++] = glyph.yoffset;
-        glyphDef[index++] = glyph.xadvance;
-        glyphDef[index++] = PADDING;
+        glyphDef[index++] = glyph.xoffset / atlasW;
+        glyphDef[index++] = glyph.yoffset / atlasH;
+        glyphDef[index++] = glyph.xadvance / atlasW;
+        glyphDef[index++] = glyph.xadvance / halfUnit;
     }
 
     return glyphDef;
 }
 
 export function compactifyGlyphJson(msdfJson) {
-    const details = {
-        chars: msdfJson.chars,
-        info: msdfJson.info,
-        common: msdfJson.common,
-        advances: {}
+    const detailed = {
+        chars: {},
+        ...msdfJson.info,
+        ...msdfJson.common,
     };
-    for (const glyph of details.chars) {
-        details.advances[glyph.id] = glyph.xadvance;
+    for (const glyph of msdfJson.chars) {
+        detailed.chars[glyph.id] = glyph;
     }
-    return details;
+    return detailed;
 }
