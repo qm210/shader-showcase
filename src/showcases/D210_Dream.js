@@ -116,9 +116,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
 
-        setTimeout(() => {
-            state.glyphs.manager.replaceWhole("Hello Dream210");
-        }, 1);
+        state.glyphs.manager.replacePhrase("Hello Dream210");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -355,7 +353,7 @@ export default {
                 onClick: () => {
                     const text = window.prompt("Set the Glyph Instances to... (max 32. characters)");
                     if (text !== null) {
-                        state.glyphs.manager.replaceWhole(text);
+                        state.glyphs.manager.replacePhrase(text);
                     }
                 },
                 onRightClick: () => {

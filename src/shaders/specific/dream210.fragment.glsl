@@ -824,7 +824,7 @@ void printYay(in vec2 uv, inout vec4 col) {
     cursor.x -= dims.x;
 }
 
-void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 overwriteColor) {
+void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 effectColor) {
     vec2 pos, _unused;
     float d;
     for (int t = 0; t < lettersUsed; t++) {
@@ -832,7 +832,8 @@ void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 overwriteColor) {
         pos = letter.scale * (uv - letter.pos);
         d = glyph(pos, int(letter.ascii), _unused);
         d *= d * letter.color.a;
-        col.rgb = mix(col.rgb, overwriteColor.xyz, d);
+        col.rgb = mix(col.rgb, effectColor.xyz, d);
+        // TODO: think about possibilities for effects -> here just "overwrite with other color"
 
         // visualize bottom points
 //        d = length(vec2(pos.x, pos.y)) - 0.01;

@@ -97,7 +97,7 @@ export function createGlyphInstanceManager(state, glyphs) {
     const manager = {
         glyphs,
         update: void 0,
-        replaceWhole: void 0,
+        replacePhrase: void 0,
         debug: {}
     };
 
@@ -120,29 +120,17 @@ export function createGlyphInstanceManager(state, glyphs) {
         // }
     };
 
-    manager.debugStuff = () => {
-        const lettersUsed = state.glyphs.meta.lettersUsed.workdata[0];
-        manager.debug.glyphInstances = [];
-        manager.debug.lettersUsed = state.glyphs.meta.lettersUsed;
-        for (let t = 0; t < lettersUsed; t++) {
-            manager.debug.glyphInstances.push(
-                state.glyphs.members[t]
-            );
-        }
-        console.info("[DEBUG GLYPH MANAGEMENT]", manager.debug, state.glyphs);
-    };
+    manager.replacePhrase = (text) => {
+        const pixelUnit = 2 / state.glyphs.detailed.scaleH;
+        const space = 0.667 * state.glyphs.detailed.size;
+        const glyphs = state.glyphs.detailed.chars;
 
-    manager.replaceWhole = (text) => {
-        let cursorX = -1.4;
-        manager.debug.cursorX = [];
-        manager.debug.posX = [];
         manager.debug.glyph = [];
         manager.debug.advance = [];
-        const pixelUnit = 2 / state.glyphs.detailed.scaleH;
-        const space = state.glyphs.detailed.size;
-        const spacing = 0.25 * state.glyphs.detailed.size;
-        console.warn("DEBUGGING:", pixelUnit, space, spacing);
-        const glyphs = state.glyphs.detailed.chars;
+        manager.debug.pos = [];
+        manager.debug.pixelUnit = pixelUnit;
+
+        let cursorX = -text.length * 0.1;
         let used = 0;
         for (let t = 0; t < text.length; t++) {
             if (text[t] === " ") {
@@ -162,17 +150,13 @@ export function createGlyphInstanceManager(state, glyphs) {
             });
             const advance = (glyphs[ascii].xadvance) * pixelUnit / scale;
             manager.debug.advance.push(advance);
-            manager.debug.cursorX.push(cursorX);
-            manager.debug.posX.push(pos[0]);
+            manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);
             cursorX += advance;
             used++;
         }
         state.glyphs.meta.lettersUsed.update(used);
-        manager.debug.pixelUnit = pixelUnit;
         console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs, manager.debug);
-
-        manager.debugStuff();
     };
 
     return manager;
