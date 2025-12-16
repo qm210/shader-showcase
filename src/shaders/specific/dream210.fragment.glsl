@@ -692,16 +692,10 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     }
 
     GlyphDef g = glyphDef[index];
-    vec2 bottomLeft = uv
-        - 2. * g.halfSize * vec2(aspRatio, 1)
-        - g.offset;
-    vec2 texCoord = g.center
-        + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
-    vec3 msd = texture(glyphTex, texCoord).rgb;
-
-    // TODO: try respecting 0.02 * iResolution.y * g.emAdvance in size.x .. ?;
     size = 4. * vec2(aspRatio, 1) * g.halfSize;
-    // TODO: replace out vec2 size -> out float advance; and here use g.advance instead of g.halfSize.
+    vec2 bottomLeft = uv - 0.5 * size - g.offset;
+    vec2 texCoord = g.center + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
+    vec3 msd = texture(glyphTex, texCoord).rgb;
 
     // unsure whether this really is the same understanding of SDF
     // as we know it from everywhere. Tried to get as good as it got.
@@ -709,8 +703,8 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     return sdf;
 }
 
-float glyph(in vec2 uv, int ascii, out vec2 step) {
-    float sdf = sdGlyph(uv, ascii, step);
+float glyph(in vec2 uv, int ascii, out vec2 dims) {
+    float sdf = sdGlyph(uv, ascii, dims);
     // return clamp(-sdf/fwidth(sdf) + 0.5, 0., 1.0);
     return clamp(-sdf/fwidth(sdf) + 0.5, 0., 1.0);
 }
@@ -808,20 +802,26 @@ void printQmSaysHi(in vec2 uv, inout vec4 col) {
 }
 
 void printYay(in vec2 uv, inout vec4 col) {
+    const int[] yay = int[3](92, 79, 47);
     vec2 dims;
     float d = 100., dR = 100.;
-    const vec4 textColor2 = vec4(0.8, 1., 0.5, 1.);
-    vec2 cursor = uv - vec2(-1.22, 0.);
-    cursor *= 0.15;
-    d = glyph(cursor, 92, dims);
-    col = mix(col, textColor2, d);
-    cursor.x -= dims.x;
-    d = glyph(cursor, 111, dims);
-    col = mix(col, textColor2, d);
-    cursor.x -= dims.x - 0.04;
-    d = glyph(cursor, 47, dims);
-    col = mix(col, textColor2, d);
-    cursor.x -= dims.x;
+    const vec4 textColor2 = vec4(0.8, 0., 0.5, 1.);
+    vec2 cursor = uv - vec2(-1.2, -0.6);
+    cursor *= 0.2;
+
+    for (int i = 0; i < 3; i++) {
+        d = glyph(cursor, yay[i], dims);
+        col = mix(col, textColor2, d);
+
+        // visualize anchor points
+        d = length(cursor) - 0.005;
+        d = smoothstep(0.005, 0., d);
+        col = mix(col, c.yxyw, d);
+
+        float advance = glyphDef[yay[i] - START_ASCII].advance;
+        // cursor.x -= dims.x;
+        cursor.x -= 2. * aspRatio * advance;
+    }
 }
 
 void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 effectColor) {
@@ -829,16 +829,14 @@ void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 effectColor) {
     float d;
     for (int t = 0; t < lettersUsed; t++) {
         GlyphInstance letter = letterInstance[t];
+        if (letter.color.a <= 0.) {
+            continue;
+        }
         pos = letter.scale * (uv - letter.pos);
         d = glyph(pos, int(letter.ascii), _unused);
         d *= d * letter.color.a;
         col.rgb = mix(col.rgb, effectColor.xyz, d);
         // TODO: think about possibilities for effects -> here just "overwrite with other color"
-
-        // visualize bottom points
-//        d = length(vec2(pos.x, pos.y)) - 0.01;
-//        d = smoothstep(0.01, 0., d);
-//        col.rgb = mix(col.rgb, c.yxy, d);
     }
 }
 

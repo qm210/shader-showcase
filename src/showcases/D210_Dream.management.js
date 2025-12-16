@@ -98,8 +98,19 @@ export function createGlyphInstanceManager(state, glyphs) {
         glyphs,
         update: void 0,
         replacePhrase: void 0,
+        instanceViews: Array(glyphs.opt.dataLength),
         debug: {}
     };
+
+    for (let i = 0; i < glyphs.opt.dataLength; i++) {
+        const instance = {};
+        const member = glyphs.members[i];
+        for (const [field, start, size] of glyphs.memberFields) {
+            // CAUTION: subarray() creates a view to the original array, data is linked!
+            instance[field] = member.workdata.subarray(start, start + size);
+        }
+        manager.instanceViews[i] = instance;
+    }
 
     manager.update = (event) => {
         // const members = event.members || (event.members = [event.member]);
@@ -120,10 +131,14 @@ export function createGlyphInstanceManager(state, glyphs) {
         // }
     };
 
-    manager.replacePhrase = (text) => {
+    manager.replacePhrase = (text, remember = true) => {
+        if (remember) {
+            manager.lastPhrase = text;
+        }
+
         const pixelUnit = 2 / state.glyphs.detailed.scaleH;
         const space = 0.667 * state.glyphs.detailed.size;
-        const glyphs = state.glyphs.detailed.chars;
+        const chars = state.glyphs.detailed.chars;
 
         manager.debug.glyph = [];
         manager.debug.advance = [];
@@ -138,7 +153,7 @@ export function createGlyphInstanceManager(state, glyphs) {
                 continue;
             }
             const ascii = text.charCodeAt(t);
-            const glyph = glyphs[ascii];
+            const glyph = chars[ascii];
             const scale = 0.7 + 0.6 * Math.random();
             const pos = [cursorX, (Math.random() - 0.5) / 10 - 0.8];
             state.glyphs.members[used].update({
@@ -148,7 +163,7 @@ export function createGlyphInstanceManager(state, glyphs) {
                 color: [0.5, 0, 0.7, 1],
                 effect: [1, 2, 3, 4],
             });
-            const advance = (glyphs[ascii].xadvance) * pixelUnit / scale;
+            const advance = (chars[ascii].xadvance) * pixelUnit / scale;
             manager.debug.advance.push(advance);
             manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);

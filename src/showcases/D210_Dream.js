@@ -265,6 +265,9 @@ export default {
                 : index === -1
                 ? (state.debug.fb.index - 1)
                 : index;
+            if (state.debug.fb.index < 0) {
+                state.debug.fb.index += debugFramebuffer.length;
+            }
             [state.debug.fb.obj, state.debug.fb.name] =
                 debugFramebuffer[state.debug.fb.index] ?? debugFramebuffer[0];
             if (!state.debug.fb.obj) {
@@ -351,12 +354,16 @@ export default {
                 label: () =>
                     "Glyph Instances",
                 onClick: () => {
-                    const text = window.prompt("Set the Glyph Instances to... (max 32. characters)");
+                    const text = window.prompt(
+                        "Set the Glyph Instances to... (max 32. characters)",
+                        state.glyphs.manager.lastPhrase
+                    );
                     if (text !== null) {
                         state.glyphs.manager.replacePhrase(text);
                     }
                 },
                 onRightClick: () => {
+                    state.glyphs.manager.replacePhrase("", false);
                     console.info("[GLYPHS]", state.glyphs, "- Manager:", state.glyphs.manager);
                 },
             }, {
