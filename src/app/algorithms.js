@@ -127,17 +127,17 @@ export function toAscii(text) {
 }
 
 export function createGlyphDef(msdfJson) {
-    // This will create an array of (glyphCenter, glyphHalfSize, emOffset, emAdvance, relativeAdvance)
+    // This will create an array of (center, halfSize, offset, xAdvance, xAdvanceRelative)
     // i.e. if one is used to think of u0, v0, u1, v1, then it is
     //   glyphCenter = (uv0 + uv1) / 2;
     //   halfSize = (uv1 - uv0) / 2;
     // (in relative coordinates [0..1] of the textures each.)
-    // emOffset & emAdvance is just passed through because I guess I'll need it.
+    // the offset it then needed to place the glyph correctly,
+    // the advance values useful in writing coherent words from glyphs.
     const charset = msdfJson.info.charset;
     const glyphDef = new Float32Array(charset.length * 8);
     const atlasW = msdfJson.common.scaleW;
     const atlasH = msdfJson.common.scaleH;
-    const halfUnit = msdfJson.info.size / atlasH / 2;
 
     let index = 0;
     for (const char of charset) {
@@ -160,7 +160,7 @@ export function createGlyphDef(msdfJson) {
         glyphDef[index++] = glyph.xoffset / atlasW;
         glyphDef[index++] = glyph.yoffset / atlasH;
         glyphDef[index++] = glyph.xadvance / atlasW;
-        glyphDef[index++] = glyph.xadvance / halfUnit;
+        glyphDef[index++] = glyph.xadvance / halfWidth / 2;
     }
 
     return glyphDef;

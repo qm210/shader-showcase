@@ -8,14 +8,21 @@ export function createEventsManager(state, events) {
             scheduled,
         },
         events,
+        members: [],
         launch: void 0,
         manage: void 0,
+        clear: void 0,
         flag: {
             debug: false,
+            reset: false,
         }
     };
     const schedule = (event) =>
         binarySearchInsert(event, scheduled, "timeSec");
+
+    for (let m = 0; m < manager.events.opt.dataLength; m++) {
+        manager.members[m] = manager.events.members[m];
+    }
 
     manager.launch = (event) => {
         /** This is the public callee.
@@ -36,7 +43,7 @@ export function createEventsManager(state, events) {
     const handle = (event) => {
         event.type ??= -1;
         event.members ??= [event.member];
-        // <-- TODO: compare one day whether this line is needlessly unperformant
+        event.data.timeStart = state.time;
         for (const member of event.members) {
             member.update(event.data);
         }
@@ -68,11 +75,25 @@ export function createEventsManager(state, events) {
             console.info("[EVENT][SCHEDULED] Handle", event);
         }
 
-        if (manager.flag.debug && scheduled.length === 0) {
-            console.info("[EVENT MANAGER] Schedule Empty.", manager.queue, manager.events);
-            manager.flag.debug = false;
+        // if (manager.flag.debug && scheduled.length === 0) {
+        //     console.info("[EVENT MANAGER] Schedule Empty.", manager.queue, manager.events);
+        //     manager.flag.debug = false;
+        // }
+
+        if (manager.flag.reset) {
+            manager.queue.scheduled.length = 0;
+            handle({
+                members: manager.members,
+                data: { type: -1 },
+            });
+            manager.flag.reset = false;
+            console.info("[EVENT MANAGER] Cleared.", manager);
         }
     };
+
+    manager.clear = () => {
+        manager.flag.reset = true;
+    }
 
     return manager;
 }
@@ -96,42 +117,23 @@ function asScheduled(given, current) {
 export function createGlyphInstanceManager(state, glyphs) {
     const manager = {
         glyphs,
-        update: void 0,
         replacePhrase: void 0,
-        instanceViews: Array(glyphs.opt.dataLength),
+        instances: Array(glyphs.opt.dataLength),
         debug: {}
     };
 
+    // BE AWARE: subarray() creates a view to the original array - data is linked!
     for (let i = 0; i < glyphs.opt.dataLength; i++) {
         const instance = {};
         const member = glyphs.members[i];
         for (const [field, start, size] of glyphs.memberFields) {
-            // CAUTION: subarray() creates a view to the original array, data is linked!
             instance[field] = member.workdata.subarray(start, start + size);
         }
-        manager.instanceViews[i] = instance;
+        manager.instances[i] = instance;
     }
 
-    manager.update = (event) => {
-        // const members = event.members || (event.members = [event.member]);
-        // // for (let m = 0; m < members.length; m++) {
-        // //     members[m].update(event.data);
-        // // }
-        // // <-- class for loops are 2-4x faster than for...of -- worth it?
-        // for (const member of members) {
-        //     member.update(event.data);
-        // }
-        // if (event.expire) {
-        //     schedule({
-        //         ...event,
-        //         data: { ...event.data, type: null },
-        //         timeSec: asScheduled(event.expire, state.time),
-        //         expire: null
-        //     });
-        // }
-    };
-
     manager.replacePhrase = (text, remember = true) => {
+        text = text.substring(0, manager.glyphs.opt.dataLength);
         if (remember) {
             manager.lastPhrase = text;
         }

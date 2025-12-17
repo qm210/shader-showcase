@@ -102,7 +102,7 @@ export default {
                     color: [4, 4],
                     effect: [8, 4],
                 },
-                dataLength: 32,
+                dataLength: 12,
                 metadata: {
                     fields: {
                         lettersUsed: [0, 1],
@@ -116,7 +116,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
 
-        state.glyphs.manager.replacePhrase("Hello Dream210");
+        // state.glyphs.manager.replacePhrase("Hello Dream210");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -141,9 +141,11 @@ export default {
                 fluidVelocityEvent: 2,
                 textEvent: 3,
             },
-            structFields: {
+            memberFields: {
                 type: [0, 1],
                 subtype: [1, 1],
+                timeStart: [2, 1],
+                timeShift: [3, 1], // spontaneous idea
                 coords: [4, 4],
                 args: [8, 4],
             },
@@ -251,11 +253,11 @@ export default {
             const debugFramebuffer = [
                 [null, "--"],
                 [state.framebuffer.fluid.result, "Fluid Render Image"],
-                [state.framebuffer.fluid.color.currentRead(), "Fluid Color Density"],
-                [state.framebuffer.fluid.velocity.currentRead(), "Fluid Velocity"],
+                [() => state.framebuffer.fluid.color.currentRead(), "Fluid Color Density"],
+                [() => state.framebuffer.fluid.velocity.currentRead(), "Fluid Velocity"],
                 [state.framebuffer.fluid.curl, "Fluid Curl"],
                 [state.framebuffer.fluid.divergence, "Fluid Divergence"],
-                [state.framebuffer.fluid.pressure.currentRead(), "Fluid Pressure"],
+                [() => state.framebuffer.fluid.pressure.currentRead(), "Fluid Pressure"],
                 [state.framebuffer.noiseBase, "Noise Base"],
                 [state.framebuffer.texts, "Text 2"]
             ];
@@ -335,19 +337,35 @@ export default {
                     state.debug.fb.toggle(-1),
             }, {
                 label: () =>
-                    "Test Event...",
+                    "Some Event...",
                 onClick: () => {
+                    /*
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,
                         data: {
                             type: state.events.types.CLEAR_FLUID,
-                            coords: [10., 0.],
+                            coords: [0., 0.],
                             args: [7.]
                         },
-                        expire: {in: 0.5},
+                        expire: {in: 10},
+                    });
+                     */
+                    state.events.manager.launch({
+                        member: state.events.members.fluidColorEvent,
+                        data: { type: state.events.types.DRAW_TEXT },
+                        expire: { in: 0.1 }
+                    });
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: {
+                            type: state.events.types.DRAIN,
+                            coords: [0, -2],
+                            args: [0.1]
+                        },
                     });
                 },
                 onRightClick: () => {
+                    state.events.manager.clear();
                     console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
                 },
             }, {
@@ -427,12 +445,12 @@ const TEXTURE_UNITS = {
     CURL: 2,
     PRESSURE: 3,
     DIVERGENCE: 4,
-    POST_SUNRAYS: 2,
-    POST_BLOOM: 3,
-    POST_DITHER: 4,
+    POST_SUNRAYS: 5, // 2,
+    POST_BLOOM: 6, // 3,
+    POST_DITHER: 7, // 4,
     // <-- bestmöglich wiederverwendet.
     // glyphs:
-    OHLI_FONT: 7,
+    OHLI_FONT: 9,
     // cloud render result
     PREVIOUS_CLOUDS: 8,
     NOISE_BASE: 9,
@@ -443,7 +461,16 @@ const TEXTURE_UNITS = {
     MONA_4: 14,
     // GLYPH-WRITTEN TEXTURE ARRAY
     FONT_ARRAY: 15,
-}
+};
+
+TEXTURE_UNITS.UNBIND_AFTER_RENDER_FLUID = [...new Set([
+    TEXTURE_UNITS.CURL,
+    TEXTURE_UNITS.DIVERGENCE,
+    TEXTURE_UNITS.PRESSURE,
+    TEXTURE_UNITS.POST_SUNRAYS,
+    TEXTURE_UNITS.POST_BLOOM,
+    TEXTURE_UNITS.POST_DITHER,
+])];
 
 // sind halt einfach Platzhalter.
 // zwar global, aber werden halt einfach nicht scheiße behandelt. yespls?
@@ -648,19 +675,14 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, null);
 
     if (state.debug.fb.obj) {
-        /*
-        // Would like to set the Alpha to 1 for debugging. Don't know whether this destroys something...??
-        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, state.debug.fb.obj.fbo);
-        gl.colorMask(false, false, false, true);
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.colorMask(true, true, true, true);
-         */
-        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, state.debug.fb.obj.fbo);
+        const fb = typeof state.debug.fb.obj === "function"
+            ? state.debug.fb.obj()
+            : state.debug.fb.obj;
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fb.fbo);
         gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
         gl.blitFramebuffer(
-            0, 0, state.debug.fb.obj.width, state.debug.fb.obj.height,
-            0, 0, state.opt.image.width, state.opt.image.height,
+            0, 0, fb.width, fb.height,
+            0, 0, ...state.resolution,
             gl.COLOR_BUFFER_BIT,
             gl.LINEAR
         );
@@ -1027,8 +1049,11 @@ function renderFluid(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.POST_BLOOM);
     gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.POST_DITHER);
-    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    for (const unit of TEXTURE_UNITS.UNBIND_AFTER_RENDER_FLUID) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
 }
 
 function createUniforms() {

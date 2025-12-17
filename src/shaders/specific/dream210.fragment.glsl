@@ -8,9 +8,9 @@ in vec2 stR;
 in vec2 stU;
 in vec2 stD;
 in vec2 texSt;
-in float aspRatio;
+in vec2 aspRatio;
 in vec2 texelSize;
-in mat2 uv2texSt;
+in vec2 uv2texSt;
 
 // SHARED
 uniform vec2 iResolution;
@@ -92,7 +92,9 @@ struct GlyphInstance {
     vec4 effect;
 };
 layout(std140) uniform GlyphInstances {
-    GlyphInstance letterInstance[32];
+    // NOTE: having this makes the FPS drop to 30 from 60.
+    //       -> think about NR4's texture suggestion soon.
+    GlyphInstance letterInstance[12];
     int lettersUsed;
 };
 
@@ -174,6 +176,8 @@ struct Event {
     // all floats because it makes WebGL state consistency... handlebar.
     float type;
     float subtype;
+    float timeStart;
+    float timeShift;
     vec4 coords;
     vec4 args;
 };
@@ -692,7 +696,7 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     }
 
     GlyphDef g = glyphDef[index];
-    size = 4. * vec2(aspRatio, 1) * g.halfSize;
+    size = 4. * aspRatio * g.halfSize;
     vec2 bottomLeft = uv - 0.5 * size - g.offset;
     vec2 texCoord = g.center + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
     vec3 msd = texture(glyphTex, texCoord).rgb;
@@ -801,26 +805,22 @@ void printQmSaysHi(in vec2 uv, inout vec4 col) {
     */
 }
 
-void printYay(in vec2 uv, inout vec4 col) {
+const vec4 someYayColor = vec4(0.8, 0., 0.5, 1.);
+
+void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
     const int[] yay = int[3](92, 79, 47);
     vec2 dims;
     float d = 100., dR = 100.;
-    const vec4 textColor2 = vec4(0.8, 0., 0.5, 1.);
     vec2 cursor = uv - vec2(-1.2, -0.6);
     cursor *= 0.2;
 
     for (int i = 0; i < 3; i++) {
         d = glyph(cursor, yay[i], dims);
-        col = mix(col, textColor2, d);
-
-        // visualize anchor points
-        d = length(cursor) - 0.005;
-        d = smoothstep(0.005, 0., d);
-        col = mix(col, c.yxyw, d);
-
+        col = mix(col, textColor, d);
+//        cursor.x -= dims.x;
+        // looks better:
         float advance = glyphDef[yay[i] - START_ASCII].advance;
-        // cursor.x -= dims.x;
-        cursor.x -= 2. * aspRatio * advance;
+        cursor.x -= 2. * aspRatio.x * advance;
     }
 }
 
@@ -1030,16 +1030,14 @@ void finalComposition(in vec2 uv) {
 #define _RENDER_NOISE_BASE 90
 #define _RENDER_FINALLY_TO_SCREEN 100
 
-// float-valued for now because consistent UBOs are easier to manage
-#define EVENT_CLEAR_FLUID 4.0
+#define EVENT_CLEAR_FLUID 4
+#define EVENT_DRAIN 6
+#define EVENT_DRAW_TEXT 7
 
 void main() {
     // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
     vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
 
-    vec2 spawnRandom = hash22(vec2(1.2, 1.1) * iSpawnSeed);
-    vec2 spawnCenter = vec2(spawnRandom.x, spawnRandom.y);
-    float spawnSize = clamp(iSpawnAge, 0.18, 1.); // <-- put iSpawnAge in there
     float d, velL, velR, velU, velD, pL, pR, pU, pD, div;
 
     switch (passIndex) {
@@ -1054,72 +1052,55 @@ void main() {
             noiseBase(uv, fragColor.rgb);
             fragColor.a = max3(fragColor.rgb);
             return;
+
         case _INIT_TEXT0:
             fragColor = c.yyyy;
             printQmSaysHi(uv, fragColor);
             return;
         case _INIT_TEXT1:
             fragColor = c.yyyy;
-            printYay(uv, fragColor);
+            printYay(uv, fragColor, someYayColor);
             return;
         case _INIT_GLYPH_INSTANCES:
             fragColor = c.yyyy;
             printGlyphInstances(uv, fragColor);
             return;
 
-        // all the fluid stuff now
         case _INIT_FLUID_COLOR: {
-                if (fluidColorEvent.type == EVENT_CLEAR_FLUID) {
-                    fragColor = fluidColorEvent.coords;
-                    return;
-                }
-                fluidColor = texture(texColor, st);
-                if (iSpawnSeed < 0.) {
-                    fragColor = fluidColor;
-                    return;
-                }
-                vec2 p = uv - spawnCenter;
-                d = length(p) - spawnSize;
-                float a = smoothstep(0.02, 0., d) * exp(-dot(p, p) / spawnSize);
-                vec3 spawnColor = iSpawnColorHSV;
-                spawnColor.x += (360. * hash(iSpawnSeed + 0.12) - 180.) * iSpawnRandomizeHue;
-                spawnColor.x += pow(-min(0., d), 0.5) * iSpawnHueGradient;
-                vec3 spawn = a * hsv2rgb(spawnColor);
-                // spawn.r += pow(-min(0., d), 0.5) * 1.6;
-                // mix old stuff in:
-                fragColor = vec4(fluidColor.rgb + spawn, 1.);
-                // just new stuff:
-                // fragColor = vec4(spawn.rgb, 1.);
+            int eventType = int(fluidColorEvent.type);
+            if (eventType == EVENT_CLEAR_FLUID) {
+                fragColor = fluidColorEvent.coords;
+                return;
             }
+            fluidColor = texture(texColor, st);
+            vec4 spawnColor = vec4(0.); // TODO
+            if (eventType == EVENT_DRAW_TEXT) {
+                // fragColor = c.yyyy;
+                printYay(uv, spawnColor, someYayColor);
+            }
+            // "Over" Mixing with RGBA each:
+            fragColor.rgb = mix(fluidColor.rgb, spawnColor.rgb, spawnColor.a);
+            fragColor.a = (fluidColor.a, 1., spawnColor.a);
             return;
+        }
         case _INIT_VELOCITY: {
-             if (fluidVelocityEvent.type == EVENT_CLEAR_FLUID) {
-                    fragColor.xy = fluidVelocityEvent.coords.xy;
-                    return;
-                }
-                fluidVelocity = texture(texVelocity, st).xy;
-                if (iSpawnSeed < 0.) {
-                    fragColor.xy = fluidVelocity;
-                    return;
-                }
-                vec2 randomVelocity = hash22(vec2(iSpawnSeed, iSpawnSeed + 0.1))
-                * iMaxInitialVelocity * vec2(aspRatio, 1.);
-                // <-- hash22(x) is _pseudo_random_, i.e. same x results in same "random" value
-                // we want randomVelocity.x != randomVelocity.y, thus the 0.1 offset
-                // but the overall randomVelocity will only differ when sampleSeed differs.
-                //vec2 initialVelocity = randomVelocity;
-                // <-- would be random, but can also direct towards / away from center
-                // vec2 initialVelocity = uv * iMaxInitialVelocity;
-                vec2 initialVelocity = randomVelocity + uv * iMaxInitialVelocity;
-                vec2 p = uv - spawnCenter;
-                d = length(p) - spawnSize;
-                d = smoothstep(0.02, 0., d);
-                d   = exp(-dot(p, p) / spawnSize);
-                vec2 newValue = d * initialVelocity;
-                fragColor.xy = fluidVelocity.xy + newValue;
-                // can ignore fragColor.zw because these will never be read
+            int eventType = int(fluidVelocityEvent.type);
+            if (eventType == EVENT_CLEAR_FLUID) {
+                fragColor.xy = fluidVelocityEvent.coords.xy;
+                return;
             }
+            fluidVelocity = texture(texVelocity, st).xy;
+            vec2 deltaVelocity = c.yy;
+            if (eventType == EVENT_DRAIN) {
+                fluidColor = texture(texColor, st);
+                float decay = exp(-(iTime - fluidVelocityEvent.timeStart) * fluidVelocityEvent.args[0]);
+                deltaVelocity = fluidVelocityEvent.coords.xy
+                    * max3(fluidColor.rgb) * fluidColor.a
+                    * decay;
+            }
+            fragColor.xy = fluidVelocity.xy + deltaVelocity;
             return;
+        }
         case _INIT_PRESSURE_PASS:
             fragColor = iPressure * texture(texPressure, st);
             return;
@@ -1273,4 +1254,3 @@ void main() {
             return;
     }
 }
-
