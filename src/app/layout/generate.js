@@ -136,7 +136,7 @@ export const addMainControls = (elements, state, controls) => {
         }
         let preventBrowserBehaviour = true;
         // cf. playback.js for how the state variables work
-        console.log("Key Combin", readableKeyCombinations(event))
+        console.log(`[KEY COMBINATION] "${readableKeyCombinations(event)}"`);
         switch (readableKeyCombinations(event)) {
             case "Ctrl + Backspace":
                 state.play.signal.reset = true;
@@ -171,6 +171,9 @@ export const addMainControls = (elements, state, controls) => {
                 break;
             case "Ctrl + U":
                 openUniformInputHelper();
+                break;
+            case "Ctrl + Tab":
+                console.log("[JUST PRESSED AT]", state.time, state.track?.audio?.currentTime, state);
                 break;
             case "MediaPlayPause":
                 if (state.track) {

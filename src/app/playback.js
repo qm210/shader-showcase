@@ -1,3 +1,5 @@
+import {executeAndMaybeMeasureMilliseconds} from "./measuring.js";
+
 /**
  * This is our basic structure to call a render function repeatedly
  * and have the time value displayed on our main page
@@ -13,12 +15,7 @@
  * @param state
  * @param elements
  */
-import {executeAndMaybeMeasureMilliseconds, measureExecution} from "./measuring.js";
 
-//
-// if (state.track) {
-//     await state.track.actions.askForPlayUnlessStopped();
-// }
 
 export function startRenderLoop(renderFunction, state, elements) {
     if (!state.program) {
@@ -65,7 +62,7 @@ const moveInTime = {
     },
     byAudio: (state, timestamp) => {
         state.play.dt = state.track.audio.currentTime - state.time;
-        state.play.running = state.track.audio.isPlaying();
+        state.play.running = state.track.audio.is.playing();
     }
 };
 
@@ -102,7 +99,7 @@ function advanceTime(moveTimestep, state, timestamp) {
             // state.iFrame = 0;
             // <-- TODO: Habe keine finale Idee für den Frame-Index...
             // TODO: macht mit Audio auch weniger Sinn, als man so möchte, möchte ich meinen?
-            state.track.seek
+            state.track.actions.seek();
         }
     }
 
@@ -139,7 +136,7 @@ export function resetLoop(state) {
     state.iFrame = -1;
 
     if (state.track) {
-        state.track.seek(0);
+        state.track.actions.seek(0);
     }
 }
 

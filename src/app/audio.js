@@ -1,5 +1,9 @@
 
 export function initAudioState(state, audioSource) {
+    /**
+     * TODO: Anstatt überall if (state.track) { ... } zu erfragen,
+     *       hier einfach noch Dummy-No-Sound-Objekt anlegen :)
+     */
     const audio = new Audio(audioSource);
     const track = {
         audio,
@@ -8,6 +12,12 @@ export function initAudioState(state, audioSource) {
         disabled: !audioSource,
         useAsTimer: !!audioSource,
         error: null,
+        is: {
+            readyToPlay: () =>
+                track.audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA,
+                // cf. developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
+            playing: () => !audio.paused,
+        },
         actions: {}
     };
     audio.onloadedmetadata = () => {
@@ -37,10 +47,6 @@ export function initAudioState(state, audioSource) {
             track.actions.seek(0);
             audio.stopped = true;
         },
-        isReadyToPlay: () =>
-            track.audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA,
-            // cf. developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
-        isPlaying: () => !audio.paused,
         togglePlay: async (force = undefined) => {
             if (audio.paused || force) {
                 await audio.play().catch((err) =>

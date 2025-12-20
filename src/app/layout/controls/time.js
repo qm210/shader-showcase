@@ -195,7 +195,7 @@ export function createTimeSeeker(parent, state) {
             state.time = max;
         }
         if (state.track) {
-            state.track.seek();
+            state.track.actions.seek();
         }
         mightAutoExtendRange();
     };
@@ -331,7 +331,7 @@ function applyStateDependantStyling(el, state) {
         } else if (state.track.muted) {
             el.icons.audio.setAttribute("stroke", "gray");
             el.icons.audio.setAttribute("opacity", "0.5");
-        } else if (state.track.isPlaying()) {
+        } else if (state.track.is.playing()) {
             el.icons.audio.setAttribute("stroke", "#67DE67");
             el.icons.audio.setAttribute("opacity", "1");
         } else {
