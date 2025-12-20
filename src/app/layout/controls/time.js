@@ -44,18 +44,23 @@ export function createTimeSeeker(parent, state) {
         }),
         icons: {
             toggle: svgChild(svg, "text", {
-                class: "clickable",
+                class: "clickable icon",
                 title: "Toggle Play/Stop"
             }),
             rewind: svgChild(svg, "text", {
-                class: "clickable",
+                class: "clickable icon",
                 textContent: "\u23ee",
                 title: "Rewind (Press again to return to this point, ONCE)",
             }),
             loop: svgChild(svg, "text", {
-                class: "clickable",
+                class: "clickable icon",
                 textContent: "\u21ba",
                 title: "Loop? (Right Click this for Range Input)"
+            }),
+            audio: svgChild(svg, "text", {
+                class: "clickable icon",
+                textContent: "\u266b",
+                title: "Play Track?"
             }),
         },
         rect: {
@@ -83,6 +88,10 @@ export function createTimeSeeker(parent, state) {
             toUpdate: false,
         }
     };
+
+    if (!state.track) {
+        delete el.icons.audio;
+    }
 
     el.callback.resize = () => {
         const r = el.rect;
@@ -126,14 +135,15 @@ export function createTimeSeeker(parent, state) {
         withRect(el.ticks.markers, r.markers);
         r.value = {
             width: unit.step,
-            x: r.track.x + r.track.width + 1.5 * unit.step,
+            x: r.track.x + r.track.width + 1.25 * unit.step,
             height: r.bounds.height,
             y: unit.text - r.track.y / 2,
         };
         withRect(el.value, r.value);
         let x = r.value.x + r.value.width + 0.5 * unit.step;
-        for (const icon of Object.values(el.icons)) {
-            r.icon = {...r.value, x, width: unit.step};
+        const icons = Object.values(el.icons);
+        for (const icon of icons) {
+            r.icon = {...r.value, x, width: 3.5 * unit.step / icons.length};
             withRect(icon, r.icon);
             x += r.icon.width;
         }
@@ -163,10 +173,10 @@ export function createTimeSeeker(parent, state) {
         }
         applyStateDependantStyling(el, state);
         if (!state.play.running) {
-            if (el.remember.timestamp === state.play.previous.timestamp) {
+            if (el.remember.timestamp === state.play.previousTimestamp) {
                 return;
             } else {
-                el.remember.timestamp = state.play.previous.timestamp ?? undefined;
+                el.remember.timestamp = state.play.previousTimestamp ?? undefined;
             }
         }
         el.value.textContent = state.time.toFixed(2);
@@ -175,14 +185,17 @@ export function createTimeSeeker(parent, state) {
     };
 
     el.do.jump = ({to = undefined, delta = undefined, min = undefined, max = undefined}) => {
-        state.play.previous.time = state.time;
-        state.play.previous.timestamp = null;
+        state.play.rememberedTime = state.time;
+        state.play.previousTimestamp = null;
         state.time = (to ?? state.time) + (delta ?? 0);
         if (state.time < min) {
             state.time = min;
         }
         if (state.time > max) {
             state.time = max;
+        }
+        if (state.track) {
+            state.track.seek();
         }
         mightAutoExtendRange();
     };
@@ -192,7 +205,10 @@ export function createTimeSeeker(parent, state) {
             state.play.running = false;
         } else {
             state.play.running = true;
-            state.play.previous.timestamp = null;
+            state.play.previousTimestamp = null;
+        }
+        if (state.track) {
+            void state.track.togglePlay(state.play.runnning);
         }
     };
 
@@ -307,6 +323,23 @@ function applyStateDependantStyling(el, state) {
     }
 
     el.icons.rewind.setAttribute("opacity", state.time === 0. ? "0.5" : "1")
+
+    if (state.track) {
+        if (state.track.disabled) {
+            el.icons.audio.setAttribute("stroke", "#FF0000");
+            el.icons.audio.setAttribute("opacity", "0.1");
+        } else if (state.track.muted) {
+            el.icons.audio.setAttribute("stroke", "gray");
+            el.icons.audio.setAttribute("opacity", "0.5");
+        } else if (state.track.isPlaying()) {
+            el.icons.audio.setAttribute("stroke", "#67DE67");
+            el.icons.audio.setAttribute("opacity", "1");
+        } else {
+            el.icons.audio.setAttribute("stroke", "");
+            el.icons.audio.setAttribute("opacity", "");
+        }
+
+    }
 }
 
 function withRect(element, rect) {
@@ -433,7 +466,6 @@ function addMouseInteraction(el, state) {
     el.value.addEventListener("click", () => {
         promptForSecondToJump(el, state);
     });
-
     el.value.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         const second =
@@ -450,7 +482,6 @@ function addMouseInteraction(el, state) {
     el.icons.loop.addEventListener("click", () => {
         el.do.toggleLoop();
     });
-
     el.icons.loop.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         console.log(state.play.loop);
@@ -471,12 +502,18 @@ function addMouseInteraction(el, state) {
     });
 
     el.icons.rewind.addEventListener("click", () => {
-        if (state.time === 0 && state.play.previous.time) {
-            el.do.jump({to: state.play.previous.time})
+        if (state.time === 0 && state.play.rememberedTime) {
+            el.do.jump({to: state.play.rememberedTime})
         } else {
             el.do.jump({to: 0})
         }
+    });
 
+    el.icons.audio.addEventListener("click", () => {
+        el.do.toggleMuted();
+    });
+    el.icons.audio.addEventListener("contextmenu", () => {
+        el.do.toggleDisabled();
     });
 
     function seekPixel(x) {

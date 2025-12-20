@@ -5,7 +5,7 @@ import vertexShaderSource from "../shaders/vertex.fonts.glsl"
 import fragmentShaderSource from "../shaders/fonts.proofofconcept.glsl";
 import spiceSaleMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 import spiceSaleMsdfJson from "../textures/dream210/SpicySale.msdf.json";
-import {createUboForArray} from "../webgl/helpers/uniformbuffers.js";
+import {createUboForArray} from "../webgl/helpers/advancedBuffers.js";
 import {createGlyphDef, toAscii} from "../app/algorithms.js";
 
 export default {

@@ -118,22 +118,21 @@ export function createGlyphInstanceManager(state, glyphs) {
     const manager = {
         glyphs,
         replacePhrase: void 0,
-        instances: Array(glyphs.opt.dataLength),
+        instances: Array(glyphs.opt.memberCount),
         debug: {}
     };
 
-    // BE AWARE: subarray() creates a view to the original array - data is linked!
-    for (let i = 0; i < glyphs.opt.dataLength; i++) {
+    for (let i = 0; i < glyphs.opt.memberCount; i++) {
         const instance = {};
         const member = glyphs.members[i];
-        for (const [field, start, size] of glyphs.memberFields) {
-            instance[field] = member.workdata.subarray(start, start + size);
+        for (const [field, start, size] of glyphs.structFields) {
+            instance[field] = member.view.subarray(start, start + size);
         }
         manager.instances[i] = instance;
     }
 
     manager.replacePhrase = (text, remember = true) => {
-        text = text.substring(0, manager.glyphs.opt.dataLength);
+        text = text.substring(0, manager.instances.length);
         if (remember) {
             manager.lastPhrase = text;
         }

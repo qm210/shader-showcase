@@ -1,5 +1,5 @@
 import {loadExtensions} from "./extensions.js";
-import {takeMilliSeconds} from "../app/jsHelpers.js";
+import {takeMilliSeconds} from "../app/measuring.js";
 import {initialOrStoredResolution, storeResolution} from "./helpers/resolution.js";
 import {collectActiveUniforms, createShader} from "./helpers/setup.js";
 import {createInitialState} from "../app/initialize.js";
@@ -39,7 +39,7 @@ export function setupWebGl(canvas, geometry) {
         "EXT_color_buffer_float",
         "OES_texture_float_linear",
         "KHR_parallel_shader_compile",
-        "EXT_disjoint_timer_query_webgl2"
+        "EXT_disjoint_timer_query_webgl2",
     ]);
 
     const {width, height} = initialOrStoredResolution(canvas, geometry);

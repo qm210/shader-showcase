@@ -255,6 +255,18 @@
     font-family: monospace;
 }
 
+#display-controls button.icon-word {
+    padding: 0.2rem;
+    font-size: revert;
+    text-align: left;
+}
+
+#display-controls button.icon-word::first-letter {
+    padding: 0;
+    font-weight: bold;
+    text-align: left;
+}
+
 #display-controls label {
     font-size: 1em;
     font-weight: bold;
@@ -304,13 +316,27 @@ svg text.clickable {
     user-select: none;
 }
 
+svg text.clickable.icon {
+    font-size: larger;
+    stroke-width: 1px;
+    stroke: currentcolor;
+    stroke-opacity: 0.34;
+}
+
 svg text.clickable:hover {
     transform: translate(-1px, -1px);
     stroke: purple;
     text-shadow: 0 0 1px #ff00bb22;
 }
 
+svg text.clickable.icon:hover {
+    stroke: purple;
+    fill: blueviolet;
+    text-shadow: 0 0 1px #ff00bb44;
+}
+
 svg text.clickable:active {
     stroke: #747bff;
+    text-shadow: 0 0 1px #747bff55;
     transform: none;
 }

@@ -13,6 +13,12 @@
  * @param state
  * @param elements
  */
+import {executeAndMaybeMeasureMilliseconds, measureExecution} from "./measuring.js";
+
+//
+// if (state.track) {
+//     await state.track.actions.askForPlayUnlessStopped();
+// }
 
 export function startRenderLoop(renderFunction, state, elements) {
     if (!state.program) {
@@ -22,58 +28,94 @@ export function startRenderLoop(renderFunction, state, elements) {
     cancelAnimationFrame(state.play.animationFrame);
     state.play.running ??= true;
     state.iFrame = -1;
-    state.play.previous.timestamp = null;
+    state.play.previousTimestamp = null;
     state.play.dt = 0;
     state.play.fps = null;
     state.play.signal.reset = false;
     state.play.signal.stop = false;
     state.play.signal.reachedStop = false;
     state.play.signal.takeRenderTime = false;
-    state.play.animate = (timestamp) =>
-        runLoop(renderFunction, state, elements, timestamp);
-    state.play.animationFrame = requestAnimationFrame(state.play.animate);
+
+    function actuallyStartRendering() {
+        const clock =
+            state.track?.useAsTimer
+                ? moveInTime.byAudio
+                : moveInTime.byAnimation;
+        state.play.animate = (timestamp) => {
+            runLoop(renderFunction, clock, state, elements, timestamp);
+        };
+        state.play.animationFrame = requestAnimationFrame(state.play.animate);
+    }
+
+    if (!state.track || state.track.disabled) {
+        actuallyStartRendering();
+        return;
+    }
+    state.track.useAsTimer = true;
+    state.track.audio.play()
+        .catch(() => {
+            state.track.useAsTimer = false;
+        })
+        .finally(actuallyStartRendering);
 }
 
-function runLoop(renderFunction, state, elements, timestamp) {
+const moveInTime = {
+    byAnimation: (state, timestamp) => {
+        state.play.dt = 0.001 * (timestamp - state.play.previousTimestamp);
+    },
+    byAudio: (state, timestamp) => {
+        state.play.dt = state.track.audio.currentTime - state.time;
+        state.play.running = state.track.audio.isPlaying();
+    }
+};
+
+function runLoop(renderFunction, clock, state, elements, timestamp) {
+    advanceTime(clock, state, timestamp);
+    renderAndFinalizeLoop(renderFunction, state, elements);
+}
+
+function advanceTime(moveTimestep, state, timestamp) {
     if (state.play.signal.reset) {
         resetLoop(state);
+        return;
     }
 
-    state.play.dt = 0;
-    if (state.play.running) {
-        if (state.play.previous.timestamp === null) {
-            state.play.previous.timestamp = timestamp;
-        } else {
-            state.play.previous.time = state.time;
+    state.iFrame = state.iFrame + 1;
+
+    if (state.play.previousTimestamp === null) {
+        state.play.previousTimestamp = timestamp;
+    }
+    if (!state.play.running) {
+        state.play.dt = 0;
+        return;
+    }
+
+    moveTimestep(state, timestamp);
+    state.time += state.play.dt;
+
+    doFpsMeasurement(state);
+
+    if (state.play.loop.active) {
+        const lastSecond = state.play.loop.end ?? state.play.range.max;
+        if (state.time > lastSecond) {
+            state.time = state.play.loop.start ?? 0;
+            // state.iFrame = 0;
+            // <-- TODO: Habe keine finale Idee für den Frame-Index...
+            // TODO: macht mit Audio auch weniger Sinn, als man so möchte, möchte ich meinen?
+            state.track.seek
         }
-        state.play.dt = 0.001 * (timestamp - state.play.previous.timestamp);
-        state.time += state.play.dt
-        state.iFrame = state.iFrame + 1;
-        doFpsMeasurement(state);
-
-        if (state.play.loop.active) {
-            const lastSecond = state.play.loop.end ?? state.play.range.max;
-            if (state.time > lastSecond) {
-                state.time = state.play.loop.start ?? 0;
-                state.iFrame = 0;
-                // Keine bessere Idee für den Frame-Index...
-                // Wegnullen vermutlich besser als einfach zu ignorieren.
-            }
-        }
-
-        state.play.previous.timestamp = timestamp;
     }
 
-    if (state.play.signal.takeRenderTime) {
-        console.time("render");
-    }
+    state.play.previousTimestamp = timestamp;
+    state.play.rememberedTime = state.time;
+}
 
-    renderFunction(state);
-
-    if (state.play.signal.takeRenderTime) {
-        console.timeEnd("render");
-        state.play.signal.takeRenderTime = false;
-    }
+function renderAndFinalizeLoop(renderFunction, state, elements) {
+    executeAndMaybeMeasureMilliseconds(
+        () => renderFunction(state),
+        state.play.signal.takeRenderTime,
+    );
+    state.play.signal.takeRenderTime = false;
 
     elements.controlBar.time.update();
     elements.fps.display.textContent = state.play.fps;
@@ -88,13 +130,17 @@ function runLoop(renderFunction, state, elements, timestamp) {
 }
 
 export function resetLoop(state) {
-    state.play.previous.timestamp = null;
+    state.play.previousTimestamp = null;
     state.play.signal.reset = false;
     state.play.signal.stop = false;
     state.play.reachedStop = false;
     state.play.running = true;
     state.time = 0;
     state.iFrame = -1;
+
+    if (state.track) {
+        state.track.seek(0);
+    }
 }
 
 const createFpsAverager = (sampleSize) => ({
@@ -156,7 +202,7 @@ export function whilePausingRendering(state, callFunction) {
     }
     callFunction();
     const continueAt = 0.001 * performance.now();
-    state.play.previous.timestamp += continueAt - state.time;
+    state.play.previousTimestamp += continueAt - state.time;
     state.play.signal.stop = state.play.reachedStop = false;
     state.animationFrame = requestAnimationFrame(state.play.animate);
 }

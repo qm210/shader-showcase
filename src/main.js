@@ -17,4 +17,4 @@ generatePage(glContext, elements, state, controls);
 
 console.info("Page took", elements.measured.pageLoadingMs, "ms to render.");
 
-controls.onRender();
+await controls.onRender();

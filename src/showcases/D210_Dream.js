@@ -5,6 +5,9 @@ import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
 import spiceSaleMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 import spiceSaleMsdfJson from "../textures/dream210/SpicySale.msdf.json";
+import track from "../../public/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
+
+
 import {resolutionScaled, updateResolutionInState} from "../webgl/helpers/resolution.js";
 import {
     createFramebufferWithTexture,
@@ -13,9 +16,14 @@ import {
     halfFloatOptions
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
-import {createUboForArray, createUboForArraylikeStruct} from "../webgl/helpers/uniformbuffers.js";
+import {
+    createDataTextureForStructArray,
+    createUboForArray,
+    createUboForArraylikeStruct
+} from "../webgl/helpers/advancedBuffers.js";
 import {compactifyGlyphJson, createGlyphDef} from "../app/algorithms.js";
 import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream.management.js";
+import {initAudioState} from "../app/audio.js";
 
 // This secret move is presented to you by... vite :)
 const monaImages =
@@ -32,6 +40,14 @@ export default {
         if (!state.program) {
             return state;
         }
+
+        initAudioState(state, track);
+
+        console.log("Texture Units", {
+            total: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
+            fragment: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),
+            vertex: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
+        });
 
         state.monaTextures = await loadImagesByVite(
             monaImages,
@@ -91,32 +107,55 @@ export default {
         };
         state.glyphs = {
             msdf,
-            ...createUboForArraylikeStruct(gl, state.program, {
-                blockName: "GlyphInstances",
-                bindingPoint: 2,
-                memoryUsage: gl.DYNAMIC_DRAW,
-                memberFields: {
+            detailed: compactifyGlyphJson(spiceSaleMsdfJson),
+            // ...createUboForArraylikeStruct(gl, state.program, {
+            //     blockName: "GlyphInstances",
+            //     bindingPoint: 2,
+            //     memoryUsage: gl.DYNAMIC_DRAW,
+            //     memberFields: {
+            //         ascii: [0, 1],
+            //         scale: [1, 1],
+            //         pos: [2, 2],
+            //         color: [4, 4],
+            //         effect: [8, 4],
+            //     },
+            //     dataLength: 12,
+            //     metadata: {
+            //         fields: {
+            //             lettersUsed: [0, 1],
+            //         },
+            //         size: 4,
+            //     },
+            // }),
+            ...createDataTextureForStructArray(gl, {
+                structFields: {
                     ascii: [0, 1],
                     scale: [1, 1],
                     pos: [2, 2],
                     color: [4, 4],
                     effect: [8, 4],
                 },
-                dataLength: 12,
-                metadata: {
-                    fields: {
-                        lettersUsed: [0, 1],
-                    },
-                    size: 4,
-                },
+                memberCount: 32,
             }),
-            detailed: compactifyGlyphJson(spiceSaleMsdfJson),
-            // only for debugging:
-            glyphDef,
+            meta: {
+                lettersUsed: {
+                    value: 0,
+                    update: (value) => {
+                        state.glyphs.meta.lettersUsed.value = value;
+                        state.glyphs.meta.lettersUsed.setUniform();
+                    },
+                    setUniform: () => {
+                        gl.uniform1i(
+                            state.location.lettersUsed,
+                            state.glyphs.meta.lettersUsed.value
+                        );
+                    }
+                }
+            },
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
 
-        // state.glyphs.manager.replacePhrase("Hello Dream210");
+        state.glyphs.manager.replacePhrase("Hello Dream210");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -363,6 +402,8 @@ export default {
                             args: [0.1]
                         },
                     });
+
+                    console.log("[DEBUG UNIFORMS]", elements);
                 },
                 onRightClick: () => {
                     state.events.manager.clear();
@@ -654,8 +695,9 @@ function render(gl, state) {
     gl.uniform1f(state.location.iBloomPreGain, state.iBloomPreGain);
     gl.uniform1f(state.location.iBloomDithering, state.iBloomDithering);
 
+    initFluid(gl, state);
     processFluid(gl, state);
-    postProcessFluid(gl, state);
+    postprocessFluid(gl, state);
     renderFluid(gl, state);
 
     // !! Finale Komposition auf Back Buffer !!
@@ -690,9 +732,7 @@ function render(gl, state) {
     }
 }
 
-function processFluid(gl, state) {
-
-    /////////////
+function initFluid(gl, state) {
 
     gl.uniform1i(state.location.passIndex, PASS.INIT_VELOCITY);
 
@@ -722,7 +762,9 @@ function processFluid(gl, state) {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     state.framebuffer.fluid.color.doPingPong();
 
-    /////////////
+}
+
+function processFluid(gl, state) {
 
     // Use Velocity to calculate a fresh Scalar: Curl
 
@@ -880,7 +922,7 @@ function processFluid(gl, state) {
     /// END OF FLUID DYNAMICS ///////////////////
 }
 
-function postProcessFluid(gl, state) {
+function postprocessFluid(gl, state) {
 
     /// POST: BLOOM /////////////////////////////
 

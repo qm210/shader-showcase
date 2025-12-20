@@ -1,16 +1,17 @@
-import {createInputElements, addFreeRow} from "./controls/uniforms.js";
+import {addFreeRow, createInputElements} from "./controls/uniforms.js";
 import {registerShaderCode} from "./shaderCode.js";
 import {addButton, appendButton, appendElement, createDiv, createElement} from "./dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
 import {deferExtendedAnalysis} from "../../glslCode/deferredAnalysis.js";
 import {setCanvasResolution} from "../../webgl/setup.js";
 import {addCanvasMouseInteraction} from "../mouse.js";
-import {createPresetSelector, refreshPresets} from "../exchange.js";
+import {createClipboardButtons, createPresetSelector, refreshPresets} from "../exchange.js";
 import {initializePresetStore} from "../database.js";
 import {createMainControlBar} from "./controls/bar.js";
-import {takeMilliSeconds} from "../jsHelpers.js";
+import {takeMilliSeconds} from "../measuring.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
 import {promptForSecondToJump} from "./controls/time.js";
+import {transformUniformControlsToSomethingPython} from "../portingHelpers.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -130,49 +131,63 @@ export const addMainControls = (elements, state, controls) => {
             console.log("Key:", event.key, event.code);
             printNextKey = false;
         }
-        // Some global time control features, by pressing Ctrl + something.
-        if (!event.ctrlKey) {
-            return;
-        }
         if (document.activeElement !== document.body) {
             return;
         }
         let preventBrowserBehaviour = true;
         // cf. playback.js for how the state variables work
-        switch (event.key) {
-            case "Backspace":
+        console.log("Key Combin", readableKeyCombinations(event))
+        switch (readableKeyCombinations(event)) {
+            case "Ctrl + Backspace":
                 state.play.signal.reset = true;
                 break;
-            case " ":
+            case "Ctrl + Space":
                 seeker.do.toggle();
                 break;
-            case "ArrowLeft":
+            case "Ctrl + ArrowLeft":
                 seeker.do.jump({delta: -1});
                 break;
-            case "ArrowRight":
+            case "Ctrl + ArrowRight":
                 seeker.do.jump({delta: +1});
                 break;
-            case "ArrowUp":
+            case "Ctrl + ArrowUp":
                 seeker.do.jump({delta: +0.05});
                 break;
-            case "ArrowDown":
+            case "Ctrl + ArrowDown":
                 seeker.do.jump({delta: -0.05});
                 break;
-            case "Home":
+            case "Ctrl + Home":
                 seeker.do.jump({to: 0});
                 break;
-            case "End":
+            case "Ctrl + End":
                 seeker.do.jump({to: state.play.range.max});
                 break;
-            case "Insert":
+            case "Ctrl + Insert":
                 promptForSecondToJump(seeker, state.time);
                 break;
-            case "i":
+            case "Ctrl + I":
                 console.info(state, elements);
                 printNextKey = true;
                 break;
-            case "u":
+            case "Ctrl + U":
                 openUniformInputHelper();
+                break;
+            case "MediaPlayPause":
+                if (state.track) {
+                    state.track.togglePlay().then(() => {
+                        console.info("[AUDIO] Playing?", !state.track.audio.paused)
+                    });
+                } else {
+                    preventBrowserBehaviour = false;
+                }
+                break;
+            case "AudioVolumeMute":
+                if (state.track) {
+                    state.track.toggleMuted();
+                    console.info("[AUDIO] Muted?", !state.track.audio.muted)
+                } else {
+                    preventBrowserBehaviour = false;
+                }
                 break;
             default:
                 preventBrowserBehaviour = false;
@@ -184,6 +199,22 @@ export const addMainControls = (elements, state, controls) => {
         }
     });
 };
+
+function readableKeyCombinations(event) {
+    const modifiers = [
+        event.ctrlKey ? "Ctrl" : "",
+        event.shiftKey ? "Shift" : "",
+        event.altKey ? "Alt" : "",
+    ].filter(Boolean);
+    let key = event.key;
+    if (key === " ") {
+        key = "Space";
+    }
+    if (key.length === 1) {
+        key = key.toUpperCase();
+    }
+    return [...modifiers, key].join(" + ");
+}
 
 export const addUniformControls = (elements, state, controls) => {
     if (!state.program) {
@@ -342,6 +373,14 @@ function addDisplayControls(elements, state, glContext) {
     elements.presets = createPresetSelector(elements, state);
     elements.displayControls.appendChild(elements.presets.container);
 
+    elements.clipboard = {
+        ...createClipboardButtons(elements, state),
+        container: createDiv(),
+    };
+    elements.clipboard.container.appendChild(elements.clipboard.copy);
+    elements.clipboard.container.appendChild(elements.clipboard.paste);
+    elements.displayControls.appendChild(elements.clipboard.container);
+
     function canvasResize(factor) {
         return () => {
             let width = elements.canvas.width;
@@ -458,3 +497,4 @@ function collectGroups(controls) {
     }
     return result;
 }
+

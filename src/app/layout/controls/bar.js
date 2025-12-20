@@ -18,7 +18,6 @@ export function createMainControlBar(elements, state, controls) {
     elements.controlBar.main.append(
         elements.controlBar.time.frame,
         createDiv("", "full-spacer"),
-        ...createClipboardButtons(elements, state),
         createDiv("", "spacer"),
         createResetAllButton(elements, state, controls)
     );
@@ -52,51 +51,4 @@ function createResetAllButton(elements, state, controls) {
         event.target.blur();
     });
     return button;
-}
-
-function createClipboardButtons(elements, state) {
-    const copyButton = createSmallButton("→ Clipboard", "right-align");
-    const pasteButton = createSmallButton("Paste", "right-align");
-
-    copyButton.addEventListener("click", async () => {
-        const originalContent = copyButton.textContent;
-        try {
-            const json = bundleUniforms(state);
-            await navigator.clipboard.writeText(
-                JSON.stringify(json, null, 4)
-            );
-            console.info("Copied to Clipboard", json);
-            copyButton.textContent = "✔ copied";
-        } catch (error) {
-            console.error(error);
-            copyButton.textContent = "✘ failed";
-        }
-        setTimeout(() => {
-            copyButton.textContent = originalContent;
-        }, 1000);
-    });
-
-    pasteButton.addEventListener("click", async () => {
-        const originalContent = pasteButton.textContent;
-        const originalState = {...state};
-        try {
-            const text = await navigator.clipboard.readText();
-            const json = JSON.parse(text);
-            updateFromBundle(json, state, elements);
-            pasteButton.textContent = "✔ pasted";
-        } catch (error) {
-            console.error(error);
-            state = {...originalState};
-            pasteButton.textContent = "✘ failed";
-            pasteButton.style.color = "red";
-            pasteButton.style.outlineColor = "red";
-        }
-        setTimeout(() => {
-            pasteButton.textContent = originalContent;
-            pasteButton.style.color = "";
-            pasteButton.style.outlineColor = "";
-        }, 1000);
-    });
-
-    return [copyButton, pasteButton];
 }

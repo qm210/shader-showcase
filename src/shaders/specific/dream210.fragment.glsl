@@ -91,12 +91,14 @@ struct GlyphInstance {
     vec4 color;
     vec4 effect;
 };
-layout(std140) uniform GlyphInstances {
-    // NOTE: having this makes the FPS drop to 30 from 60.
-    //       -> think about NR4's texture suggestion soon.
-    GlyphInstance letterInstance[12];
-    int lettersUsed;
-};
+//layout(std140) uniform GlyphInstances {
+//    // NOTE: having this makes the FPS drop to 30 from 60.
+//    //       -> think about NR4's texture suggestion soon.
+//    GlyphInstance letterInstance[12];
+//    int lettersUsed;
+//};
+uniform int lettersUsed;
+uniform sampler2D letterInstances;
 
 // --> CLOUDS
 uniform float iCloudYDisplacement;
@@ -824,11 +826,22 @@ void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
     }
 }
 
+GlyphInstance letterInstance(int row) {
+    GlyphInstance letter;
+    vec4 data = texelFetch(letterInstances, ivec2(row, 0), 0);
+    letter.ascii = data.x;
+    letter.scale = data.y;
+    letter.pos = data.zw;
+    letter.color = texelFetch(letterInstances, ivec2(row, 1), 0);
+    letter.effect = texelFetch(letterInstances, ivec2(row, 2), 0);
+    return letter;
+}
+
 void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 effectColor) {
     vec2 pos, _unused;
     float d;
     for (int t = 0; t < lettersUsed; t++) {
-        GlyphInstance letter = letterInstance[t];
+        GlyphInstance letter = letterInstance(t);
         if (letter.color.a <= 0.) {
             continue;
         }
@@ -844,7 +857,7 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
     vec2 pos, _unused;
     float d;
     for (int t = 0; t < lettersUsed; t++) {
-        GlyphInstance letter = letterInstance[t];
+        GlyphInstance letter = letterInstance(t);
         pos = letter.scale * (uv - letter.pos);
         d = glyph(pos, int(letter.ascii), _unused);
         d *= d * letter.color.a;

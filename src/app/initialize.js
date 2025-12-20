@@ -1,5 +1,5 @@
 import {maybeAdjustForCompatibility} from "../webgl/helpers/compatibility.js";
-import {takeMilliSeconds} from "./jsHelpers.js";
+import {takeMilliSeconds} from "./measuring.js";
 
 export function createInitialState(sources) {
     sources.fragment = maybeAdjustForCompatibility(sources.fragment);
@@ -47,10 +47,8 @@ function withPlaybackFeatures(state) {
             takeRenderTime: false,
             reachedStop: false
         },
-        previous: {
-            timestamp: null,
-            time: null,
-        },
+        previousTimestamp: null,
+        rememberedTime: null,
         animate: void 0,
         animationFrame: null,
     };
