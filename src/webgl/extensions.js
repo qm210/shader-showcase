@@ -23,6 +23,39 @@ function enrichWithTimerHelpers(gl, ext) {
         gl.endQuery(gl.timer.ELAPSED);
         return evaluateQuery(gl.timer.query, gl);
     };
+    gl.timer.createQueryProfiler = ({title, enabled}) => {
+        const records = [];
+        if (!enabled) {
+            return {
+                record: label => {},
+                finalize: async () => null,
+            }
+        }
+        return {
+            record: (label) => {
+                if (records.length > 0) {
+                    gl.endQuery(gl.timer.ELAPSED);
+                }
+                const query = gl.createQuery();
+                gl.beginQuery(gl.timer.ELAPSED, query);
+                records.push({query, label});
+            },
+            finalize: async () => {
+                if (records.length === 0) {
+                    return null;
+                }
+                gl.endQuery(gl.timer.ELAPSED);
+                const results = Promise.all(
+                    records.map(r => evaluateQuery(r.query, gl))
+                ).then(nanos =>
+                    nanos.map((ns, index) =>
+                        ({micros: 1e-3 * ns, label: records[index]}),
+                    )
+                );
+                return {title, results};
+            }
+        };
+    };
 }
 
 async function evaluateQuery(query, gl) {

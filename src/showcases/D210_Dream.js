@@ -5,7 +5,7 @@ import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
 import spiceSaleMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 import spiceSaleMsdfJson from "../textures/dream210/SpicySale.msdf.json";
-import track from "../../public/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
+import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
 
 import {resolutionScaled, updateResolutionInState} from "../webgl/helpers/resolution.js";
@@ -273,7 +273,7 @@ export default {
                 obj: null,
                 name: ""
             },
-            toggle: {}
+            toggle: {},
         };
         state.debug.toggle.option = (index) => {
             if (index === -1) {
@@ -319,6 +319,12 @@ export default {
             sessionStorage.setItem("qm.dream210.debug.fb", state.debug.fb.index);
         };
         state.debug.fb.toggle(state.debug.fb.index);
+
+        state.query = {
+            doRunProfiler: false,
+            profiler: null,
+            lastResults: null,
+        };
 
         gl.useProgram(state.program);
 
@@ -434,13 +440,14 @@ export default {
                     return `${millis} ms`;
                 },
                 onClick: async () => {
-                    const nanos = await gl.timer.executeWithQuery(() =>
-                        render(gl, state)
-                    );
-                    const comparison = !state.lastQueryNanos ? [] :
-                        ["- Ratio to last query:", nanos / state.lastQueryNanos];
-                    console.log("Query took", nanos / 1e3, "µs", ...comparison);
-                    state.lastQueryNanos = nanos;
+                    // const nanos = await gl.timer.executeWithQuery(() =>
+                    //     render(gl, state)
+                    // );
+                    // const comparison = !state.lastQueryNanos ? [] :
+                    //     ["- Ratio to last query:", nanos / state.lastQueryNanos];
+                    // console.log("Query took", nanos / 1e3, "µs", ...comparison);
+                    // state.lastQueryNanos = nanos;
+                    state.debug.doRunProfiler = true;
                 },
                 style: { flex: 0.5 }
             },
@@ -519,6 +526,11 @@ TEXTURE_UNITS.UNBIND_AFTER_RENDER_FLUID = [...new Set([
 let write, read, readPrevious, readVelocity;
 
 function render(gl, state) {
+    state.debug.profiler = gl.timer.createQueryProfiler({
+        title: "Everything.",
+        enabled: state.debug.doRunProfiler
+    });
+
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform1f(state.location.deltaTime, state.play.dt);
     gl.uniform2fv(state.location.iResolution, state.resolution);
@@ -526,6 +538,8 @@ function render(gl, state) {
     gl.uniform1i(state.location.debugOption, state.debug.option);
 
     state.events.manager.manage(state);
+
+    state.debug.profiler.record("Events Manager managed.");
 
     gl.uniform1f(state.location.iVignetteInner, state.iVignetteInner);
     gl.uniform1f(state.location.iVignetteOuter, state.iVignetteOuter);
@@ -602,6 +616,8 @@ function render(gl, state) {
 
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, state.framebuffer.texts.texArray);
 
+    state.debug.profiler.record("Texture Array done.");
+
     /////
 
     gl.uniform1i(state.location.passIndex, PASS.RENDER_NOISE_BASE);
@@ -661,6 +677,8 @@ function render(gl, state) {
     [, read] = state.framebuffer.clouds.currentWriteRead();
     gl.bindTexture(gl.TEXTURE_2D, read.texture);
 
+    state.debug.profiler.record("Clouds done");
+
     // SOURCE: FLUID-ESCALATION
 
     gl.uniform3fv(state.location.iSpawnColorHSV, state.iSpawnColorHSV);
@@ -695,10 +713,15 @@ function render(gl, state) {
     gl.uniform1f(state.location.iBloomPreGain, state.iBloomPreGain);
     gl.uniform1f(state.location.iBloomDithering, state.iBloomDithering);
 
+    state.debug.profiler.record("Before Init Fluid");
     initFluid(gl, state);
+    state.debug.profiler.record("initFluid() done");
     processFluid(gl, state);
+    state.debug.profiler.record("processFluid() done");
     postprocessFluid(gl, state);
+    state.debug.profiler.record("postprocessFluid() done");
     renderFluid(gl, state);
+    state.debug.profiler.record("renderFluid() done");
 
     // !! Finale Komposition auf Back Buffer !!
 
@@ -716,6 +739,8 @@ function render(gl, state) {
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
     gl.bindTexture(gl.TEXTURE_2D, null);
 
+    state.debug.profiler.record("every rendering done");
+
     if (state.debug.fb.obj) {
         const fb = typeof state.debug.fb.obj === "function"
             ? state.debug.fb.obj()
@@ -730,6 +755,15 @@ function render(gl, state) {
         );
         gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
     }
+
+    if (state.debug.doRunProfiler) {
+        state.debug.profiler.finalize()
+            .then(result => {
+                state.debug.lastResults = result;
+                console.log("[PROFILER]", result);
+            });
+    }
+    state.debug.doRunProfiler = false;
 }
 
 function initFluid(gl, state) {

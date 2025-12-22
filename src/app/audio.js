@@ -14,7 +14,7 @@ export function initAudioState(state, audioSource) {
         error: null,
         is: {
             readyToPlay: () =>
-                track.audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA,
+                audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA,
                 // cf. developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
             playing: () => !audio.paused,
         },
@@ -32,10 +32,13 @@ export function initAudioState(state, audioSource) {
     }
     // Loads of Convenience, vor allem eigentlich zur Selbstdokumentation :)
     track.actions = {
-        playWhenReady: async () => {
+        initAs: async (running) => {
             await waitForReadyState(track.audio);
-            audio.stopped = false;
-            return audio.play();
+            if (running) {
+                await track.audio.play();
+            } else {
+                track.actions.stop();
+            }
         },
         pause: audio.pause,
         seek: (second = undefined) => {
@@ -44,10 +47,11 @@ export function initAudioState(state, audioSource) {
         },
         stop: () => {
             audio.pause();
-            track.actions.seek(0);
+            audio.currentTime = 0;
             audio.stopped = true;
         },
         togglePlay: async (force = undefined) => {
+            console.log("hier am start?", force, audio.paused, audio.readyState, audio);
             if (audio.paused || force) {
                 await audio.play().catch((err) =>
                     console.warn("[AUDIO BLOCKED]", err)
@@ -74,12 +78,6 @@ export function initAudioState(state, audioSource) {
                 : force;
             console.log("[AUDIO] Now Disabled", track.disabled ? "is" : "isn't");
         },
-        askForPlayInAdvance: async () => {
-            await track.audio.play();
-            if (track.stopped) {
-                track.actions.stop();
-            }
-        }
     };
     console.log("[AUDIO]", track);
     state.track = track;

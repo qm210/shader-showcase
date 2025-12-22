@@ -136,8 +136,9 @@ export const addMainControls = (elements, state, controls) => {
         }
         let preventBrowserBehaviour = true;
         // cf. playback.js for how the state variables work
-        console.log(`[KEY COMBINATION] "${readableKeyCombinations(event)}"`);
-        switch (readableKeyCombinations(event)) {
+        const combinedKey = readableKeyCombinations(event);
+        // console.log(`[KEY COMBINATION] "${combinedKey}"`);
+        switch (combinedKey) {
             case "Ctrl + Backspace":
                 state.play.signal.reset = true;
                 break;
@@ -177,7 +178,7 @@ export const addMainControls = (elements, state, controls) => {
                 break;
             case "MediaPlayPause":
                 if (state.track) {
-                    state.track.togglePlay().then(() => {
+                    state.track.actions.togglePlay().then(() => {
                         console.info("[AUDIO] Playing?", !state.track.audio.paused)
                     });
                 } else {
@@ -186,7 +187,7 @@ export const addMainControls = (elements, state, controls) => {
                 break;
             case "AudioVolumeMute":
                 if (state.track) {
-                    state.track.toggleMuted();
+                    state.track.actions.toggleMuted();
                     console.info("[AUDIO] Muted?", !state.track.audio.muted)
                 } else {
                     preventBrowserBehaviour = false;

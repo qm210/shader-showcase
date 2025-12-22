@@ -207,8 +207,9 @@ export function createTimeSeeker(parent, state) {
             state.play.running = true;
             state.play.previousTimestamp = null;
         }
+        console.log("is this the place?", state.play.running, state.track);
         if (state.track) {
-            void state.track.togglePlay(state.play.runnning);
+            void state.track.actions.togglePlay(state.play.running);
         }
     };
 
@@ -510,10 +511,10 @@ function addMouseInteraction(el, state) {
     });
 
     el.icons.audio.addEventListener("click", () => {
-        el.do.toggleMuted();
+        state.track.actions.toggleMuted();
     });
     el.icons.audio.addEventListener("contextmenu", () => {
-        el.do.toggleDisabled();
+        state.track.actions.toggleDisabled();
     });
 
     function seekPixel(x) {

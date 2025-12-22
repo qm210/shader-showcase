@@ -44,12 +44,14 @@ export function startRenderLoop(renderFunction, state, elements) {
         state.play.animationFrame = requestAnimationFrame(state.play.animate);
     }
 
+    // TODO: merge all this logic into the state.track
+    // that should even exist as some facade in no-track-states.
     if (!state.track || state.track.disabled) {
         actuallyStartRendering();
         return;
     }
     state.track.useAsTimer = true;
-    state.track.audio.play()
+    state.track.audio.initAs(state.play.running)
         .catch(() => {
             state.track.useAsTimer = false;
         })
@@ -62,7 +64,7 @@ const moveInTime = {
     },
     byAudio: (state, timestamp) => {
         state.play.dt = state.track.audio.currentTime - state.time;
-        state.play.running = state.track.audio.is.playing();
+        state.play.running = state.track.is.playing();
     }
 };
 
