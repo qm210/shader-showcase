@@ -13,9 +13,6 @@ export function initAudioState(state, audioSource) {
         useAsTimer: !!audioSource,
         error: null,
         is: {
-            readyToPlay: () =>
-                audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA,
-                // cf. developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
             playing: () => !audio.paused,
         },
         actions: {}
@@ -29,12 +26,18 @@ export function initAudioState(state, audioSource) {
     };
     audio.onabort = () => {
         track.disabled = true;
-    }
+    };
     // Loads of Convenience, vor allem eigentlich zur Selbstdokumentation :)
     track.actions = {
-        initAs: async (running) => {
+        initialize: async (playState) => {
             await waitForReadyState(track.audio);
-            if (running) {
+            console.log("[TRACK]", track, playState.running, audio.duration);
+            playState.actions.toggleLoop({
+                start: 0,
+                end: track.durationSec,
+                active: playState.loop.active,
+            });
+            if (playState.running) {
                 await track.audio.play();
             } else {
                 track.actions.stop();
@@ -51,7 +54,7 @@ export function initAudioState(state, audioSource) {
             audio.stopped = true;
         },
         togglePlay: async (force = undefined) => {
-            console.log("hier am start?", force, audio.paused, audio.readyState, audio);
+            console.log("[TRACK] togglePlay(", force, "), paused currently?", audio.paused, track);
             if (audio.paused || force) {
                 await audio.play().catch((err) =>
                     console.warn("[AUDIO BLOCKED]", err)
@@ -79,11 +82,11 @@ export function initAudioState(state, audioSource) {
             console.log("[AUDIO] Now Disabled", track.disabled ? "is" : "isn't");
         },
     };
-    console.log("[AUDIO]", track);
     state.track = track;
 }
 
 async function waitForReadyState(audio, timeoutMs = 5000) {
+    // cf. developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState
     return Promise.race([
         new Promise(resolve => {
             if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {

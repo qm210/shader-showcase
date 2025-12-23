@@ -45,14 +45,24 @@ function enrichWithTimerHelpers(gl, ext) {
                     return null;
                 }
                 gl.endQuery(gl.timer.ELAPSED);
-                const results = Promise.all(
+                const nanos = await Promise.all(
                     records.map(r => evaluateQuery(r.query, gl))
-                ).then(nanos =>
-                    nanos.map((ns, index) =>
-                        ({micros: 1e-3 * ns, label: records[index]}),
-                    )
                 );
-                return {title, results};
+                const totalNs = nanos.reduce(
+                    (acc, ns) => acc + ns,
+                    0
+                );
+                return {
+                    title,
+                    totalMillis: 1e-6 * totalNs,
+                    maxPossibleFps: 1e9 / totalNs,
+                    results: nanos
+                        .map((ns, index) => ({
+                            millis: 1e-6 * ns,
+                            label: records[index].label,
+                            percent: 100 * (ns / totalNs),
+                        }))
+                }
             }
         };
     };

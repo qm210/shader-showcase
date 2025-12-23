@@ -1,7 +1,6 @@
 import {initMouseState} from "../../mouse.js";
 import {createDiv, createSmallButton} from "../dom.js";
 import {sessionStoreControlState, updateVecLabel} from "./uniforms.js";
-import {bundleUniforms, updateFromBundle} from "../../exchange.js";
 import {createTimeSeeker} from "./time.js";
 
 

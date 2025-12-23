@@ -51,7 +51,7 @@ export function startRenderLoop(renderFunction, state, elements) {
         return;
     }
     state.track.useAsTimer = true;
-    state.track.audio.initAs(state.play.running)
+    state.track.actions.initialize(state.play)
         .catch(() => {
             state.track.useAsTimer = false;
         })
@@ -97,11 +97,9 @@ function advanceTime(moveTimestep, state, timestamp) {
     if (state.play.loop.active) {
         const lastSecond = state.play.loop.end ?? state.play.range.max;
         if (state.time > lastSecond) {
-            state.time = state.play.loop.start ?? 0;
-            // state.iFrame = 0;
-            // <-- TODO: Habe keine finale Idee für den Frame-Index...
-            // TODO: macht mit Audio auch weniger Sinn, als man so möchte, möchte ich meinen?
-            state.track.actions.seek();
+            state.play.actions.jump({
+                to: state.play.loop.start ?? 0
+            });
         }
     }
 
@@ -169,10 +167,10 @@ function resetFpsMeasurement(state) {
 }
 
 function doFpsMeasurement(state) {
-    if (fpsMeter.last.time !== null) {
-        fpsMeter.current =
-            (state.iFrame - fpsMeter.last.frame) /
-            (state.time - fpsMeter.last.time);
+    const dt = fpsMeter.last.time === null ? 0
+        : state.time - fpsMeter.last.time;
+    if (dt > 0) {
+        fpsMeter.current = (state.iFrame - fpsMeter.last.frame) / dt;
         fpsMeter.avg.sum -= fpsMeter.avg.samples[fpsMeter.avg.index];
         fpsMeter.avg.samples[fpsMeter.avg.index] = fpsMeter.current;
         fpsMeter.avg.sum += fpsMeter.current;
@@ -181,6 +179,11 @@ function doFpsMeasurement(state) {
         }
         fpsMeter.avg.index = (fpsMeter.avg.index + 1) % fpsMeter.avg.taken;
         fpsMeter.avg.fps = fpsMeter.avg.sum / fpsMeter.avg.taken;
+        if (isNaN(fpsMeter.avg.fps)) {
+            console.log("[FPS NAN?]", fpsMeter.avg, fpsMeter.last.time);
+        } else if (!isFinite(fpsMeter.avg.fps)) {
+            console.log("[FPS INF?]", fpsMeter);
+        }
     }
     fpsMeter.last.time = state.time;
     fpsMeter.last.frame = state.iFrame;

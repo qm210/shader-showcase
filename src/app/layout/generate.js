@@ -95,6 +95,7 @@ export const addMainControls = (elements, state, controls) => {
     }
 
     const {seeker} = createMainControlBar(elements, state, controls);
+    state.play.actions = seeker.do;
 
     for (const control of controls.toggles ?? []) {
         elements.controlBar.buttons.push(

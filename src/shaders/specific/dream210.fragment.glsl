@@ -24,7 +24,7 @@ uniform sampler2D texAccumulusClouds;
 uniform sampler2D texNoiseBase;
 uniform sampler2D texText0;
 uniform sampler2D texText1;
-uniform mediump sampler2DArray texTexts;
+// uniform mediump sampler2DArray texTexts;
 uniform sampler2D texMonaSchnoergel;
 uniform sampler2D texMonaCity;
 uniform sampler2D texMonaRainbow;
@@ -80,9 +80,10 @@ struct GlyphDef {
     float advance;
     float relAdvance;
 };
-layout(std140) uniform Glyphs {
-    GlyphDef glyphDef[97];
-};
+//layout(std140) uniform Glyphs {
+//    GlyphDef glyphDef[97];
+//};
+uniform sampler2D glyphDefs;
 
 struct GlyphInstance {
     float ascii;
@@ -174,6 +175,7 @@ uniform vec4 colFree1;
 uniform vec4 colFree2;
 uniform vec4 colFree3;
 
+/*
 struct Event {
     // all floats because it makes WebGL state consistency... handlebar.
     float type;
@@ -189,6 +191,7 @@ layout(std140) uniform Events {
     Event fluidVelocityEvent;
     Event textEvent;
 };
+*/
 
 const vec4 c = vec4(1, 0, -1, 0.5);
 const float pi = 3.141593;
@@ -687,6 +690,18 @@ void mainCloudImage(out vec4 fragColor) {
 
 // GLYPHS:
 
+GlyphDef glyphDef(int row) {
+    GlyphDef def;
+    vec4 data = texelFetch(glyphDefs, ivec2(row, 0), 0);
+    def.center = data.xy;
+    def.halfSize = data.zw;
+    data = texelFetch(glyphDefs, ivec2(row, 1), 0);
+    def.offset = data.xy;
+    def.advance = data.z;
+    def.relAdvance = data.w;
+    return def;
+}
+
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
@@ -697,7 +712,8 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
         return 0.;
     }
 
-    GlyphDef g = glyphDef[index];
+//    GlyphDef g = glyphDef[index];
+    GlyphDef g = glyphDef(index);
     size = 4. * aspRatio * g.halfSize;
     vec2 bottomLeft = uv - 0.5 * size - g.offset;
     vec2 texCoord = g.center + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
@@ -821,7 +837,7 @@ void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
         col = mix(col, textColor, d);
 //        cursor.x -= dims.x;
         // looks better:
-        float advance = glyphDef[yay[i] - START_ASCII].advance;
+        float advance = glyphDef(yay[i] - START_ASCII).advance;
         cursor.x -= 2. * aspRatio.x * advance;
     }
 }
@@ -960,8 +976,9 @@ void finalComposition(in vec2 uv) {
     fragColor.rgb = clamp(fragColor.rgb, 0., 1.);
     // fragColor.rgb = mix(fragColor.rgb, noiseBase.rgb, noiseBase.a + 0.2);
 
+    vec4 tex;
     // \o/
-    vec4 tex = texture(texTexts, vec3(st, 1));
+    // vec4 tex = texture(texTexts, vec3(st, 1));
     // fragColor.rgb = mix(fragColor.rgb, c.xyw * tex.rgb, tex.a);
 
     vec3 col = fragColor.rgb;
@@ -1043,6 +1060,9 @@ void finalComposition(in vec2 uv) {
 #define _RENDER_NOISE_BASE 90
 #define _RENDER_FINALLY_TO_SCREEN 100
 
+#define ENABLE_SUNRAYS 0
+#define ENABLE_BLOOM 0
+
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
 #define EVENT_DRAW_TEXT 7
@@ -1050,6 +1070,8 @@ void finalComposition(in vec2 uv) {
 void main() {
     // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
     vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
+//    fragColor = debugColor;
+//    return;
 
     float d, velL, velR, velU, velD, pL, pR, pU, pD, div;
 
@@ -1080,36 +1102,38 @@ void main() {
             return;
 
         case _INIT_FLUID_COLOR: {
-            int eventType = int(fluidColorEvent.type);
+            int eventType = -1; // int(fluidColorEvent.type);
             if (eventType == EVENT_CLEAR_FLUID) {
-                fragColor = fluidColorEvent.coords;
+                // fragColor = fluidColorEvent.coords;
                 return;
             }
             fluidColor = texture(texColor, st);
             vec4 spawnColor = vec4(0.); // TODO
-            if (eventType == EVENT_DRAW_TEXT) {
+            //if (eventType == EVENT_DRAW_TEXT) {
                 // fragColor = c.yyyy;
-                printYay(uv, spawnColor, someYayColor);
-            }
+//                printYay(uv, spawnColor, someYayColor);
+ //           }
             // "Over" Mixing with RGBA each:
             fragColor.rgb = mix(fluidColor.rgb, spawnColor.rgb, spawnColor.a);
             fragColor.a = (fluidColor.a, 1., spawnColor.a);
             return;
         }
         case _INIT_VELOCITY: {
-            int eventType = int(fluidVelocityEvent.type);
+            int eventType = -1; // int(fluidVelocityEvent.type);
             if (eventType == EVENT_CLEAR_FLUID) {
-                fragColor.xy = fluidVelocityEvent.coords.xy;
+                // fragColor.xy = fluidVelocityEvent.coords.xy;
                 return;
             }
             fluidVelocity = texture(texVelocity, st).xy;
             vec2 deltaVelocity = c.yy;
             if (eventType == EVENT_DRAIN) {
+                /*
                 fluidColor = texture(texColor, st);
                 float decay = exp(-(iTime - fluidVelocityEvent.timeStart) * fluidVelocityEvent.args[0]);
                 deltaVelocity = fluidVelocityEvent.coords.xy
                     * max3(fluidColor.rgb) * fluidColor.a
                     * decay;
+                */
             }
             fragColor.xy = fluidVelocity.xy + deltaVelocity;
             return;
@@ -1183,6 +1207,7 @@ void main() {
             fluidVelocity = texture(texVelocity, st).xy;
             fragColor = simulateAdvection(texColor, iColorDissipation);
             return;
+#if ENABLE_BLOOM
         case _POST_BLOOM_PREFILTER:
             float knee = iBloomThreshold * iBloomSoftKnee + 1.e-4;
             vec3 curve = vec3(iBloomThreshold - knee, knee * 2., 0.25 / knee);
@@ -1201,6 +1226,8 @@ void main() {
                 texture(texPostBloom, stD)
             );
             return;
+#endif
+#if ENABLE_SUNRAYS
         case _POST_SUNRAYS_CALC_MASK:
             fluidColor = texture(texColor, st);
             br = max3(fluidColor.rgb);
@@ -1217,6 +1244,7 @@ void main() {
                 + weight * texture(texPostSunrays, st - 1.333 * texelSize)
                 + weight * texture(texPostSunrays, st + 1.333 * texelSize);
             return;
+#endif
         case _RENDER_FLUID:
             fluidColor = texture(texColor, st);
             if (debugOption == 3) {
@@ -1232,12 +1260,15 @@ void main() {
             fragColor.rgb = makeSurplusWhite(fluidColor.rgb);
             fragColor.rgb = fluidColor.rgb + (1. - fluidColor.a) * bg;
 
-            float sunrays = texture(texPostSunrays, st).r;
+            float sunrays = 1.;
+        #if ENABLE_SUNRAYS
+            sunrays = texture(texPostSunrays, st).r;
             fragColor.rgb *= sunrays;
+        #endif
+        #if ENABLE_BLOOM
             vec3 bloom = texture(texPostBloom, st).rgb;
             bloom *= iBloomIntensity;
             bloom *= sunrays;
-
             if (iBloomDithering > 0.) {
                 const vec2 ditherTexSize = vec2(64.); // textureSize(texPostDither, 0)
                 vec2 scale = iResolution / ditherTexSize;
@@ -1250,6 +1281,8 @@ void main() {
                 c.yyy
             );
             fragColor.rgb += bloom;
+        #endif
+
             fragColor.a = max3(fragColor.rgb);
 
             if (debugOption == 1) {

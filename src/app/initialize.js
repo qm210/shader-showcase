@@ -49,6 +49,12 @@ function withPlaybackFeatures(state) {
         },
         previousTimestamp: null,
         rememberedTime: null,
+        // "Forward-Deklaration" zur Selbstdokumentation
+        actions: {
+            jump: void 0,
+            toggle: void 0,
+            toggleLoop: void 0,
+        },
         animate: void 0,
         animationFrame: null,
     };

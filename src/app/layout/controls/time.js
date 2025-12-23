@@ -21,7 +21,7 @@ export function createTimeSeeker(parent, state) {
             })
         },
         ticks: {
-            intervalSec: 4,
+            intervalSec: 240 / 105 * 4, // for 105 BPM for Dream210 hardcoded
             pattern: svgChild(svg, "pattern", {
                 id: "track-ticks",
                 height: "100%",
@@ -82,10 +82,12 @@ export function createTimeSeeker(parent, state) {
         do: {
             jump: undefined,
             toggle: undefined,
+            toggleLoop: undefined,
         },
         remember: {
             timestamp: undefined,
             toUpdate: false,
+            toUpdateLoop: false,
         }
     };
 
@@ -159,6 +161,16 @@ export function createTimeSeeker(parent, state) {
             el.ticks.pattern.setAttribute("width", intervalPixels(el, state));
             delete el.virgin;
         }
+        if (el.remember.toUpdateLoop) {
+            el.remember.toUpdateLoop = false;
+            stretchLoopMarker(el, state);
+            adjustMaxRange(el, state, {
+                max: Math.max(
+                    state.play.range.max,
+                    state.play.loop.end + state.play.range.autoExtendMargin
+                ),
+            });
+        }
         if (el.remember.toUpdate) {
             el.remember.toUpdate = false;
             el.callback.update();
@@ -207,7 +219,6 @@ export function createTimeSeeker(parent, state) {
             state.play.running = true;
             state.play.previousTimestamp = null;
         }
-        console.log("is this the place?", state.play.running, state.track);
         if (state.track) {
             void state.track.actions.togglePlay(state.play.running);
         }
@@ -241,6 +252,7 @@ export function createTimeSeeker(parent, state) {
             return;
         }
         adjustMaxRange(el, state, {delta: extend});
+        stretchLoopMarker(el, state);
     }
 }
 
@@ -252,6 +264,9 @@ function secondsAsPixels(seconds, el, state, offset = 0) {
     // String is a no-cost inlined version to make linters happy while passing a number
     // i.e. .toString() would actually calculate something needlessly, thus be not-good.
     // console.log("SAP", el.handleBar.span, seconds, state.play.range.max, offset, "=", String(el.handleBar.span * seconds / state.play.range.max + offset));
+    offset += el.rect.handle.width / 2;
+    // <-- TODO: Shift required so the handle is centered at t == 0,
+    //           check whether that is consistent in current implementation
     return String(el.handleBar.span * seconds / state.play.range.max + offset);
 }
 
@@ -260,11 +275,16 @@ function pixelsAsSeconds(handlePosition, el, state) {
 }
 
 function moveHandle(el, state) {
-    const handleX = secondsAsPixels(state.time, el, state, el.handleBar.min);
+    const offset = el.handleBar.min - el.rect.handle.width / 2;
+    const handleX = secondsAsPixels(state.time, el, state, offset);
     el.handle.setAttribute("x", handleX);
 }
 
 function stretchLoopMarker(el, state) {
+    if (el.virgin) {
+        el.remember.toUpdateLoop = true;
+        return;
+    }
     const startSec = state.play.loop.start ?? 0;
     const endSec = Math.min(
         state.play.loop.end ?? state.play.range.max,
@@ -371,14 +391,14 @@ function addDocumentListeners(el, state) {
     const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "null");
     if (stored && stored.play) {
         state.play.running = stored.play.running;
-        if (stored.range) {
-            state.play.range = stored.range
+        if (stored.play.range) {
+            state.play.range = stored.play.range;
         }
-        if (stored.loop) {
-            state.play.loop = stored.loop;
+        if (stored.play.loop) {
+            state.play.loop = stored.play.loop;
         }
-        if (stored.markers) {
-            state.play.markers = stored.markers;
+        if (stored.play.markers) {
+            state.play.markers = stored.play.markers;
         }
         if (!state.play.running) {
             state.time = stored.time ?? 0;
