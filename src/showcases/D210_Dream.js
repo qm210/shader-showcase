@@ -1,29 +1,24 @@
 import {initBasicState, startRenderLoop} from "./common.js";
 import {createTextureFromImage, createTextureFromLoadedImage, loadImagesByVite} from "../webgl/helpers/textures.js";
-
-import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
-import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
-import spiceSaleMsdfPng from "../textures/dream210/SpicySale.msdf.png";
-import spiceSaleMsdfJson from "../textures/dream210/SpicySale.msdf.json";
-import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
-
-
 import {resolutionScaled, updateResolutionInState} from "../webgl/helpers/resolution.js";
 import {
     createFramebufferWithTexture,
-    createFramebufferWithTextureArray,
     createPingPongFramebuffersWithTexture,
     halfFloatOptions
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
-import {
-    createDataTextureForStructArray,
-    createUboForArray,
-    createUboForArraylikeStruct
-} from "../webgl/helpers/advancedBuffers.js";
-import {compactifyGlyphJson, createGlyphDef} from "../app/algorithms.js";
+import {createDataTexture, createDataTextureForStructArray} from "../webgl/helpers/advancedBuffers.js";
+import {compactifyGlyphJson, createGlyphDef, toAscii} from "../app/algorithms.js";
 import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream.management.js";
 import {initAudioState} from "../app/audio.js";
+
+import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
+import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
+// import fontMsdfPng from "../textures/dream210/SpicySale.msdf.png";
+// import fontMsdfJson from "../textures/dream210/SpicySale.msdf.json";
+import fontMsdfPng from "../textures/dream210/Kalnia-Medium.msdf.png";
+import fontMsdfJson from "../textures/dream210/Kalnia-Medium.msdf.json";
+import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
 // This secret move is presented to you by... vite :)
 const monaImages =
@@ -94,9 +89,11 @@ export default {
             // texts: createFramebufferWithTextureArray(gl, 2, state.opt.image),
         };
 
-        const glyphDef = createGlyphDef(spiceSaleMsdfJson);
+        const glyphDef = createGlyphDef(fontMsdfJson);
+        const testGlyphDef = getGlyphDefFor(glyphDef, "QM", 33);
+        console.log(testGlyphDef);
         const msdf = {
-            tex: createTextureFromImage(gl, spiceSaleMsdfPng, {
+            image: createTextureFromImage(gl, fontMsdfPng, {
                 wrapS: gl.CLAMP_TO_EDGE,
                 wrapT: gl.CLAMP_TO_EDGE,
                 minFilter: gl.LINEAR,
@@ -105,14 +102,24 @@ export default {
                 dataFormat: gl.RGBA,
                 dataType: gl.UNSIGNED_BYTE,
             }),
-            ubo: createUboForArray(gl, state.program, glyphDef, {
-                blockName: "Glyphs",
-                dataSize: 4,
+            data: createDataTexture(gl, {
+                data: glyphDef,
+                memberCount: fontMsdfJson.chars.length,
             }),
+            letters: createDataTextureForStructArray(gl, {
+                structFields: {
+                    ascii: [0, 1],
+                    scale: [1, 1],
+                    pos: [2, 2],
+                    color: [4, 4],
+                    effect: [8, 4],
+                },
+                memberCount: 32,
+            })
         };
         state.glyphs = {
             msdf,
-            detailed: compactifyGlyphJson(spiceSaleMsdfJson),
+            detailed: compactifyGlyphJson(fontMsdfJson),
             // ...createUboForArraylikeStruct(gl, state.program, {
             //     blockName: "GlyphInstances",
             //     bindingPoint: 2,
@@ -132,7 +139,7 @@ export default {
             //         size: 4,
             //     },
             // }),
-            ...createDataTextureForStructArray(gl, {
+            instances: createDataTextureForStructArray(gl, {
                 structFields: {
                     ascii: [0, 1],
                     scale: [1, 1],
@@ -158,9 +165,11 @@ export default {
                 }
             },
         }
-        state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs);
+        state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
         state.glyphs.manager.replacePhrase("Hello Dream210");
+
+        console.log("[GLYPHS]", state.glyphs);
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -509,7 +518,8 @@ const TEXTURE_UNITS = {
     POST_DITHER: 7, // 4,
     // <-- bestmöglich wiederverwendet.
     // glyphs:
-    OHLI_FONT: 15,
+    GLYPH_DEF: 14,
+    GLYPH_IMAGE: 15,
     // cloud render result
     PREVIOUS_CLOUDS: 8,
     NOISE_BASE: 9,
@@ -517,9 +527,9 @@ const TEXTURE_UNITS = {
     MONA_1: 10,
     MONA_2: 12,
     MONA_3: 13,
-    MONA_4: 14, // disabled now!
+    // MONA_4: 14, // disabled now!
     // GLYPH-WRITTEN TEXTURE ARRAY
-    FONT_ARRAY: 15,
+    // FONT_ARRAY: 15,
 };
 
 TEXTURE_UNITS.UNBIND_AFTER_RENDER_FLUID = [...new Set([
@@ -602,9 +612,13 @@ function render(gl, state) {
 
     // SOURCE: FONTS -- TEXTURE8 für MSDF-Png
 
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.OHLI_FONT);
-    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.tex);
-    gl.uniform1i(state.location.glyphTex, TEXTURE_UNITS.OHLI_FONT);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_IMAGE);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.image);
+    gl.uniform1i(state.location.glyphTex, TEXTURE_UNITS.GLYPH_IMAGE);
+
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_DEF);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.data.tex);
+    gl.uniform1i(state.location.glyphDefs, TEXTURE_UNITS.GLYPH_DEF);
 
     ///// INIT_TEXTi...
 
@@ -1798,4 +1812,29 @@ function createUniforms() {
             max: 2,
         }
     ];
+}
+
+function getGlyphDefFor(glyphDef, text, startAscii = 33) {
+    return toAscii(text)
+        .map(ascii => {
+            const index = ascii - startAscii;
+            const i = 8 * index;
+            return {
+                index,
+                center: {
+                    x: glyphDef[i],
+                    y: glyphDef[i + 1],
+                },
+                halfSize: {
+                    x: glyphDef[i + 2],
+                    y: glyphDef[i + 3],
+                },
+                offset: {
+                    x: glyphDef[i + 4],
+                    y: glyphDef[i + 5],
+                },
+                advance: glyphDef[i + 6],
+                relAdvance: glyphDef[i + 7],
+            };
+        });
 }

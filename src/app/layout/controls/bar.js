@@ -16,8 +16,6 @@ export function createMainControlBar(elements, state, controls) {
 
     elements.controlBar.main.append(
         elements.controlBar.time.frame,
-        createDiv("", "full-spacer"),
-        createDiv("", "spacer"),
         createResetAllButton(elements, state, controls)
     );
 

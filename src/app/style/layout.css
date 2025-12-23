@@ -204,8 +204,9 @@
     font-size: 0.9em;
 }
 
-.free-row .full-spacer {
+.full-spacer {
     flex: 1;
+    min-width: 0.5rem;
 }
 
 .spacer {

@@ -692,10 +692,10 @@ void mainCloudImage(out vec4 fragColor) {
 
 GlyphDef glyphDef(int row) {
     GlyphDef def;
-    vec4 data = texelFetch(glyphDefs, ivec2(row, 0), 0);
+    vec4 data = texelFetch(glyphDefs, ivec2(0, row), 0);
     def.center = data.xy;
     def.halfSize = data.zw;
-    data = texelFetch(glyphDefs, ivec2(row, 1), 0);
+    data = texelFetch(glyphDefs, ivec2(1, row), 0);
     def.offset = data.xy;
     def.advance = data.z;
     def.relAdvance = data.w;
@@ -711,9 +711,15 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     if (index < 0 || index >= N_GLYPHS) {
         return 0.;
     }
-
 //    GlyphDef g = glyphDef[index];
     GlyphDef g = glyphDef(index);
+//    g = GlyphDef(
+//        vec2(0.0742, 0.3262),
+//        vec2(0.0313, 0.0840),
+//        vec2(0., 0.03082),
+//        0.06349,
+//        520.13
+//    );
     size = 4. * aspRatio * g.halfSize;
     vec2 bottomLeft = uv - 0.5 * size - g.offset;
     vec2 texCoord = g.center + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
@@ -844,12 +850,12 @@ void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
 
 GlyphInstance letterInstance(int row) {
     GlyphInstance letter;
-    vec4 data = texelFetch(letterInstances, ivec2(row, 0), 0);
+    vec4 data = texelFetch(letterInstances, ivec2(0, row), 0);
     letter.ascii = data.x;
     letter.scale = data.y;
     letter.pos = data.zw;
-    letter.color = texelFetch(letterInstances, ivec2(row, 1), 0);
-    letter.effect = texelFetch(letterInstances, ivec2(row, 2), 0);
+    letter.color = texelFetch(letterInstances, ivec2(1, row), 0);
+    letter.effect = texelFetch(letterInstances, ivec2(2, row), 0);
     return letter;
 }
 
@@ -1009,7 +1015,6 @@ void finalComposition(in vec2 uv) {
         printGlyphInstances(uv, fragColor, noiseBase);
     }
 
-
     // col = noiseBase.rgb;
     col = fragColor.rgb;
     col = pow(col, vec3(1. / iGamma));
@@ -1072,6 +1077,11 @@ void main() {
     vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
 //    fragColor = debugColor;
 //    return;
+    fragColor = debugColor;
+    printYay(uv, fragColor, c.yyyx);
+
+    // fragColor.rgb = texture(glyphTex, st).rgb;
+    return;
 
     float d, velL, velR, velU, velD, pL, pR, pU, pD, div;
 

@@ -98,14 +98,19 @@ export function createTimeSeeker(parent, state) {
     el.callback.resize = () => {
         const r = el.rect;
         r.bounds = parent.getBoundingClientRect();
+        const rem = parseFloat(
+            getComputedStyle(document.documentElement).fontSize
+        );
         const unit = {
-            step: r.bounds.width / 36,
+            rem,
+            step: 1.5 * rem,
             text: el.value.getBBox().height,
             tick: 3,
             padding: 4
         };
+        console.log(r.bounds.width, unit.step, unit);
         r.track = {
-            width: 30 * unit.step,
+            width: r.bounds.width - 6.5 * unit.step,
             x: 0,
             height: r.bounds.height - 2 * unit.padding,
             y: unit.padding,
@@ -136,7 +141,7 @@ export function createTimeSeeker(parent, state) {
         };
         withRect(el.ticks.markers, r.markers);
         r.value = {
-            width: unit.step,
+            width: unit.step * 1.25,
             x: r.track.x + r.track.width + 1.25 * unit.step,
             height: r.bounds.height,
             y: unit.text - r.track.y / 2,

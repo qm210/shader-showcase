@@ -240,6 +240,41 @@ export function createUboForArraylikeStruct(gl, program, opt) {
     }
 }
 
+const RGBA_CHANNELS = 4;
+
+export function createDataTexture(gl, opt) {
+    if (opt.data) {
+        if (opt.memberCount) {
+            opt.dataSize = opt.data.length / opt.memberCount;
+        } else {
+            opt.dataSize ??= RGBA_CHANNELS;
+            opt.memberCount = opt.data.length / opt.dataSize;
+        }
+    } else if (opt.dataSize && opt.memberCount) {
+        opt.data = new Float32Array(opt.dataSize * opt.memberCount);
+    } else {
+        throw Error("needs either data or dataSize & memberCount!");
+    }
+
+    const texWidth = opt.dataSize / RGBA_CHANNELS;
+    const context = {
+        opt,
+        tex: null,
+        texWidth,
+        resolution: [texWidth, opt.memberCount],
+    };
+
+    context.tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, context.tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, ...context.resolution, 0, gl.RGBA, gl.FLOAT, opt.data);
+
+    return context;
+}
+
 // aims for the same as createUboForArraylikeStruct,
 // but using a 1d texture buffer and doing the packing ourselves
 // -> can be more resourceful

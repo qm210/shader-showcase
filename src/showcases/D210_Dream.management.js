@@ -114,18 +114,18 @@ function asScheduled(given, current) {
         : given.at;
 }
 
-export function createGlyphInstanceManager(state, glyphs) {
+export function createGlyphInstanceManager(state, instancesDef) {
     const manager = {
-        glyphs,
+        def: instancesDef,
+        instances: Array(instancesDef.opt.memberCount),
         replacePhrase: void 0,
-        instances: Array(glyphs.opt.memberCount),
         debug: {}
     };
 
-    for (let i = 0; i < glyphs.opt.memberCount; i++) {
+    for (let i = 0; i < instancesDef.opt.memberCount; i++) {
         const instance = {};
-        const member = glyphs.members[i];
-        for (const [field, start, size] of glyphs.structFields) {
+        const member = instancesDef.members[i];
+        for (const [field, start, size] of instancesDef.structFields) {
             instance[field] = member.view.subarray(start, start + size);
         }
         manager.instances[i] = instance;
@@ -157,7 +157,7 @@ export function createGlyphInstanceManager(state, glyphs) {
             const glyph = chars[ascii];
             const scale = 0.7 + 0.6 * Math.random();
             const pos = [cursorX, (Math.random() - 0.5) / 10 - 0.8];
-            state.glyphs.members[used].update({
+            instancesDef.members[used].update({
                 ascii,
                 scale,
                 pos,
