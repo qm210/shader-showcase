@@ -108,7 +108,6 @@ export function createTimeSeeker(parent, state) {
             tick: 3,
             padding: 4
         };
-        console.log(r.bounds.width, unit.step, unit);
         r.track = {
             width: r.bounds.width - 6.5 * unit.step,
             x: 0,

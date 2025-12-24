@@ -3,7 +3,7 @@ import {startRenderLoop} from "../app/playback.js";
 import vertexShaderSource from "../shaders/vertex.basicWithDifferentials.glsl"
 import fragmentShaderSource from "../shaders/multipassPlayground.glsl";
 import {initBasicState} from "./common.js";
-import {createFramebufferWithTexture, createPingPongFramebuffersWithTexture} from "../webgl/helpers/framebuffers.js";
+import {createPingPongFramebuffersWithTexture} from "../webgl/helpers/framebuffers.js";
 import {updateResolutionInState} from "../webgl/helpers/resolution.js";
 
 export default {

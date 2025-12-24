@@ -157,8 +157,8 @@ export function createGlyphDef(msdfJson) {
         glyphDef[index++] = halfWidth;
         glyphDef[index++] = halfHeight;
 
-        glyphDef[index++] = glyph.xoffset / atlasW;
-        glyphDef[index++] = glyph.yoffset / atlasH;
+        glyphDef[index++] = +2 * halfWidth + 2 * glyph.xoffset / atlasW;
+        glyphDef[index++] = -2 * halfHeight - 2 * glyph.yoffset / atlasH;
         glyphDef[index++] = glyph.xadvance / atlasW;
         glyphDef[index++] = glyph.xadvance / halfWidth / 2;
     }

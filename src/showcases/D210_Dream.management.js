@@ -114,30 +114,30 @@ function asScheduled(given, current) {
         : given.at;
 }
 
-export function createGlyphInstanceManager(state, instancesDef) {
+export function createGlyphInstanceManager(state, instances) {
     const manager = {
-        def: instancesDef,
-        instances: Array(instancesDef.opt.memberCount),
+        def: instances,
+        instanceFields: Array(instances.opt.memberCount),
         replacePhrase: void 0,
         debug: {}
     };
 
-    for (let i = 0; i < instancesDef.opt.memberCount; i++) {
+    for (let i = 0; i < instances.opt.memberCount; i++) {
         const instance = {};
-        const member = instancesDef.members[i];
-        for (const [field, start, size] of instancesDef.structFields) {
+        const member = instances.members[i];
+        for (const [field, start, size] of instances.structFields) {
             instance[field] = member.view.subarray(start, start + size);
         }
-        manager.instances[i] = instance;
+        manager.instanceFields[i] = instance;
     }
 
     manager.replacePhrase = (text, remember = true) => {
-        text = text.substring(0, manager.instances.length);
+        text = text.substring(0, manager.instanceFields.length);
         if (remember) {
             manager.lastPhrase = text;
         }
 
-        const pixelUnit = 2 / state.glyphs.detailed.scaleH;
+        const pixelUnit = 0.0067;
         const space = 0.667 * state.glyphs.detailed.size;
         const chars = state.glyphs.detailed.chars;
 
@@ -155,16 +155,16 @@ export function createGlyphInstanceManager(state, instancesDef) {
             }
             const ascii = text.charCodeAt(t);
             const glyph = chars[ascii];
-            const scale = 0.7 + 0.6 * Math.random();
-            const pos = [cursorX, (Math.random() - 0.5) / 10 - 0.8];
-            instancesDef.members[used].update({
+            const scale = 1.; // 0.7 + 0.6 * Math.random();
+            const pos = [cursorX, 0]; // (Math.random() - 0.5) / 10 - 0.8
+            instances.members[used].update({
                 ascii,
                 scale,
                 pos,
                 color: [0.5, 0, 0.7, 1],
                 effect: [1, 2, 3, 4],
             });
-            const advance = (chars[ascii].xadvance) * pixelUnit / scale;
+            const advance = (chars[ascii].xadvance) * pixelUnit * scale;
             manager.debug.advance.push(advance);
             manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);
@@ -172,7 +172,8 @@ export function createGlyphInstanceManager(state, instancesDef) {
             used++;
         }
         state.glyphs.meta.lettersUsed.update(used);
-        console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs, manager.debug);
+        instances.writeWhole();
+        console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs, manager.debug, instances);
     };
 
     return manager;

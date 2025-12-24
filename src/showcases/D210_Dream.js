@@ -7,7 +7,11 @@ import {
     halfFloatOptions
 } from "../webgl/helpers/framebuffers.js";
 import ditherImage from "../textures/dither.png";
-import {createDataTexture, createDataTextureForStructArray} from "../webgl/helpers/advancedBuffers.js";
+import {
+    createDataTexture,
+    createDataTextureForStructArray,
+    createUboForArraylikeStruct
+} from "../webgl/helpers/advancedBuffers.js";
 import {compactifyGlyphJson, createGlyphDef, toAscii} from "../app/algorithms.js";
 import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream.management.js";
 import {initAudioState} from "../app/audio.js";
@@ -16,6 +20,8 @@ import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
 // import fontMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 // import fontMsdfJson from "../textures/dream210/SpicySale.msdf.json";
+// import fontMsdfPng from "../textures/dream210/Kalnia-SemiBold.msdf.png";
+// import fontMsdfJson from "../textures/dream210/Kalnia-SemiBold.msdf.json";
 import fontMsdfPng from "../textures/dream210/Kalnia-Medium.msdf.png";
 import fontMsdfJson from "../textures/dream210/Kalnia-Medium.msdf.json";
 import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
@@ -90,8 +96,6 @@ export default {
         };
 
         const glyphDef = createGlyphDef(fontMsdfJson);
-        const testGlyphDef = getGlyphDefFor(glyphDef, "QM", 33);
-        console.log(testGlyphDef);
         const msdf = {
             image: createTextureFromImage(gl, fontMsdfPng, {
                 wrapS: gl.CLAMP_TO_EDGE,
@@ -106,16 +110,6 @@ export default {
                 data: glyphDef,
                 memberCount: fontMsdfJson.chars.length,
             }),
-            letters: createDataTextureForStructArray(gl, {
-                structFields: {
-                    ascii: [0, 1],
-                    scale: [1, 1],
-                    pos: [2, 2],
-                    color: [4, 4],
-                    effect: [8, 4],
-                },
-                memberCount: 32,
-            })
         };
         state.glyphs = {
             msdf,
@@ -167,9 +161,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
-        state.glyphs.manager.replacePhrase("Hello Dream210");
-
-        console.log("[GLYPHS]", state.glyphs);
+        state.glyphs.manager.replacePhrase("The quick brown");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -183,7 +175,6 @@ export default {
                 -> so we could gönn ourselves even another 2x vec4 for "free".
             };
          */
-        /*
         // DISABLE EVENTS TO CHECK FPS DROP
         state.events = createUboForArraylikeStruct(gl, state.program, {
             blockName: "Events",
@@ -218,7 +209,6 @@ export default {
             DRAW_TEXT: 7,
         });
         state.events.manager = createEventsManager(state, state.events);
-         */
 
         state.opt.fluid.scalar = {
             width: state.opt.fluid.width,
@@ -404,8 +394,6 @@ export default {
                 label: () =>
                     "Some Event...",
                 onClick: () => {
-                    console.log("[DEBUG ELEMENTS]", elements);
-                    return;
                     /*
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,
@@ -432,7 +420,7 @@ export default {
                     });
                     },
                 onRightClick: () => {
-                    // state.events.manager.clear();
+                    state.events.manager.clear();
                     console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
                 },
             }, {
@@ -448,8 +436,10 @@ export default {
                     }
                 },
                 onRightClick: () => {
-                    state.glyphs.manager.replacePhrase("", false);
-                    console.info("[GLYPHS]", state.glyphs, "- Manager:", state.glyphs.manager);
+                    // state.glyphs.manager.replacePhrase("", false);
+                    console.info("[GLYPHS]", state.glyphs,
+                        "- Manager:", state.glyphs.manager,
+                        "USED:", state.glyphs.meta.lettersUsed.value);
                 },
             }, {
                 label: () => {
@@ -518,6 +508,7 @@ const TEXTURE_UNITS = {
     POST_DITHER: 7, // 4,
     // <-- bestmöglich wiederverwendet.
     // glyphs:
+    LETTERS_DEF: 13,
     GLYPH_DEF: 14,
     GLYPH_IMAGE: 15,
     // cloud render result
@@ -526,7 +517,7 @@ const TEXTURE_UNITS = {
     // ... and some mona-graphics please?
     MONA_1: 10,
     MONA_2: 12,
-    MONA_3: 13,
+    // MONA_3: 13,
     // MONA_4: 14, // disabled now!
     // GLYPH-WRITTEN TEXTURE ARRAY
     // FONT_ARRAY: 15,
@@ -559,8 +550,8 @@ function render(gl, state) {
     gl.uniform1i(state.location.iFrame, state.iFrame);
     gl.uniform1i(state.location.debugOption, state.debug.option);
 
-    // state.events.manager.manage(state);
-    // state.debug.profiler.record("Events Manager managed.");
+    state.events.manager.manage(state);
+    state.debug.profiler.record("Events Manager managed.");
 
     gl.uniform1f(state.location.iVignetteInner, state.iVignetteInner);
     gl.uniform1f(state.location.iVignetteOuter, state.iVignetteOuter);
@@ -619,6 +610,11 @@ function render(gl, state) {
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_DEF);
     gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.data.tex);
     gl.uniform1i(state.location.glyphDefs, TEXTURE_UNITS.GLYPH_DEF);
+
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.LETTERS_DEF);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.instances.tex);
+    gl.uniform1i(state.location.letterInstances, TEXTURE_UNITS.LETTERS_DEF);
+    gl.uniform1i(state.location.lettersUsed, state.glyphs.meta.lettersUsed.value);
 
     ///// INIT_TEXTi...
 

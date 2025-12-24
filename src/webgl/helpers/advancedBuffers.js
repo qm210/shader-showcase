@@ -310,7 +310,11 @@ export function createDataTextureForStructArray(gl, opt) {
     opt.structSize ??= 1;
     opt.memberCount ??= !opt.memberMap ? 1
         : Object.keys(opt.memberMap).length;
-    context.buffer = new Float32Array(opt.memberCount * opt.structSize);
+
+    context.texWidth = Math.ceil(opt.structSize / RGBA_CHANNELS);
+    context.resolution = [context.texWidth, opt.memberCount];
+    context.floatsPerRow = context.texWidth * RGBA_CHANNELS;
+    context.buffer = new Float32Array(context.floatsPerRow * opt.memberCount);
 
     context.tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, context.tex);
@@ -318,15 +322,16 @@ export function createDataTextureForStructArray(gl, opt) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-    const RGBA_EACH = 4;
-    context.texWidth = opt.structSize / RGBA_EACH;
-    context.resolution = [context.texWidth, opt.memberCount];
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, ...context.resolution, 0, gl.RGBA, gl.FLOAT, null);
+    gl.texImage2D(gl.TEXTURE_2D,
+        0, gl.RGBA32F,
+        ...context.resolution,
+        0, gl.RGBA, gl.FLOAT,
+        context.buffer
+    );
 
     for (let i = 0; i < opt.memberCount; i++) {
-        const offset = i * opt.structSize;
-        const view = context.buffer.subarray(offset, offset + opt.structSize);
+        const offset = i * context.floatsPerRow;
+        const view = context.buffer.subarray(offset, offset + context.floatsPerRow);
         context.members[i] = {
             offset,
             view,
@@ -338,6 +343,16 @@ export function createDataTextureForStructArray(gl, opt) {
             }
         };
     }
+
+    context.writeWhole = () => {
+        gl.bindTexture(gl.TEXTURE_2D, context.tex);
+        gl.texImage2D(gl.TEXTURE_2D,
+            0, gl.RGBA32F,
+            ...context.resolution,
+            0, gl.RGBA, gl.FLOAT,
+            context.buffer
+        );
+    };
 
     context.debug = addSanityChecks(context);
     console.info("[PACKED TEXTURE]", context);

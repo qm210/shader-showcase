@@ -713,16 +713,13 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
     }
 //    GlyphDef g = glyphDef[index];
     GlyphDef g = glyphDef(index);
-//    g = GlyphDef(
-//        vec2(0.0742, 0.3262),
-//        vec2(0.0313, 0.0840),
-//        vec2(0., 0.03082),
-//        0.06349,
-//        520.13
-//    );
     size = 4. * aspRatio * g.halfSize;
-    vec2 bottomLeft = uv - 0.5 * size - g.offset;
-    vec2 texCoord = g.center + clamp(uv2texSt * bottomLeft, -g.halfSize, g.halfSize);
+    // vec2 bottomLeft = uv - 0.5 * size + 0.5 * g.offset;
+    vec2 anchor = uv - aspRatio * g.offset;
+//        uv.x - 0.5 * size.x - aspRatio.x * g.offset.x,
+//        uv.y + 0.5 * size.y + g.offset.y
+//    );
+    vec2 texCoord = g.center + clamp(uv2texSt * anchor, -g.halfSize, g.halfSize);
     vec3 msd = texture(glyphTex, texCoord).rgb;
 
     // unsure whether this really is the same understanding of SDF
@@ -836,7 +833,7 @@ void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
     vec2 dims;
     float d = 100., dR = 100.;
     vec2 cursor = uv - vec2(-1.2, -0.6);
-    cursor *= 0.2;
+    cursor *= 0.28;
 
     for (int i = 0; i < 3; i++) {
         d = glyph(cursor, yay[i], dims);
@@ -886,9 +883,9 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
         col.rgb = mix(col.rgb, letter.color.xyz, d);
 
         // visualize bottom points
-//        d = length(vec2(pos.x, pos.y)) - 0.01;
-//        d = smoothstep(0.01, 0., d);
-//        col.rgb = mix(col.rgb, c.yxy, d);
+        d = length(vec2(pos.x, pos.y)) - 0.01;
+        d = smoothstep(0.01, 0., d);
+        col.rgb = mix(col.rgb, c.yxy, d);
     }
 }
 
@@ -1012,7 +1009,8 @@ void finalComposition(in vec2 uv) {
     // fragColor.rgb += tex.a * tex.rgb;
 
     if (debugOption == 1) {
-        printGlyphInstances(uv, fragColor, noiseBase);
+        // printYay(uv, fragColor, c.yyyx);
+        printGlyphInstances(uv, fragColor); // , noiseBase);
     }
 
     // col = noiseBase.rgb;
@@ -1077,11 +1075,6 @@ void main() {
     vec4 debugColor = vec4(0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4)), 1.);
 //    fragColor = debugColor;
 //    return;
-    fragColor = debugColor;
-    printYay(uv, fragColor, c.yyyx);
-
-    // fragColor.rgb = texture(glyphTex, st).rgb;
-    return;
 
     float d, velL, velR, velU, velD, pL, pR, pU, pD, div;
 
