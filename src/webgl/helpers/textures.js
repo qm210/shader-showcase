@@ -103,6 +103,20 @@ export function createTextureFromLoadedImage(gl, image, options) {
     return texture;
 }
 
+export async function createTextureFromImageAsync(gl, source, options) {
+    return loadImageAsync(
+        source,
+        resolve => img =>
+            resolve(createTextureFromLoadedImage(gl, img, options))
+    );
+}
+
+async function loadImageAsync(source, afterLoad) {
+    return new Promise((resolve, reject) =>
+        loadImage(source, afterLoad(resolve), reject)
+    );
+}
+
 export async function loadImagesByVite(modules, mapFunction = undefined) {
     // can load images provided by vite via
     //     import.meta.glob('/src/textures/dream210/mona/*.png', {eager: true});
@@ -111,9 +125,7 @@ export async function loadImagesByVite(modules, mapFunction = undefined) {
             .map(([path, module]) => {
                 const key = path.split("/").slice(-1)[0].split(".")[0];
                 const afterLoad = resolve => img => resolve([key, img]);
-                return new Promise((resolve, reject) =>
-                    loadImage(module.default, afterLoad(resolve), reject)
-                )
+                return loadImageAsync(module.default, afterLoad);
             })
     )
     .then(entries => {

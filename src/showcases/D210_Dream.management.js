@@ -146,7 +146,7 @@ export function createGlyphInstanceManager(state, instances) {
         manager.debug.pos = [];
         manager.debug.pixelUnit = pixelUnit;
 
-        let cursorX = -text.length * 0.1;
+        let cursorX = -text.length * 0.125;
         let used = 0;
         for (let t = 0; t < text.length; t++) {
             if (text[t] === " ") {
@@ -156,7 +156,7 @@ export function createGlyphInstanceManager(state, instances) {
             const ascii = text.charCodeAt(t);
             const glyph = chars[ascii];
             const scale = 0.7 + 0.6 * Math.random();
-            const pos = [cursorX, (Math.random() - 0.5) / 10]
+            const pos = [cursorX, (Math.random() - 0.5) / 10 - 0.2]
             instances.members[used].update({
                 ascii,
                 scale,

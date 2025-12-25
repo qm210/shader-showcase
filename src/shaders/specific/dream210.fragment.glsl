@@ -69,6 +69,13 @@ uniform float iSpawnRandomizeHue;
 // <--- FLUID
 
 uniform sampler2D texMonaAtlas;
+const vec4 atlasLBRT_210blocksy = vec4(0.567320261437908, 0.433192686357243, 0.605882352941176, 0.447257383966245);
+const vec4 atlasLBRT_city = vec4(0.000522875816993, 0.00056258790436, 0.51843137254902, 0.431645569620253);
+const vec4 atlasLBRT_210sketchy = vec4(0.364967320261438, 0.433192686357243, 0.565098039215686, 0.6028129395218);
+const vec4 atlasLBRT_dream = vec4(0.000522875816993, 0.433192686357243, 0.358169934640523, 0.665541490857947);
+const vec4 atlasLBRT_buildings = vec4(0.527843137254902, 0.00056258790436, 1.00849673202614, 0.372292545710267);
+const vec4 atlasLBRT_rainbow = vec4(0.606013071895425, 0.381153305203938, 0.999869281045752, 0.685372714486639);
+const vec4 atlasLBRT_stars = vec4(0.000522875816993, 0.676511954992968, 0.502875816993464, 1.);
 /*
 atlas: 7650 x 7110
 
@@ -79,15 +86,6 @@ dream_sketchy: 4, 3080 - 2736, 1652
 gebäude: 4038, 4 - 3677, 2643
 rainbow: 4636, 2710 - 3013, 2163
 sterne: 4, 4810 - 3843, 2383
-
-0.567320261437908	0.433192686357243	0.038562091503268	0.014064697609001
-0.000522875816993	0.00056258790436	0.517908496732026	0.431082981715893
-0.364967320261438	0.433192686357243	0.200130718954248	0.169620253164557
-0.000522875816993	0.433192686357243	0.357647058823529	0.232348804500703
-0.527843137254902	0.00056258790436	0.480653594771242	0.371729957805907
-0.606013071895425	0.381153305203938	0.393856209150327	0.3042194092827
-0.000522875816993	0.676511954992968	0.502352941176471	0.335161744022504
-
 */
 
 // --> GLYPHS
@@ -1013,10 +1011,33 @@ vec4 textureToArea(sampler2D sampler, vec2 uv, vec4 rectBLTR) {
 vec4 textureToArea(sampler2D sampler, vec2 uv, vec4 uvLBRT, vec4 stLBRT) {
     // to map the part stLBRT in texture coordinates to rectangle uvLBRT on screen
     vec2 stTex = (uv - uvLBRT.st) / (uvLBRT.pq - uvLBRT.st);
-    stTex = mix(stLBRT.st, stLBRT.pq, stTex);
+    // stTex = mix(stLBRT.st, stLBRT.pq, stTex);
     // <-- stTex = stTex * (stLBRT.pq - stLBRT.st) + stLBRT.st;
     return maskedTexture(sampler, stTex, stLBRT);
 }
+
+vec4 monaAtlasAt(vec4 stLBRT, vec2 uv, vec4 uvLBRT) {
+    // vec2 stTex = 2. * vec2(aspRatio.x, -1.) * uvScaled;
+    // vec2 stTex = (uvScaled - uvLBRT.st) / (uvLBRT.pq - uvLBRT.st);
+    vec2 targetUV = (uv - uvLBRT.st) / (uvLBRT.pq - uvLBRT.st);
+    vec2 stTex = mix(stLBRT.st, stLBRT.pq, targetUV);
+
+    // stTex = clamp(stTex, stLBRT.xy, stLBRT.zw);
+    // stTex = clamp(stTex, stLBRT.xy, stLBRT.zw);
+    stTex.y = stLBRT.y + stLBRT.w - stTex.y;
+    vec4 color = texture(texMonaAtlas, stTex);
+    color.a *= mask(stTex, stLBRT);
+    return color;
+    // vec2 stTex = (uv - uvLBRT.st) / (uvLBRT.pq - uvLBRT.st);
+    stTex = 0.5 * stTex + 0.5;
+    stTex.y = 1. - stTex.y;
+    color = texture(texMonaAtlas, stTex);
+    color.a *= mask(stTex, stLBRT);
+    return color;
+    // return maskedTexture(sampler, stTex, stLBRT);
+    // return textureToArea(texMonaAtlas, uv, uvLBRT, stLBRT);
+}
+
 
 void finalComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
@@ -1035,7 +1056,12 @@ void finalComposition(in vec2 uv) {
 
     vec2 rainbowCenter = 0.15 * vec2(sin(3. * iTime), cos(3. * iTime));
     rainbowCenter = vec2(0., 0.35);
-    tex = textureCenteredAt(texMonaRainbow, (uv - rainbowCenter) * 0.35);
+
+    // vec4(0.000522875816993, 0.568354430379747, 0.51843137254902, 0.99943741209564);
+    vec4 targetUvLBRT = vec4(-1.33, 0., 1.33, 1.);
+    tex = monaAtlasAt(atlasLBRT_210blocksy, uv, targetUvLBRT);
+    // tex = monaAtlasAt(atlasLBRT_city, 2. * uv);
+    // tex = textureCenteredAt(texMonaRainbow, (uv - rainbowCenter) * 0.35);
     tex.a *= noiseBase.r;
     vec3 rainbowColor = cmap_dream210(-0.14 + 0.5 * (tex.r + tex.g + tex.b));
     fragColor.rgb = mix(fragColor.rgb, rainbowColor, tex.a);

@@ -1,5 +1,10 @@
 import {initBasicState, startRenderLoop} from "./common.js";
-import {createTextureFromImage, createTextureFromLoadedImage, loadImagesByVite} from "../webgl/helpers/textures.js";
+import {
+    createTextureFromImage,
+    createTextureFromImageAsync,
+    createTextureFromLoadedImage,
+    loadImagesByVite
+} from "../webgl/helpers/textures.js";
 import {resolutionScaled, updateResolutionInState} from "../webgl/helpers/resolution.js";
 import {
     createFramebufferWithTexture,
@@ -26,9 +31,7 @@ import fontMsdfJson from "../textures/dream210/Kalnia-SemiBold.msdf.json";
 // import fontMsdfJson from "../textures/dream210/Kalnia-Medium.msdf.json";
 import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
-// This secret move is presented to you by... vite :)
-const monaImages =
-    import.meta.glob('/src/textures/dream210/mona/*.png', {eager: true});
+import monaAtlas from "../textures/dream210/mona/mona_atlas.png";
 
 
 export default {
@@ -50,10 +53,9 @@ export default {
             vertex: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
         });
 
-        state.monaTextures = await loadImagesByVite(
-            monaImages,
-            img => createTextureFromLoadedImage(gl, img)
-        );
+        state.monaTextures = await createTextureFromImageAsync(gl, monaAtlas, {
+            internalFormat: gl.RGBA8
+        });
         console.log("Mona-Textures", state.monaTextures);
 
         state.passIndex = 0;
@@ -340,9 +342,9 @@ export default {
         // gl.activeTexture(gl.TEXTURE0 + unit);
         // gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["210_schnoerkel"]);
         // gl.uniform1i(state.location.texMonaSchnoergel, unit++);
-        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.MONA_2);
-        gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["regenbogen"]);
-        gl.uniform1i(state.location.texMonaRainbow, TEXTURE_UNITS.MONA_2);
+        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.MONA_ATLAS);
+        gl.bindTexture(gl.TEXTURE_2D, state.monaTextures);
+        gl.uniform1i(state.location.texMonaAtlas, TEXTURE_UNITS.MONA_ATLAS);
         // gl.activeTexture(gl.TEXTURE0 + unit);
         // gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["dream210_visual_quadratisch_transparent"]);
         // gl.uniform1i(state.location.texMonaCity, unit++);
@@ -492,20 +494,14 @@ const TEXTURE_UNITS = {
     POST_BLOOM: 6, // 3,
     POST_DITHER: 7, // 4,
     // <-- bestmöglich wiederverwendet.
+    // cloud render result
+    PREVIOUS_CLOUDS: 8,
+    NOISE_BASE: 9,
+    MONA_ATLAS: 12,
     // glyphs:
     LETTERS_DEF: 13,
     GLYPH_DEF: 14,
     GLYPH_IMAGE: 15,
-    // cloud render result
-    PREVIOUS_CLOUDS: 8,
-    NOISE_BASE: 9,
-    // ... and some mona-graphics please?
-    MONA_1: 10,
-    MONA_2: 12,
-    // MONA_3: 13,
-    // MONA_4: 14, // disabled now!
-    // GLYPH-WRITTEN TEXTURE ARRAY
-    // FONT_ARRAY: 15,
 };
 
 TEXTURE_UNITS.UNBIND_AFTER_RENDER_FLUID = [...new Set([
