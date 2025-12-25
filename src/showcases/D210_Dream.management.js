@@ -155,16 +155,20 @@ export function createGlyphInstanceManager(state, instances) {
             }
             const ascii = text.charCodeAt(t);
             const glyph = chars[ascii];
-            const scale = 1.; // 0.7 + 0.6 * Math.random();
-            const pos = [cursorX, 0]; // (Math.random() - 0.5) / 10 - 0.8
+            const scale = 0.7 + 0.6 * Math.random();
+            const pos = [cursorX, (Math.random() - 0.5) / 10]
             instances.members[used].update({
                 ascii,
                 scale,
                 pos,
-                color: [0.5, 0, 0.7, 1],
-                effect: [1, 2, 3, 4],
+                color: [0, 0, 0, 0.7],
+                glowColor: [0.5, 0, 0.7, 1],
+                glowArgs: [1.9, 0.155, 11.2, 0.33],
+                randAmp: [0., 0.2],
+                randFreq: [0., 0.5],
+                freeArgs: [1, 0, 0, 0]
             });
-            const advance = (chars[ascii].xadvance) * pixelUnit * scale;
+            const advance = (chars[ascii].xadvance) * pixelUnit / scale;
             manager.debug.advance.push(advance);
             manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);

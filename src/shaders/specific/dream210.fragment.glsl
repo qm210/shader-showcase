@@ -68,6 +68,28 @@ uniform float iSpawnHueGradient;
 uniform float iSpawnRandomizeHue;
 // <--- FLUID
 
+uniform sampler2D texMonaAtlas;
+/*
+atlas: 7650 x 7110
+
+210: 4340, 3080 - 295, 100
+city: 4, 4 - 3962, 3065
+210_bunt_sketchy: 2792, 3080 - 1531, 1206
+dream_sketchy: 4, 3080 - 2736, 1652
+gebäude: 4038, 4 - 3677, 2643
+rainbow: 4636, 2710 - 3013, 2163
+sterne: 4, 4810 - 3843, 2383
+
+0.567320261437908	0.433192686357243	0.038562091503268	0.014064697609001
+0.000522875816993	0.00056258790436	0.517908496732026	0.431082981715893
+0.364967320261438	0.433192686357243	0.200130718954248	0.169620253164557
+0.000522875816993	0.433192686357243	0.357647058823529	0.232348804500703
+0.527843137254902	0.00056258790436	0.480653594771242	0.371729957805907
+0.606013071895425	0.381153305203938	0.393856209150327	0.3042194092827
+0.000522875816993	0.676511954992968	0.502352941176471	0.335161744022504
+
+*/
+
 // --> GLYPHS
 uniform sampler2D glyphTex;
 const int N_GLYPHS = 97;
@@ -80,24 +102,19 @@ struct GlyphDef {
     float advance;
     float relAdvance;
 };
-//layout(std140) uniform Glyphs {
-//    GlyphDef glyphDef[97];
-//};
 uniform sampler2D glyphDefs;
 
 struct GlyphInstance {
-    float ascii;
+    int ascii;
     float scale;
     vec2 pos;
     vec4 color;
-    vec4 effect;
+    vec4 glowColor;
+    vec4 glowArgs;
+    vec2 randAmp;
+    vec2 randFreq;
+    vec4 freeArgs;
 };
-//layout(std140) uniform GlyphInstances {
-//    // NOTE: having this makes the FPS drop to 30 from 60.
-//    //       -> think about NR4's texture suggestion soon.
-//    GlyphInstance letterInstance[12];
-//    int lettersUsed;
-//};
 uniform int lettersUsed;
 uniform sampler2D letterInstances;
 
@@ -175,7 +192,6 @@ uniform vec4 colFree1;
 uniform vec4 colFree2;
 uniform vec4 colFree3;
 
-/*
 struct Event {
     // all floats because it makes WebGL state consistency... handlebar.
     float type;
@@ -191,7 +207,6 @@ layout(std140) uniform Events {
     Event fluidVelocityEvent;
     Event textEvent;
 };
-*/
 
 const vec4 c = vec4(1, 0, -1, 0.5);
 const float pi = 3.141593;
@@ -251,9 +266,6 @@ vec2 modulatedHash22(vec2 p, float phase) {
 }
 
 float modulatedPerlin2D(vec2 p, float phase) {
-    // Modifikation, um Phasenverschiebung in die Hashfunktion zu bekommen.
-    // Das ist nicht äußerst performant, aber reicht hier, und zeigt eine Bandbreite
-    // komplexer Effekte, die durch solche Pseudorandom-Noise-Überlagerungen kommen können.
     vec2 pi = floor(p);
     vec2 pf = p - pi;
     vec2 w = pf * pf * (3.-2.*pf);
@@ -267,6 +279,24 @@ float modulatedPerlin2D(vec2 p, float phase) {
     float xm2 = mix(f01,f11,w.x);
     float ym = mix(xm1,xm2,w.y);
     return ym;
+}
+
+vec2 perlin2D(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+
+    // Vectorized: 2 calls → 2 vec2 hashes
+    vec2 a = hash22(i + vec2(0.0, 0.0));
+    vec2 b = hash22(i + vec2(1.0, 0.0));
+    vec2 c = hash22(i + vec2(0.0, 1.0));
+    vec2 d = hash22(i + vec2(1.0, 1.0));
+
+    vec2 u = f * f * (3.0 - 2.0 * f);
+
+    return vec2(
+    mix(a.x, b.x, u.x) + (c.x - a.x)*u.y*(1.0-u.x) + (d.x - b.x)*u.x*u.y,
+    mix(a.y, b.y, u.x) + (c.y - a.y)*u.y*(1.0-u.x) + (d.y - b.y)*u.x*u.y
+    );
 }
 
 float noiseAbsoluteStackWithFurtherProcessing(vec2 p){
@@ -714,11 +744,7 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
 //    GlyphDef g = glyphDef[index];
     GlyphDef g = glyphDef(index);
     size = 4. * aspRatio * g.halfSize;
-    // vec2 bottomLeft = uv - 0.5 * size + 0.5 * g.offset;
     vec2 anchor = uv - aspRatio * g.offset;
-//        uv.x - 0.5 * size.x - aspRatio.x * g.offset.x,
-//        uv.y + 0.5 * size.y + g.offset.y
-//    );
     vec2 texCoord = g.center + clamp(uv2texSt * anchor, -g.halfSize, g.halfSize);
     vec3 msd = texture(glyphTex, texCoord).rgb;
 
@@ -730,7 +756,6 @@ float sdGlyph(in vec2 uv, int ascii, out vec2 size) {
 
 float glyph(in vec2 uv, int ascii, out vec2 dims) {
     float sdf = sdGlyph(uv, ascii, dims);
-    // return clamp(-sdf/fwidth(sdf) + 0.5, 0., 1.0);
     return clamp(-sdf/fwidth(sdf) + 0.5, 0., 1.0);
 }
 
@@ -848,11 +873,16 @@ void printYay(in vec2 uv, inout vec4 col, in vec4 textColor) {
 GlyphInstance letterInstance(int row) {
     GlyphInstance letter;
     vec4 data = texelFetch(letterInstances, ivec2(0, row), 0);
-    letter.ascii = data.x;
+    letter.ascii = int(data.x);
     letter.scale = data.y;
     letter.pos = data.zw;
     letter.color = texelFetch(letterInstances, ivec2(1, row), 0);
-    letter.effect = texelFetch(letterInstances, ivec2(2, row), 0);
+    letter.glowColor = texelFetch(letterInstances, ivec2(2, row), 0);
+    letter.glowArgs = texelFetch(letterInstances, ivec2(3, row), 0);
+    data = texelFetch(letterInstances, ivec2(4, row), 0);
+    letter.randAmp = data.xy;
+    letter.randFreq = data.zw;
+    letter.freeArgs = texelFetch(letterInstances, ivec2(5, row), 0);
     return letter;
 }
 
@@ -861,31 +891,48 @@ void printGlyphInstances(in vec2 uv, inout vec4 col, in vec4 effectColor) {
     float d;
     for (int t = 0; t < lettersUsed; t++) {
         GlyphInstance letter = letterInstance(t);
-        if (letter.color.a <= 0.) {
-            continue;
-        }
         pos = letter.scale * (uv - letter.pos);
-        d = glyph(pos, int(letter.ascii), _unused);
+        d = glyph(pos, letter.ascii, _unused);
         d *= d * letter.color.a;
         col.rgb = mix(col.rgb, effectColor.xyz, d);
         // TODO: think about possibilities for effects -> here just "overwrite with other color"
+
+        #ifdef VISUALIZE_GLYPH_ANCHORS
+            d = length(vec2(pos.x, pos.y)) - 0.01;
+            d = smoothstep(0.01, 0., d);
+            col.rgb = mix(col.rgb, c.yxy, d);
+        #endif
     }
 }
 
 void printGlyphInstances(in vec2 uv, inout vec4 col) {
+    vec4 noiseBase = texture(texNoiseBase, st);
+    vec4 baseColor;
     vec2 pos, _unused;
-    float d;
+    float d, sd;
+    GlyphInstance letter;
     for (int t = 0; t < lettersUsed; t++) {
-        GlyphInstance letter = letterInstance(t);
-        pos = letter.scale * (uv - letter.pos);
-        d = glyph(pos, int(letter.ascii), _unused);
-        d *= d * letter.color.a;
-        col.rgb = mix(col.rgb, letter.color.xyz, d);
+        letter = letterInstance(t);
+        pos = uv - letter.pos;
+        pos += letter.randAmp * perlin2D(pos + letter.randFreq * iTime);
+        // d = glyph(pos, letter.ascii, _unused);
+        sd = sdGlyph(letter.scale * pos, letter.ascii, _unused);
+        d = clamp(-sd/fwidth(sd) + 0.5, 0., 1.0);
+        // d = abs(d) - 0.5;
+        baseColor = mix(letter.color, noiseBase, iFree0);
+        d *= d * baseColor.a;
+        col.rgb = mix(col.rgb, baseColor.xyz, d);
 
-        // visualize bottom points
-        d = length(vec2(pos.x, pos.y)) - 0.01;
-        d = smoothstep(0.01, 0., d);
-        col.rgb = mix(col.rgb, c.yxy, d);
+        sd += letter.glowArgs.y;
+        vec4 glow = letter.glowColor * letter.glowArgs.x
+            * exp(-10. * letter.glowArgs.z * sd * sd);
+        /*
+        float gradient = fwidth(d);
+        float mask = smoothstep(0., 0.33, gradient);
+        glow *= mask * smoothstep(iFree5, iFree4, abs(d));
+        */
+        glow.rgb = pow(glow.rgb, vec3(letter.glowArgs.w));
+        col += glow;
     }
 }
 
@@ -1107,36 +1154,35 @@ void main() {
         case _INIT_FLUID_COLOR: {
             int eventType = -1; // int(fluidColorEvent.type);
             if (eventType == EVENT_CLEAR_FLUID) {
-                // fragColor = fluidColorEvent.coords;
+                fragColor = fluidColorEvent.coords;
                 return;
             }
             fluidColor = texture(texColor, st);
             vec4 spawnColor = vec4(0.); // TODO
-            //if (eventType == EVENT_DRAW_TEXT) {
-                // fragColor = c.yyyy;
-//                printYay(uv, spawnColor, someYayColor);
- //           }
+            if (eventType == EVENT_DRAW_TEXT) {
+                fragColor = c.yyyy;
+                printGlyphInstances(uv, fragColor);
+                // print(uv, spawnColor, someYayColor);
+            }
             // "Over" Mixing with RGBA each:
             fragColor.rgb = mix(fluidColor.rgb, spawnColor.rgb, spawnColor.a);
             fragColor.a = (fluidColor.a, 1., spawnColor.a);
             return;
         }
         case _INIT_VELOCITY: {
-            int eventType = -1; // int(fluidVelocityEvent.type);
+            int eventType = int(fluidVelocityEvent.type);
             if (eventType == EVENT_CLEAR_FLUID) {
-                // fragColor.xy = fluidVelocityEvent.coords.xy;
+                fragColor.xy = fluidVelocityEvent.coords.xy;
                 return;
             }
             fluidVelocity = texture(texVelocity, st).xy;
             vec2 deltaVelocity = c.yy;
             if (eventType == EVENT_DRAIN) {
-                /*
                 fluidColor = texture(texColor, st);
                 float decay = exp(-(iTime - fluidVelocityEvent.timeStart) * fluidVelocityEvent.args[0]);
                 deltaVelocity = fluidVelocityEvent.coords.xy
                     * max3(fluidColor.rgb) * fluidColor.a
                     * decay;
-                */
             }
             fragColor.xy = fluidVelocity.xy + deltaVelocity;
             return;

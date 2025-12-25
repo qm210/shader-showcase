@@ -20,10 +20,10 @@ import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
 // import fontMsdfPng from "../textures/dream210/SpicySale.msdf.png";
 // import fontMsdfJson from "../textures/dream210/SpicySale.msdf.json";
-// import fontMsdfPng from "../textures/dream210/Kalnia-SemiBold.msdf.png";
-// import fontMsdfJson from "../textures/dream210/Kalnia-SemiBold.msdf.json";
-import fontMsdfPng from "../textures/dream210/Kalnia-Medium.msdf.png";
-import fontMsdfJson from "../textures/dream210/Kalnia-Medium.msdf.json";
+import fontMsdfPng from "../textures/dream210/Kalnia-SemiBold.msdf.png";
+import fontMsdfJson from "../textures/dream210/Kalnia-SemiBold.msdf.json";
+// import fontMsdfPng from "../textures/dream210/Kalnia-Medium.msdf.png";
+// import fontMsdfJson from "../textures/dream210/Kalnia-Medium.msdf.json";
 import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
 // This secret move is presented to you by... vite :)
@@ -114,32 +114,17 @@ export default {
         state.glyphs = {
             msdf,
             detailed: compactifyGlyphJson(fontMsdfJson),
-            // ...createUboForArraylikeStruct(gl, state.program, {
-            //     blockName: "GlyphInstances",
-            //     bindingPoint: 2,
-            //     memoryUsage: gl.DYNAMIC_DRAW,
-            //     memberFields: {
-            //         ascii: [0, 1],
-            //         scale: [1, 1],
-            //         pos: [2, 2],
-            //         color: [4, 4],
-            //         effect: [8, 4],
-            //     },
-            //     dataLength: 12,
-            //     metadata: {
-            //         fields: {
-            //             lettersUsed: [0, 1],
-            //         },
-            //         size: 4,
-            //     },
-            // }),
             instances: createDataTextureForStructArray(gl, {
                 structFields: {
                     ascii: [0, 1],
                     scale: [1, 1],
                     pos: [2, 2],
                     color: [4, 4],
-                    effect: [8, 4],
+                    glowColor: [8, 4],
+                    glowArgs: [12, 4],
+                    randAmp: [16, 2],
+                    randFreq: [18, 2],
+                    freeArgs: [20, 4],
                 },
                 memberCount: 32,
             }),
@@ -161,7 +146,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
-        state.glyphs.manager.replacePhrase("The quick brown");
+        state.glyphs.manager.replacePhrase("Hello Dream210");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
