@@ -1038,6 +1038,11 @@ vec4 monaAtlasAt(vec4 stLBRT, vec2 uv, vec4 uvLBRT) {
     // return textureToArea(texMonaAtlas, uv, uvLBRT, stLBRT);
 }
 
+vec4 monaAtlasCenteredAt(vec4 stLBRT, vec2 uv) {
+    float stAspRatio = (stLBRT.z - stLBRT.x) / (stLBRT.w - stLBRT.y);
+    vec4 uvLBRT = uv.xyxy + 0.5 * vec4(-stAspRatio, -1, stAspRatio, 1);
+    return monaAtlasAt(stLBRT, uv, uvLBRT);
+}
 
 void finalComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
@@ -1059,7 +1064,7 @@ void finalComposition(in vec2 uv) {
 
     // vec4(0.000522875816993, 0.568354430379747, 0.51843137254902, 0.99943741209564);
     vec4 targetUvLBRT = vec4(-1.33, 0., 1.33, 1.);
-    tex = monaAtlasAt(atlasLBRT_210blocksy, uv, targetUvLBRT);
+    tex = monaAtlasCenteredAt(atlasLBRT_210blocksy, uv);
     // tex = monaAtlasAt(atlasLBRT_city, 2. * uv);
     // tex = textureCenteredAt(texMonaRainbow, (uv - rainbowCenter) * 0.35);
     tex.a *= noiseBase.r;
