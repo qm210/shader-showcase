@@ -47,16 +47,10 @@ export default {
 
         initAudioState(state, track);
 
-        console.log("Texture Units", {
-            total: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
-            fragment: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),
-            vertex: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
-        });
-
         state.monaTextures = await createTextureFromImageAsync(gl, monaAtlas, {
             internalFormat: gl.RGBA8
         });
-        console.log("Mona-Textures", state.monaTextures);
+        console.log(state.monaTextures);
 
         state.passIndex = 0;
 
@@ -148,7 +142,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
-        state.glyphs.manager.replacePhrase("Hello Dream210");
+        state.glyphs.manager.replacePhrase("Hello Dream...");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -337,20 +331,7 @@ export default {
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        // ALWAYS BOUND FOR NOW
-        // let unit = TEXTURE_UNITS.MONA_1;
-        // gl.activeTexture(gl.TEXTURE0 + unit);
-        // gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["210_schnoerkel"]);
-        // gl.uniform1i(state.location.texMonaSchnoergel, unit++);
-        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.MONA_ATLAS);
-        gl.bindTexture(gl.TEXTURE_2D, state.monaTextures);
-        gl.uniform1i(state.location.texMonaAtlas, TEXTURE_UNITS.MONA_ATLAS);
-        // gl.activeTexture(gl.TEXTURE0 + unit);
-        // gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["dream210_visual_quadratisch_transparent"]);
-        // gl.uniform1i(state.location.texMonaCity, unit++);
-        // gl.activeTexture(gl.TEXTURE0 + unit);
-        // gl.bindTexture(gl.TEXTURE_2D, state.monaTextures["schnoerkelsterne"]);
-        // gl.uniform1i(state.location.texMonaStars, unit++);
+        // Textures that are always bound (for now):
 
         return state;
     },
@@ -531,6 +512,17 @@ function render(gl, state) {
     gl.uniform1i(state.location.iFrame, state.iFrame);
     gl.uniform1i(state.location.debugOption, state.debug.option);
 
+    // Never-Changing-Textures
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.MONA_ATLAS);
+    gl.bindTexture(gl.TEXTURE_2D, state.monaTextures);
+    gl.uniform1i(state.location.texMonaAtlas, TEXTURE_UNITS.MONA_ATLAS);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_IMAGE);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.image);
+    gl.uniform1i(state.location.glyphTex, TEXTURE_UNITS.GLYPH_IMAGE);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_DEF);
+    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.data.tex);
+    gl.uniform1i(state.location.glyphDefs, TEXTURE_UNITS.GLYPH_DEF);
+
     state.events.manager.manage(state);
     state.query.profiler.record("Events Manager managed.");
 
@@ -583,14 +575,6 @@ function render(gl, state) {
     gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
 
     // SOURCE: FONTS -- TEXTURE8 für MSDF-Png
-
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_IMAGE);
-    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.image);
-    gl.uniform1i(state.location.glyphTex, TEXTURE_UNITS.GLYPH_IMAGE);
-
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.GLYPH_DEF);
-    gl.bindTexture(gl.TEXTURE_2D, state.glyphs.msdf.data.tex);
-    gl.uniform1i(state.location.glyphDefs, TEXTURE_UNITS.GLYPH_DEF);
 
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.LETTERS_DEF);
     gl.bindTexture(gl.TEXTURE_2D, state.glyphs.instances.tex);

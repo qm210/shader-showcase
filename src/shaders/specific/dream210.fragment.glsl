@@ -1038,6 +1038,12 @@ vec4 monaAtlasAt(vec4 stLBRT, vec2 uv, vec4 uvLBRT) {
     // return textureToArea(texMonaAtlas, uv, uvLBRT, stLBRT);
 }
 
+vec4 monaAtlasCenteredAt(vec4 stLBRT, vec2 uv) {
+    float stAspRatio = (stLBRT.z - stLBRT.x) / (stLBRT.w - stLBRT.y);
+    vec4 uvLBRT = 0.5 * vec4(-stAspRatio, -1, stAspRatio, 1);
+    return monaAtlasAt(stLBRT, uv, uvLBRT);
+}
+
 
 void finalComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
@@ -1057,14 +1063,16 @@ void finalComposition(in vec2 uv) {
     vec2 rainbowCenter = 0.15 * vec2(sin(3. * iTime), cos(3. * iTime));
     rainbowCenter = vec2(0., 0.35);
 
-    // vec4(0.000522875816993, 0.568354430379747, 0.51843137254902, 0.99943741209564);
-    vec4 targetUvLBRT = vec4(-1.33, 0., 1.33, 1.);
-    tex = monaAtlasAt(atlasLBRT_210blocksy, uv, targetUvLBRT);
-    // tex = monaAtlasAt(atlasLBRT_city, 2. * uv);
-    // tex = textureCenteredAt(texMonaRainbow, (uv - rainbowCenter) * 0.35);
-    tex.a *= noiseBase.r;
-    vec3 rainbowColor = cmap_dream210(-0.14 + 0.5 * (tex.r + tex.g + tex.b));
-    fragColor.rgb = mix(fragColor.rgb, rainbowColor, tex.a);
+    tex = monaAtlasCenteredAt(atlasLBRT_210sketchy, uv);
+    tex.rgb *= noiseBase.r;
+    fragColor.rgb = mix(fragColor.rgb, tex.rgb, tex.a);
+
+    tex = monaAtlasCenteredAt(atlasLBRT_rainbow, 0.29 * (uv - vec2(-0.1, 0.2)));
+    fragColor.rgb = mix(fragColor.rgb, tex.rgb, tex.a);
+
+    // tex.a *= noiseBase.r;
+//    vec3 rainbowColor = cmap_dream210(-0.14 + 0.5 * (tex.r + tex.g + tex.b));
+//    fragColor.rgb = mix(fragColor.rgb, rainbowColor, tex.a);
     /*
     float pos210 = floor(mod(2. * iTime, 3.)) * 0.333;
     vec4 tex2 = textureToArea(texMonaSchnoergel, uv, vec4(.7, -.5, 1.7, .5), vec4(pos210, 0., pos210 + 0.333, 1.));

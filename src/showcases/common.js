@@ -101,3 +101,12 @@ export async function readPixelsAndEvaluate(gl, resolution, resultBuffer, target
     );
 }
 
+export function getMaxTextureUnits(gl) {
+    const maxUnits = {
+        total: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
+        fragment: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),
+        vertex: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
+    };
+    console.log("Max Texture Units", maxUnits);
+    return maxUnits;
+}
