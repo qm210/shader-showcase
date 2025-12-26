@@ -1,3 +1,4 @@
+import {label} from "happy-dom/lib/PropertySymbol.js";
 
 export function loadExtensions(gl, extensions) {
     for (const extension of extensions) {
@@ -25,9 +26,9 @@ function enrichWithTimerHelpers(gl, ext) {
     };
     gl.timer.createQueryProfiler = ({title, enabled}) => {
         const records = [];
-        if (!enabled) {
+        if (enabled === false) {
             return {
-                record: label => {},
+                record: (label) => {},
                 finalize: async () => null,
             }
         }
@@ -66,6 +67,42 @@ function enrichWithTimerHelpers(gl, ext) {
             }
         };
     };
+    // gl.timer.createQueryProfiler = async ({title, enabled}) => {
+    //     const queries = [];
+    //     if (enabled === false) {
+    //         return {
+    //             record: (label) => {},
+    //             finalize: async () => [],
+    //         }
+    //     }
+    //     return {
+    //         record: (label) => {
+    //             if (queries.length > 0) {
+    //                 gl.endQuery(gl.timer.ELAPSED);
+    //             }
+    //             const query = gl.createQuery();
+    //             gl.beginQuery(gl.timer.ELAPSED, query);
+    //             queries.push({query, label});
+    //         },
+    //         finalize: async () => {
+    //             gl.endQuery(gl.timer.ELAPSED);
+    //             const times = await Promise.all(
+    //                 queries.map(({query}) =>
+    //                     evaluateQuery(query, gl)
+    //                 )
+    //             ).then(nanos =>
+    //                 nanos.map((ns, index) => ({
+    //                     label: queries[index].label,
+    //                     tookMs: ns / 1e6,
+    //                 }))
+    //             );
+    //
+    //             console.group("[MULTI-QUERY]", title);
+    //             times.forEach(t => console.log(t.label, ":", t.tookMs, "ms"));
+    //             console.groupEnd();
+    //         }
+    //     };
+    // };
 }
 
 async function evaluateQuery(query, gl) {
