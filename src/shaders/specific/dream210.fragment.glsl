@@ -971,15 +971,6 @@ float calcSunrays() {
     return value;
 }
 
-// ONLY A RELIC FROM THE FLUID PLAYGROUND!
-void postprocessing(inout vec3 col, in vec2 uv) {
-    // col = cmap_dream210(clamp(max3(col), 0., 1.));
-    col = pow(col, vec3(1./iGamma));
-
-    float vignetteShade = dot(st - 0.5, st - 0.5) * iVignetteScale;
-    col *= smoothstep(iVignetteInner, iVignetteOuter, vignetteShade);
-}
-
 /////
 
 float mask(vec2 st, vec4 limits) {
@@ -1048,46 +1039,23 @@ vec4 monaAtlasCenteredAt(vec4 stLBRT, vec2 uv) {
 void finalComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
     vec4 noiseBase = texture(texNoiseBase, st);
-
-    fragColor.rgb = accumulus.rgb * (1. + iNoiseLevel * noiseBase.rgb);
-    fragColor.rgb = clamp(fragColor.rgb, 0., 1.);
-    // fragColor.rgb = mix(fragColor.rgb, noiseBase.rgb, noiseBase.a + 0.2);
-
     vec4 tex;
-    // \o/
-    // vec4 tex = texture(texTexts, vec3(st, 1));
-    // fragColor.rgb = mix(fragColor.rgb, c.xyw * tex.rgb, tex.a);
-
     vec3 col = fragColor.rgb;
 
-    vec2 rainbowCenter = 0.15 * vec2(sin(3. * iTime), cos(3. * iTime));
-    rainbowCenter = vec2(0., 0.35);
+    col = accumulus.rgb * (1. + iNoiseLevel * noiseBase.rgb);
+    col = clamp(col, 0., 1.);
 
-    tex = monaAtlasCenteredAt(atlasLBRT_210sketchy, uv);
-    tex.rgb *= noiseBase.r;
-    fragColor.rgb = mix(fragColor.rgb, tex.rgb, tex.a);
+    fluidColor = texture(texColor, st);
+    col = mix(col, fluidColor.rgb, fluidColor.a);
+
+//    tex = monaAtlasCenteredAt(atlasLBRT_210sketchy, uv);
+//    tex.rgb *= noiseBase.r;
+//    col = mix(col, tex.rgb, tex.a);
 
     tex = monaAtlasCenteredAt(atlasLBRT_rainbow, 0.29 * (uv - vec2(-0.1, 0.2)));
-    fragColor.rgb = mix(fragColor.rgb, tex.rgb, tex.a);
+    col = mix(col, tex.rgb, tex.a);
 
-    // tex.a *= noiseBase.r;
-//    vec3 rainbowColor = cmap_dream210(-0.14 + 0.5 * (tex.r + tex.g + tex.b));
-//    fragColor.rgb = mix(fragColor.rgb, rainbowColor, tex.a);
-    /*
-    float pos210 = floor(mod(2. * iTime, 3.)) * 0.333;
-    vec4 tex2 = textureToArea(texMonaSchnoergel, uv, vec4(.7, -.5, 1.7, .5), vec4(pos210, 0., pos210 + 0.333, 1.));
-    tex.a *= 1. - tex2.a;
-    fragColor.rgb *= 1. - 0.3 * tex2.a;
-    fragColor.rgb -= mix(c.yyy, col.brg, tex2.a);
-    */
-
-    /*
-    // QM SAYS HI
-    tex = texture(texTexts, vec3(st, 0));
-    fragColor.rgb = mix(fragColor.rgb, tex.rgb, tex.a);
-    */
-
-    // fragColor.rgb += tex.a * tex.rgb;
+    fragColor.rgb = col;
 
     if (debugOption == 1) {
         // printYay(uv, fragColor, c.yyyx);
@@ -1137,15 +1105,15 @@ void finalComposition(in vec2 uv) {
 #define _POST_SUNRAYS_BLUR 32
 #define _RENDER_FLUID 40
 #define _RENDER_CLOUDS 60
-#define _INIT_TEXT0 80
-#define _INIT_TEXT1 81
-#define _INIT_TEXT2 82
+//#define _INIT_TEXT0 80
+//#define _INIT_TEXT1 81
+//#define _INIT_TEXT2 82
 #define _INIT_GLYPH_INSTANCES 88
 #define _RENDER_NOISE_BASE 90
 #define _RENDER_FINALLY_TO_SCREEN 100
 
-#define ENABLE_SUNRAYS 0
-#define ENABLE_BLOOM 0
+#define ENABLE_SUNRAYS 1
+#define ENABLE_BLOOM 1
 
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
@@ -1172,21 +1140,21 @@ void main() {
             fragColor.a = max3(fragColor.rgb);
             return;
 
-        case _INIT_TEXT0:
-            fragColor = c.yyyy;
-            printQmSaysHi(uv, fragColor);
-            return;
-        case _INIT_TEXT1:
-            fragColor = c.yyyy;
-            printYay(uv, fragColor, someYayColor);
-            return;
+//        case _INIT_TEXT0:
+//            fragColor = c.yyyy;
+//            printQmSaysHi(uv, fragColor);
+//            return;
+//        case _INIT_TEXT1:
+//            fragColor = c.yyyy;
+//            printYay(uv, fragColor, someYayColor);
+//            return;
         case _INIT_GLYPH_INSTANCES:
             fragColor = c.yyyy;
             printGlyphInstances(uv, fragColor);
             return;
 
         case _INIT_FLUID_COLOR: {
-            int eventType = -1; // int(fluidColorEvent.type);
+            int eventType = int(fluidColorEvent.type);
             if (eventType == EVENT_CLEAR_FLUID) {
                 fragColor = fluidColorEvent.coords;
                 return;
@@ -1195,7 +1163,7 @@ void main() {
             vec4 spawnColor = vec4(0.); // TODO
             if (eventType == EVENT_DRAW_TEXT) {
                 fragColor = c.yyyy;
-                printGlyphInstances(uv, fragColor);
+                printGlyphInstances(uv, spawnColor);
                 // print(uv, spawnColor, someYayColor);
             }
             // "Over" Mixing with RGBA each:
@@ -1371,10 +1339,8 @@ void main() {
             if (debugOption == 1) {
                 // DEBUGGING: BLEND ON BLACK
                 fragColor.rgb = fragColor.rgb + (1. - fragColor.a) * c.yyy;
-            } else {
-                postprocessing(fragColor.rgb, uv);
+                fragColor.a = 1.;
             }
-            fragColor.a = 1.;
             return;
 
         case _RENDER_FINALLY_TO_SCREEN:
