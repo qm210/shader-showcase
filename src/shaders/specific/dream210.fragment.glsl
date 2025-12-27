@@ -52,6 +52,12 @@ uniform float iSunraysDecay;
 uniform float iSunraysExposure;
 uniform float iSunraysOnMaster;
 uniform float iGamma;
+uniform float iToneMapA;
+uniform float iToneMapB;
+uniform float iToneMapC;
+uniform float iToneMapD;
+uniform float iToneMapE;
+uniform float iToneMapMix;
 uniform float iVignetteInner;
 uniform float iVignetteOuter;
 uniform float iVignetteScale;
@@ -199,7 +205,7 @@ layout(std140) uniform Events {
     Event genericEvent;
     Event fluidColorEvent;
     Event fluidVelocityEvent;
-    Event textEvent;
+    Event fluidOtherEvent;
 };
 
 // global, because... probably some reason.
@@ -296,8 +302,8 @@ vec2 perlin2D(vec2 p) {
     vec2 u = f * f * (3.0 - 2.0 * f);
 
     return vec2(
-    mix(a.x, b.x, u.x) + (c.x - a.x)*u.y*(1.0-u.x) + (d.x - b.x)*u.x*u.y,
-    mix(a.y, b.y, u.x) + (c.y - a.y)*u.y*(1.0-u.x) + (d.y - b.y)*u.x*u.y
+        mix(a.x, b.x, u.x) + (c.x - a.x)*u.y*(1.0-u.x) + (d.x - b.x)*u.x*u.y,
+        mix(a.y, b.y, u.x) + (c.y - a.y)*u.y*(1.0-u.x) + (d.y - b.y)*u.x*u.y
     );
 }
 
@@ -634,7 +640,7 @@ vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
         vec4 tex = c.yyyy;
         if (planeDensity > 0.) {
             // tex = textureCenteredAt(texMonaSchnoergel, uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4));
-            tex = monaAtlasCenteredAt(atlasLBRT_210sketchy,
+            tex = monaAtlasCenteredAt(atlasLBRT_210blocksy,
                 // uv * 0.9 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4)
                 pd.xy / (d * 0.5 + 0.1) / iFree7 + vec2(iFree8, iFree9)
             );
@@ -821,10 +827,12 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
     GlyphInstance letter;
     vec4 sumColor = c.yyyy;
     vec4 sumGlow = c.yyyy;
+    vec2 randOffset;
     for (int t = 0; t < lettersUsed; t++) {
         letter = letterInstance(t);
         pos = uv - letter.pos;
-        pos += letter.randAmp * perlin2D(pos + letter.randFreq * iTime);
+        randOffset = perlin2D(pos + letter.randFreq * iTime);
+        pos += letter.randAmp * (2. * randOffset - 1.);
         // d = glyph(pos, letter.ascii, _unused);
         sd = sdGlyph(letter.scale * pos, letter.ascii, _unused);
         d = clamp(-sd/fwidth(sd) + 0.5, 0., 1.0);
@@ -960,14 +968,25 @@ vec3 overlay(vec3 src, vec3 dst) {
     return mix(2.0 * src * dst, 1.0 - 2.0 * (1.0 - src) * (1.0 - dst), step(0.5, dst));
 }
 
+vec3 toneMap(vec3 col) {
+    // const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    float a = iToneMapA;
+    float b = iToneMapB;
+    float c = iToneMapC;
+    float d = iToneMapD;
+    float e = iToneMapE;
+    vec3 mapped = clamp((col*(a*col + b)) / (col*(c*col + d) + e), 0.0, 1.0);
+    return mix(col, mapped, iToneMapMix);
+}
+
 void finalComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
     vec4 noiseBase = texture(texNoiseBase, st);
     vec4 tex;
     vec3 col = fragColor.rgb;
 
-    col = sunnySkyBackground();
-    col += accumulus.rgb * (1. + iNoiseLevel * noiseBase.rgb);
+    col = sunnySkyBackground() * (1. + iNoiseLevel * noiseBase.rgb);
+    col = mix(col, accumulus.rgb, accumulus.a);
 
     tex = monaAtlasCenteredAt(atlasLBRT_buildings, 0.85 * uv - 0.25 * c.xy);
     tex.a *= 1. - pow(accumulus.a, 0.1);
@@ -991,8 +1010,8 @@ void finalComposition(in vec2 uv) {
         printGlyphInstances(uv, fragColor); // , noiseBase);
     }
 
-    // col = noiseBase.rgb;
     col = fragColor.rgb;
+    col = toneMap(col);
     col = pow(col, vec3(1. / iGamma));
 
     float vignetteShade = dot(st - 0.5, st - 0.5) * iVignetteScale;
@@ -1044,6 +1063,7 @@ void finalComposition(in vec2 uv) {
 #define ENABLE_BLOOM 1
 #define ENABLE_BLOOM_ON_MASTER 1
 
+#define EVENT_ADD_TEXTURE 1
 #define EVENT_STIR_FLUID 2
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
@@ -1097,6 +1117,7 @@ void main() {
 
     int colorEvent = int(fluidColorEvent.type);
     int velocityEvent = int(fluidVelocityEvent.type);
+    int otherEvent = int(fluidOtherEvent.type);
 
     switch (passIndex) {
         case _RENDER_CLOUDS:
@@ -1134,6 +1155,8 @@ void main() {
             if (colorEvent == EVENT_DRAW_TEXT) {
                 fragColor = c.yyyy;
                 printGlyphInstances(uv, spawnColor);
+            } else if (colorEvent == EVENT_ADD_TEXTURE) {
+                spawnColor = monaAtlasCenteredAt(atlasLBRT_210sketchy, 0.5 * uv);
             }
             // "Over" Mixing with RGBA each:
             fragColor.rgb = mix(fluidColor.rgb, spawnColor.rgb, spawnColor.a);
@@ -1160,6 +1183,8 @@ void main() {
             } else if (velocityEvent == EVENT_STIR_FLUID) {
                 deltaVelocity += fluidVelocityEvent.args[3]
                     * spiral(uv, fluidVelocityEvent.args[0], fluidVelocityEvent.args[1]);
+            } else if (colorEvent == EVENT_ADD_TEXTURE) {
+                deltaVelocity = monaAtlasCenteredAt(atlasLBRT_210sketchy, 0.5 * uv).rg;
             }
             fragColor.xy = fluidVelocity.xy + deltaVelocity;
             return;
@@ -1170,6 +1195,10 @@ void main() {
                 return;
             } else if (velocityEvent == EVENT_STIR_FLUID) {
                 fragColor.x = spiral(uv, fluidVelocityEvent.args[0], fluidVelocityEvent.args[1]);
+                return;
+            }
+            if (otherEvent == EVENT_ADD_TEXTURE) {
+                fragColor.x = monaAtlasCenteredAt(atlasLBRT_210sketchy, 0.5 * uv).a;
                 return;
             }
             fragColor.x = iPressure + texture(texPressure, st).x;

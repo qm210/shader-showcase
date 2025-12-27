@@ -164,7 +164,7 @@ export default {
                 genericEvent: 0,
                 fluidColorEvent: 1,
                 fluidVelocityEvent: 2,
-                textEvent: 3,
+                fluidOtherEvent: 3,
             },
             memberFields: {
                 type: [0, 1],
@@ -179,7 +179,7 @@ export default {
         // must, of course, be understood by the Shader.
         state.events.types = Object.freeze({
             IDLE: 0,
-            SHOW_TEXTURE: 1,
+            ADD_TEXTURE: 1,
             STIR_FLUID: 2,
             DISSIPATE: 3,
             CLEAR_FLUID: 4,
@@ -385,6 +385,8 @@ export default {
                                 color: [0.7, 0, 0.9, 0.03],
                                 glowColor: [0.6, 0, 0.3, 1.3],
                                 glowArgs: [10, 0.005, 10, 10],
+                                randAmp: [0.1, 0.21],
+                                randFreq: [0.1, 0.21],
                                 freeArgs: [1, 0, 0, 0],
                             },
                             launch: {
@@ -434,8 +436,8 @@ export default {
                 onClick: () => {
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,
-                        data: { type: state.events.types.CLEAR_FLUID },
-                        expire: { in: 0.5 },
+                        data: {type: state.events.types.CLEAR_FLUID},
+                        expire: {in: 0.5},
                     });
                 },
                 onRightClick: () => {
@@ -448,6 +450,25 @@ export default {
                         },
                     });
                     console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
+                },
+            }, {
+                label: () =>
+                    "210 to Fluid",
+                onClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidOtherEvent,
+                        data: { type: state.events.types.ADD_TEXTURE, },
+                    });
+                    state.events.manager.launch({
+                        member: state.events.members.fluidColorEvent,
+                        data: { type: state.events.types.ADD_TEXTURE, },
+                    });
+                },
+                onRightClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: { type: state.events.types.ADD_TEXTURE, },
+                    });
                 },
             }, {
                 label: () =>
@@ -589,6 +610,12 @@ function render(gl, state) {
     gl.uniform1f(state.location.iVignetteOuter, state.iVignetteOuter);
     gl.uniform1f(state.location.iVignetteScale, state.iVignetteScale);
     gl.uniform1f(state.location.iGamma, state.iGamma);
+    gl.uniform1f(state.location.iToneMapA, state.iToneMapA);
+    gl.uniform1f(state.location.iToneMapB, state.iToneMapB);
+    gl.uniform1f(state.location.iToneMapC, state.iToneMapC);
+    gl.uniform1f(state.location.iToneMapD, state.iToneMapD);
+    gl.uniform1f(state.location.iToneMapE, state.iToneMapE);
+    gl.uniform1f(state.location.iToneMapMix, state.iToneMapMix);
 
     gl.uniform1f(state.location.iFree0, state.iFree0);
     gl.uniform1f(state.location.iFree1, state.iFree1);
@@ -1580,6 +1607,42 @@ function createUniforms() {
             defaultValue: 2.2,
             min: 0.01,
             max: 10.,
+        }, {
+            type: "float",
+            name: "iToneMapA",
+            defaultValue: 2.51,
+            min: 0.0,
+            max: 5.,
+        }, {
+            type: "float",
+            name: "iToneMapB",
+            defaultValue: 0.03,
+            min: 0.,
+            max: 2,
+        }, {
+            type: "float",
+            name: "iToneMapC",
+            defaultValue: 2.43,
+            min: 0.00,
+            max: 5,
+        }, {
+            type: "float",
+            name: "iToneMapD",
+            defaultValue: 0.59,
+            min: 0.,
+            max: 2.,
+        }, {
+            type: "float",
+            name: "iToneMapE",
+            defaultValue: 0.14,
+            min: 0.00,
+            max: 2,
+        }, {
+            type: "float",
+            name: "iToneMapMix",
+            defaultValue: 0,
+            min: -1,
+            max: 2,
         }, {
             type: "float",
             name: "iVignetteInner",
