@@ -85,11 +85,7 @@ export default {
         state.framebuffer = {
             clouds: createPingPongFramebuffersWithTexture(gl, state.opt.floatImage),
             noiseBase: createFramebufferWithTexture(gl, state.opt.image),
-            // Texts: Handling unclear. The Framebuffer with Array is meant to store
-            //        the results of as many rendering passes as required, but maybe
-            //        we go with the GlyphInstances anyway.
-            // DEACTIVATED FOR PERFORMANCE
-            // texts: createFramebufferWithTextureArray(gl, 2, state.opt.image),
+            master: createFramebufferWithTexture(gl, state.opt.image),
         };
 
         const glyphDef = createGlyphDef(fontMsdfJson);
@@ -451,7 +447,8 @@ const PASS = {
     INIT_TEXT3: 83,
 
     RENDER_NOISE_BASE: 90,
-    RENDER_FINALLY_TO_SCREEN: 100
+    MASTER_RENDERING: 99,
+    RENDER_MASTER_TO_SCREEN: 100
 };
 
 // scheiß-nummerierung -> aber egal -> frag nicht
@@ -710,11 +707,12 @@ function render(gl, state) {
     renderFluid(gl, state);
     state.query.profiler.record("renderFluid() done");
 
-    // !! Finale Komposition auf Back Buffer !!
+    // !! Gesamtkomposition !!
 
-    gl.uniform1i(state.location.passIndex, PASS.RENDER_FINALLY_TO_SCREEN);
+    gl.uniform1i(state.location.passIndex, PASS.MASTER_RENDERING);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    write = state.framebuffer.master;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.noiseBase.texture);
     gl.uniform1i(state.location.texNoiseBase, TEXTURE_UNITS.NOISE_BASE);
@@ -725,6 +723,16 @@ function render(gl, state) {
 
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
     gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Master -> Back Buffer
+
+    gl.uniform1i(state.location.passIndex, PASS.RENDER_MASTER_TO_SCREEN);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.COLOR_DENSITY);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.master.texture);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     state.query.profiler.record("every rendering done");
 

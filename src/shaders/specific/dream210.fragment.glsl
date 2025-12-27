@@ -22,13 +22,6 @@ uniform int debugOption;
 // now all the fun
 uniform sampler2D texAccumulusClouds;
 uniform sampler2D texNoiseBase;
-uniform sampler2D texText0;
-uniform sampler2D texText1;
-// uniform mediump sampler2DArray texTexts;
-uniform sampler2D texMonaSchnoergel;
-uniform sampler2D texMonaCity;
-uniform sampler2D texMonaRainbow;
-uniform sampler2D texMonaStars;
 // FLUID SIMULATION --> also, stimulation
 uniform float deltaTime;
 uniform sampler2D texColor;
@@ -608,7 +601,9 @@ float sdPlane( vec3 p, vec3 n, float h )
     // n must be normalized
     return dot(p,n) + h;
 }
+
 vec4 textureCenteredAt(sampler2D sampler, vec2 coord);
+vec4 monaAtlasCenteredAt(vec4 stLBRT, vec2 uv);
 
 vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
     float depth = 0.0;
@@ -634,7 +629,10 @@ vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
         float logoDensity = smoothstep(0.1 * iFree2, 0., d) * (colFree0.a - 1.);
         vec4 tex = c.yyyy;
         if (logoDensity > 0.) {
-            tex = textureCenteredAt(texMonaSchnoergel, uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4));
+            // tex = textureCenteredAt(texMonaSchnoergel, uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4));
+            tex = monaAtlasCenteredAt(atlasLBRT_210blocksy,
+                uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4)
+            );
             logoDensity *= tex.a;
             // sphereDensity *= (1. - 0.9 * logoDensity);
             density = max(density, logoDensity);
@@ -1117,7 +1115,8 @@ void finalComposition(in vec2 uv) {
 //#define _INIT_TEXT2 82
 #define _INIT_GLYPH_INSTANCES 88
 #define _RENDER_NOISE_BASE 90
-#define _RENDER_FINALLY_TO_SCREEN 100
+#define _MASTER_RENDERING 99
+#define _MASTER_TO_SCREEN 100
 
 #define ENABLE_SUNRAYS 1
 #define ENABLE_BLOOM 1
@@ -1125,6 +1124,36 @@ void finalComposition(in vec2 uv) {
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
 #define EVENT_DRAW_TEXT 7
+
+vec3 postprocessFluid(inout vec4 color) {
+    const vec3 bg = c.yyy;
+    vec3 col = makeSurplusWhite(color.rgb);
+    col = color.rgb + (1. - color.a) * bg;
+
+    float sunrays = 1.;
+#if ENABLE_SUNRAYS
+    sunrays = texture(texPostSunrays, st).r;
+    col *= sunrays;
+#endif
+#if ENABLE_BLOOM
+    vec3 bloom = texture(texPostBloom, st).rgb;
+    bloom *= iBloomIntensity;
+    bloom *= sunrays;
+    if (iBloomDithering > 0.) {
+        const vec2 ditherTexSize = vec2(64.); // textureSize(texPostDither, 0)
+        vec2 scale = iResolution / ditherTexSize;
+        float dither = texture(texPostDither, st * scale).r;
+        dither = dither * 2. - 1.;
+        bloom += dither * iBloomDithering / 255.;
+    }
+    bloom = max(
+        1.055 * pow(max(bloom, c.yyy), vec3(0.4167)) - 0.055,
+        c.yyy
+    );
+    col += bloom;
+#endif
+    return col;
+}
 
 void main() {
     // "Hello Shadertoy" as time-variable alarm signal (you shouldn't want this.)
@@ -1318,32 +1347,33 @@ void main() {
             }
             // debugOption == 1 see below
 
-            const vec3 bg = c.yyy;
-            fragColor.rgb = makeSurplusWhite(fluidColor.rgb);
-            fragColor.rgb = fluidColor.rgb + (1. - fluidColor.a) * bg;
-
-            float sunrays = 1.;
-        #if ENABLE_SUNRAYS
-            sunrays = texture(texPostSunrays, st).r;
-            fragColor.rgb *= sunrays;
-        #endif
-        #if ENABLE_BLOOM
-            vec3 bloom = texture(texPostBloom, st).rgb;
-            bloom *= iBloomIntensity;
-            bloom *= sunrays;
-            if (iBloomDithering > 0.) {
-                const vec2 ditherTexSize = vec2(64.); // textureSize(texPostDither, 0)
-                vec2 scale = iResolution / ditherTexSize;
-                float dither = texture(texPostDither, st * scale).r;
-                dither = dither * 2. - 1.;
-                bloom += dither * iBloomDithering / 255.;
-            }
-            bloom = max(
-                1.055 * pow(max(bloom, c.yyy), vec3(0.4167)) - 0.055,
-                c.yyy
-            );
-            fragColor.rgb += bloom;
-        #endif
+            fragColor.rgb = postprocessFluid(fluidColor);
+//            const vec3 bg = c.yyy;
+//            fragColor.rgb = makeSurplusWhite(fluidColor.rgb);
+//            fragColor.rgb = fluidColor.rgb + (1. - fluidColor.a) * bg;
+//
+//            float sunrays = 1.;
+//        #if ENABLE_SUNRAYS
+//            sunrays = texture(texPostSunrays, st).r;
+//            fragColor.rgb *= sunrays;
+//        #endif
+//        #if ENABLE_BLOOM
+//            vec3 bloom = texture(texPostBloom, st).rgb;
+//            bloom *= iBloomIntensity;
+//            bloom *= sunrays;
+//            if (iBloomDithering > 0.) {
+//                const vec2 ditherTexSize = vec2(64.); // textureSize(texPostDither, 0)
+//                vec2 scale = iResolution / ditherTexSize;
+//                float dither = texture(texPostDither, st * scale).r;
+//                dither = dither * 2. - 1.;
+//                bloom += dither * iBloomDithering / 255.;
+//            }
+//            bloom = max(
+//                1.055 * pow(max(bloom, c.yyy), vec3(0.4167)) - 0.055,
+//                c.yyy
+//            );
+//            fragColor.rgb += bloom;
+//        #endif
 
             fragColor.a = max3(fragColor.rgb);
 
@@ -1354,8 +1384,11 @@ void main() {
             }
             return;
 
-        case _RENDER_FINALLY_TO_SCREEN:
+        case _MASTER_RENDERING:
             finalComposition(uv);
+            return;
+        case _MASTER_TO_SCREEN:
+            fragColor = texture(texColor, st);
             fragColor.a = 1.;
             return;
     }
