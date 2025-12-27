@@ -105,10 +105,7 @@ export function createEventsManager(state, events) {
 
     function handleGlyphInstanceScript(event) {
         // We quick-and-dirty merge the concepts of these two managers now
-        console.info("[HANDLE GLYPH SCRIPT]", event);
-        if (event.data.phrase) {
-            glyphManager.replacePhrase(event.data.phrase);
-        }
+        glyphManager.setGlyphs(event.data);
     }
 }
 
@@ -132,7 +129,8 @@ export function createGlyphInstanceManager(state, instances) {
     const manager = {
         def: instances,
         instanceFields: Array(instances.opt.memberCount),
-        replacePhrase: void 0,
+        setGlyphs: void 0,
+        setSinglePhrase: void 0,
         debug: {}
     };
 
@@ -145,13 +143,19 @@ export function createGlyphInstanceManager(state, instances) {
         manager.instanceFields[i] = instance;
     }
 
-    manager.replacePhrase = (text, remember = true) => {
-        text = text.substring(0, manager.instanceFields.length);
-        if (remember) {
-            manager.lastPhrase = text;
-        }
+    manager.setGlyphs = (data) => {
+        let {text, fromIndex, posX, posY, scale, lettersUsed} = data;
+        text ??= "";
+        fromIndex ??= 0; // TODO: doesn't work completely yet (3 phrases -> only last shows all)
+        posX ??= 0;
+        posY ??= 0;
+        scale ??= 1;
 
-        const pixelUnit = 0.0067;
+        const maxLength = manager.instanceFields.length - fromIndex;
+        text = text.substring(0, maxLength);
+        console.log("text?", fromIndex, text, data);
+
+        const pixelUnit = 0.0067 * scale;
         const space = 0.667 * state.glyphs.detailed.size;
         const chars = state.glyphs.detailed.chars;
 
@@ -161,7 +165,7 @@ export function createGlyphInstanceManager(state, instances) {
         manager.debug.pixelUnit = pixelUnit;
 
         let cursorX = -text.length * 0.11;
-        let used = 0;
+        let index = fromIndex;
         for (let t = 0; t < text.length; t++) {
             if (text[t] === " ") {
                 cursorX += space * pixelUnit;
@@ -169,9 +173,12 @@ export function createGlyphInstanceManager(state, instances) {
             }
             const ascii = text.charCodeAt(t);
             const glyph = chars[ascii];
-            const scale = 1 + 0.6 * Math.random();
-            const pos = [cursorX, (Math.random() - 0.5) / 15 - 0.2]
-            instances.members[used].update({
+            // scale *= 1 + 0.6 * Math.random();
+            const pos = [
+                posX + cursorX,
+                posY + (Math.random() - 0.5) / 15 - 0.2
+            ];
+            instances.members[index].update({
                 ascii,
                 scale,
                 pos,
@@ -187,11 +194,18 @@ export function createGlyphInstanceManager(state, instances) {
             manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);
             cursorX += advance;
-            used++;
+            index++;
         }
-        state.glyphs.meta.lettersUsed.update(used);
+        state.glyphs.meta.lettersUsed.update(lettersUsed ?? index);
         instances.writeWhole();
-        console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs, manager.debug, instances);
+        console.info("[GLYPH INSTANCES] setGlyphs():", data, state.glyphs, manager.debug, instances);
+    };
+
+    manager.setSinglePhrase = (text, remember = true) => {
+        manager.setGlyphs({text});
+        if (remember) {
+            manager.lastPhrase = text;
+        }
     };
 
     return manager;

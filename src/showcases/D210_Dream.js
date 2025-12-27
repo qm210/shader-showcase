@@ -120,7 +120,7 @@ export default {
                     randFreq: [18, 2],
                     freeArgs: [20, 4],
                 },
-                memberCount: 32,
+                memberCount: 64,
             }),
             meta: {
                 lettersUsed: {
@@ -140,7 +140,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
-        // state.glyphs.manager.replacePhrase("Hello Dream...");
+        // state.glyphs.manager.setSinglePhrase("Hello Dream...");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -365,14 +365,23 @@ export default {
                     "Some Event...",
                 onClick: () => {
                     // init some glyph script
-                    const phrases = ["Hello...", "Dreams...", "Nice...", "You are here!"];
+                    const phrases = ["Hello...", "Dreams...", "Nightmares..."];
                     const nPhrases = 50;
-                    const timeBar = 240 / 105;
+                    const timeBar = 240 / 105 * 4;
+                    const lettersUsed = phrases.join("").length;
                     for (let i = 0; i < nPhrases; i++) {
+                        const phraseIndex = i % phrases.length;
+                        const startIndex =
+                            phraseIndex === 1 ? phrases[0].length
+                                : phraseIndex === 2 ? (phrases[0].length + phrases[1].length)
+                                    : 0;
                         state.events.manager.launch({
                             member: state.events.SPECIAL_MEMBER.GLYPH_INSTANCES,
                             data: {
-                                phrase: phrases[i % 4],
+                                text: phrases[phraseIndex],
+                                posX: 0,
+                                posY: Math.random() - 0.5,
+                                scale: 1,
                             },
                             launch: {
                                 in: i * timeBar,
@@ -406,11 +415,11 @@ export default {
                         state.glyphs.manager.lastPhrase
                     );
                     if (text !== null) {
-                        state.glyphs.manager.replacePhrase(text);
+                        state.glyphs.manager.setSinglePhrase(text);
                     }
                 },
                 onRightClick: () => {
-                    // state.glyphs.manager.replacePhrase("", false);
+                    // state.glyphs.manager.setSinglePhrase("", false);
                     console.info("[GLYPHS]", state.glyphs,
                         "- Manager:", state.glyphs.manager,
                         "USED:", state.glyphs.meta.lettersUsed.value);
