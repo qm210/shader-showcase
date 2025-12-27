@@ -184,7 +184,7 @@ export default {
             DISSIPATE: 3,
             CLEAR_FLUID: 4,
             SHIFT_PALETTE: 5,
-            DRAIN: 6,
+            DRAIN: 6, // is rather "add to velocity"
             DRAW_TEXT: 7,
         });
         state.events.SPECIAL_MEMBER = Object.freeze({
@@ -382,6 +382,10 @@ export default {
                                 posX: 0,
                                 posY: Math.random() - 0.5,
                                 scale: 1,
+                                color: [0.7, 0, 0.9, 0.03],
+                                glowColor: [0.6, 0, 0.3, 1.3],
+                                glowArgs: [10, 0.005, 10, 10],
+                                freeArgs: [1, 0, 0, 0],
                             },
                             launch: {
                                 in: i * timeBar,
@@ -400,10 +404,49 @@ export default {
                             coords: [0, -2],
                             args: [0.1]
                         },
+                        expire: { in: (nPhrases + 1) * timeBar },
                     });
                     },
                 onRightClick: () => {
                     state.events.manager.clear();
+                    console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
+                },
+            }, {
+                label: () =>
+                    "Stir Fluid",
+                onClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: { type: state.events.types.STIR_FLUID,
+                            args: [6, 2, 10, 0.3]
+                        },
+                    });
+                },
+                onRightClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: { type: -1 },
+                    });
+                },
+            }, {
+                label: () =>
+                    "Quench Fluid",
+                onClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: { type: state.events.types.CLEAR_FLUID },
+                        expire: { in: 0.5 },
+                    });
+                },
+                onRightClick: () => {
+                    state.events.manager.launch({
+                        member: state.events.members.fluidVelocityEvent,
+                        data: {
+                            type: state.events.types.DRAIN,
+                            coords: [0, 0.5, 0, 0],
+                            args: [2, 1, 1, 1]
+                        },
+                    });
                     console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
                 },
             }, {
@@ -604,6 +647,11 @@ function render(gl, state) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.noiseBase.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.noiseBase.texture);
+    gl.uniform1i(state.location.texNoiseBase, TEXTURE_UNITS.NOISE_BASE);
+
+
     // SOURCE: CLOUDS -- TEXTURE9 für Feedback / Akkumulation
 
     gl.uniform1f(state.location.iCloudYDisplacement, state.iCloudYDisplacement);
@@ -673,6 +721,7 @@ function render(gl, state) {
     gl.uniform1f(state.location.iSunraysDecay, state.iSunraysDecay);
     gl.uniform1f(state.location.iSunraysExposure, state.iSunraysExposure);
     gl.uniform1f(state.location.iSunraysIterations, state.iSunraysIterations);
+    gl.uniform1f(state.location.iSunraysOnMaster, state.iSunraysOnMaster);
 
     //// FLUID STUFF. Massiv. Erstmal auslagern
 
@@ -691,6 +740,7 @@ function render(gl, state) {
     gl.uniform1f(state.location.iBloomIntensity, state.iBloomIntensity);
     gl.uniform1f(state.location.iBloomPreGain, state.iBloomPreGain);
     gl.uniform1f(state.location.iBloomDithering, state.iBloomDithering);
+    gl.uniform1f(state.location.iBloomOnMaster, state.iBloomOnMaster);
 
     state.query.profiler.record("Before Init Fluid");
 
@@ -742,9 +792,6 @@ function render(gl, state) {
 
     write = state.framebuffer.master.currentWrite();
     gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.noiseBase.texture);
-    gl.uniform1i(state.location.texNoiseBase, TEXTURE_UNITS.NOISE_BASE);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.COLOR_DENSITY);
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.fluid.result.texture);
 
@@ -1401,6 +1448,12 @@ function createUniforms() {
             max: 10,
         }, {
             type: "float",
+            name: "iBloomOnMaster",
+            defaultValue: 0,
+            min: -1,
+            max: 2,
+        }, {
+            type: "float",
             name: "iBloomThreshold",
             defaultValue: 0.6,
             min: 0,
@@ -1431,6 +1484,12 @@ function createUniforms() {
             defaultValue: 1.,
             min: 0,
             max: 20,
+        }, {
+            type: "float",
+            name: "iSunraysOnMaster",
+            defaultValue: 0.,
+            min: -1,
+            max: 2,
         }, {
             type: "float",
             name: "iSunraysDensity",

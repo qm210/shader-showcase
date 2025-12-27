@@ -500,7 +500,10 @@ function addMouseInteraction(el, state) {
         const second =
             promptFloat(el, state.play.range.max, "Enter new MAX Second:");
         if (second) {
-            state.play.range.max = second;
+            // state.play.range.max = second;
+            adjustMaxRange(el, state, {
+                max: second
+            });
         }
     });
 
@@ -602,6 +605,9 @@ export function promptFloatArray(el, defaultValues, message, separator = " ") {
         message ?? `Enter new values. separated with \"${separator}\":`,
         defaultValues.join(separator)
     );
+    if (input === null) {
+        return null;
+    }
     return input
         .split(separator)
         .filter(s => s.length > 0)
