@@ -206,6 +206,11 @@ layout(std140) uniform Events {
     Event textEvent;
 };
 
+// global, because... probably some reason.
+vec4 fluidColor;
+vec2 fluidVelocity;
+vec3 sunColor;
+
 const vec4 c = vec4(1, 0, -1, 0.5);
 const float pi = 3.141593;
 const float twoPi = 2. * pi;
@@ -657,16 +662,18 @@ vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
     return lightEnergy;
 }
 
-void cloudImage(out vec4 color, vec2 uvShift, int sampleIndex) {
+vec3 sunnySkyBackground() {
+    vec3 sunDirection = normalize(vecSunPosition);
+    vec3 rd = normalize(vec3(uv, -iCloudFieldOfView));
+    float sun = clamp(dot(sunDirection, rd), 0.0, 1.0);
+    vec3 color = cmap_pastel(fract(1. - .9 * pow(st.y, iSkyQuetschung)));
+    color += 0.5 * sunColor * pow(sun, iSunExponent);
+    return color;
+}
+
+void cloudImage(out vec3 color, vec2 uvShift, int sampleIndex) {
     vec3 ro = vec3(0.0, 0.0, 5.0);
     vec3 rd = normalize(vec3(uv - uvShift, -iCloudFieldOfView));
-
-    // Sun and Sky
-    vec3 sunColor = ychToRgb(vecSunColorYCH.x, vecSunColorYCH.y, vecSunColorYCH.z);
-    vec3 sunDirection = normalize(vecSunPosition);
-    float sun = clamp(dot(sunDirection, rd), 0.0, 1.0);
-    color.rgb = cmap_pastel(fract(1. - .9 * pow(st.y, iSkyQuetschung)));
-    color.rgb += 0.5 * sunColor * pow(sun, iSunExponent);
 
     float blueNoise = hilbert_r1_blue_noisef(uvec2(uvShift.xy));
     //texture2D(uBlueNoise, fragCoord.xy / 1024.0).r;
@@ -677,12 +684,11 @@ void cloudImage(out vec4 color, vec2 uvShift, int sampleIndex) {
     offset = fract(offset + 0.5) - 0.5;
 
     // Cloud
-    vec3 res = raymarch(ro, rd, offset);
-    color.rgb = color.rgb + sunColor * res;
+    color = raymarch(ro, rd, offset);
 }
 
 void mainCloudImage(out vec4 fragColor) {
-    vec4 col = c.yyyy;
+    vec3 col = c.yyy;
     const float gold = 2.4;
     for (float i = .75; i < iSampleCount; i += 1.) {
         float x = i / iSampleCount;
@@ -700,11 +706,14 @@ void mainCloudImage(out vec4 fragColor) {
         if (doAccumulate) {
             sampleIndex += iFrame;
         }
-        vec4 c1;
+        vec3 c1;
         cloudImage(c1, z, sampleIndex);
+        c1 = sunColor * c1;
         col += c1;
     }
-    fragColor = col / iSampleCount;
+    col /= iSampleCount;
+    fragColor.rgb = col;
+    fragColor.a = max3(col);
     /*
     // Grain.
     vec2 uvn = fragCoord.xy/iResolution.xy;
@@ -936,9 +945,6 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
 
 /////
 
-vec4 fluidColor;
-vec2 fluidVelocity;
-
 vec4 simulateAdvection(sampler2D fieldTexture, float dissipationFactor) {
     vec2 hasMovedTo = st - deltaTime * fluidVelocity * texelSize;
     vec4 advectedValue = texture(fieldTexture, hasMovedTo);
@@ -1042,7 +1048,8 @@ void finalComposition(in vec2 uv) {
     vec4 tex;
     vec3 col = fragColor.rgb;
 
-    col = accumulus.rgb * (1. + iNoiseLevel * noiseBase.rgb);
+    col = sunnySkyBackground();
+    col += accumulus.rgb * (1. + iNoiseLevel * noiseBase.rgb);
     col = clamp(col, 0., 1.);
 
     fluidColor = texture(texColor, st);
@@ -1129,10 +1136,14 @@ void main() {
 
     switch (passIndex) {
         case _RENDER_CLOUDS:
+            sunColor = ychToRgb(vecSunColorYCH.x, vecSunColorYCH.y, vecSunColorYCH.z);
             mainCloudImage(fragColor);
             if (doAccumulate && iFrame > 0) {
                 vec4 accumulus = texture(texAccumulusClouds, st);
                 fragColor.rgb = mix(fragColor.rgb, accumulus.rgb, iAccumulateMix);
+            }
+            if (debugOption == 2) {
+                fragColor.a = 1.;
             }
             return;
         case _RENDER_NOISE_BASE:

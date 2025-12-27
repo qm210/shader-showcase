@@ -50,7 +50,6 @@ export default {
         state.monaTextures = await createTextureFromImageAsync(gl, monaAtlas, {
             internalFormat: gl.RGBA8
         });
-        console.log(state.monaTextures);
 
         state.passIndex = 0;
 
@@ -285,13 +284,13 @@ export default {
             const debugFramebuffer = [
                 [null, "--"],
                 [state.framebuffer.fluid.result, "Fluid Render Image"],
-                [() => state.framebuffer.fluid.color.currentRead(), "Fluid Color Density"],
-                [() => state.framebuffer.fluid.velocity.currentRead(), "Fluid Velocity"],
+                [state.framebuffer.fluid.color.currentRead, "Fluid Color Density"],
+                [state.framebuffer.fluid.velocity.currentRead, "Fluid Velocity"],
                 [state.framebuffer.fluid.curl, "Fluid Curl"],
                 [state.framebuffer.fluid.divergence, "Fluid Divergence"],
-                [() => state.framebuffer.fluid.pressure.currentRead(), "Fluid Pressure"],
+                [state.framebuffer.fluid.pressure.currentRead, "Fluid Pressure"],
                 [state.framebuffer.noiseBase, "Noise Base"],
-                // [state.framebuffer.texts, "Text 2"]
+                [state.framebuffer.clouds.currentRead, "Clouds"]
             ];
             state.debug.fb.index =
                 index === undefined
@@ -307,7 +306,7 @@ export default {
             if (!state.debug.fb.obj) {
                 state.debug.fb.index = 0;
             } else {
-                console.info("[DEBUG FRAMEBUFFER]", state.debug.fb);
+                console.info("[DEBUG FRAMEBUFFER]", state.debug.fb, state.framebuffer);
             }
             sessionStorage.setItem("qm.dream210.debug.fb", state.debug.fb.index);
         };
