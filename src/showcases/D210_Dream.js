@@ -140,7 +140,7 @@ export default {
         }
         state.glyphs.manager = createGlyphInstanceManager(state, state.glyphs.instances);
 
-        state.glyphs.manager.replacePhrase("Hello Dream...");
+        // state.glyphs.manager.replacePhrase("Hello Dream...");
 
         /*  std140 needs 4-byte alignments overall, and the offsets must be integer multiples of the size (afair);
             now as the base alignment is 16 anyway and thus the whole struct is gonna take 64 bytes, we use:
@@ -187,6 +187,10 @@ export default {
             DRAIN: 6,
             DRAW_TEXT: 7,
         });
+        state.events.SPECIAL_MEMBER = Object.freeze({
+            GLYPH_INSTANCES: "GLYPH_INSTANCES",
+        })
+
         state.events.manager = createEventsManager(state, state.events);
 
         state.opt.fluid.scalar = {
@@ -360,10 +364,25 @@ export default {
                 label: () =>
                     "Some Event...",
                 onClick: () => {
+                    // init some glyph script
+                    const phrases = ["Hello...", "Dreams...", "Nice...", "You are here!"];
+                    const nPhrases = 50;
+                    const timeBar = 240 / 105;
+                    for (let i = 0; i < nPhrases; i++) {
+                        state.events.manager.launch({
+                            member: state.events.SPECIAL_MEMBER.GLYPH_INSTANCES,
+                            data: {
+                                phrase: phrases[i % 4],
+                            },
+                            launch: {
+                                in: i * timeBar,
+                            }
+                        });
+                    }
                     state.events.manager.launch({
                         member: state.events.members.fluidColorEvent,
                         data: { type: state.events.types.DRAW_TEXT },
-                        expire: { in: 0.5 }
+                        expire: { in: (nPhrases + 1) * timeBar }
                     });
                     state.events.manager.launch({
                         member: state.events.members.fluidVelocityEvent,

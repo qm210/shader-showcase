@@ -17,6 +17,8 @@ export function createEventsManager(state, events) {
             reset: false,
         }
     };
+    const glyphManager = state.glyphs.manager;
+
     const schedule = (event) =>
         binarySearchInsert(event, scheduled, "timeSec");
 
@@ -30,7 +32,7 @@ export function createEventsManager(state, events) {
          *  from the actual struct, and for scheduling
          *  launch: {in? , at?} and expire: {in? , at?} in seconds each
          *  */
-        event.timeSec = asScheduled(event.launch);
+        event.timeSec = asScheduled(event.launch, state.time);
         if (event.timeSec > 0) {
             schedule(event);
         } else {
@@ -41,6 +43,10 @@ export function createEventsManager(state, events) {
     };
 
     const handle = (event) => {
+        if (event.member === events.SPECIAL_MEMBER.GLYPH_INSTANCES) {
+            handleGlyphInstanceScript(event);
+            return;
+        }
         event.type ??= -1;
         event.members ??= [event.member];
         event.data.timeStart = state.time;
@@ -96,6 +102,14 @@ export function createEventsManager(state, events) {
     }
 
     return manager;
+
+    function handleGlyphInstanceScript(event) {
+        // We quick-and-dirty merge the concepts of these two managers now
+        console.info("[HANDLE GLYPH SCRIPT]", event);
+        if (event.data.phrase) {
+            glyphManager.replacePhrase(event.data.phrase);
+        }
+    }
 }
 
 /**

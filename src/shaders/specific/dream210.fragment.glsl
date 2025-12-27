@@ -630,8 +630,8 @@ vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
         vec4 tex = c.yyyy;
         if (logoDensity > 0.) {
             // tex = textureCenteredAt(texMonaSchnoergel, uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4));
-            tex = monaAtlasCenteredAt(atlasLBRT_210blocksy,
-                uv * 1.3 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4)
+            tex = monaAtlasCenteredAt(atlasLBRT_210sketchy,
+                uv * 0.9 + vec2(iVariateCloudMarchFree * 0.1 * offset, 0.4)
             );
             logoDensity *= tex.a;
             // sphereDensity *= (1. - 0.9 * logoDensity);
@@ -645,8 +645,8 @@ vec3 raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
             float lightTransmittance = lightmarch(p, rayDirection);
             float luminance = iCloudBaseLuminance + density * phase;
 
-            // vec3 color = mix(c.xyx, colFree0.rgb, planeDensity / (planeDensity + sphereDensity + 0.01));
-            vec3 color = c.xxx; // colFree0.rgb;
+             vec3 color = mix(c.xyx, colFree0.rgb, logoDensity / (logoDensity + sphereDensity + 0.01));
+//            vec3 color = colFree0.rgb;
             // color = mix(c.xxx, color, (sphereDensity) / density);
 
             transmittance *= lightTransmittance;
