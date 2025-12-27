@@ -1120,9 +1120,6 @@ void finalComposition(in vec2 uv) {
 #define _POST_SUNRAYS_BLUR 32
 #define _RENDER_FLUID 40
 #define _RENDER_CLOUDS 60
-//#define _INIT_TEXT0 80
-//#define _INIT_TEXT1 81
-//#define _INIT_TEXT2 82
 #define _INIT_GLYPH_INSTANCES 88
 #define _RENDER_NOISE_BASE 90
 #define _MASTER_RENDERING 99
@@ -1131,6 +1128,7 @@ void finalComposition(in vec2 uv) {
 #define ENABLE_SUNRAYS 1
 #define ENABLE_SUNRAYS_ON_MASTER 1
 #define ENABLE_BLOOM 1
+#define ENABLE_BLOOM_ON_MASTER 1
 
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
@@ -1349,7 +1347,9 @@ void main() {
             }
             // debugOption == 1 see below
 
-            fragColor.rgb = postprocessFluid(fluidColor, ENABLE_SUNRAYS == 1, ENABLE_BLOOM == 1);
+            fragColor.rgb = postprocessFluid(fluidColor,
+                ENABLE_SUNRAYS == 1, ENABLE_BLOOM == 1
+            );
 //            const vec3 bg = c.yyy;
 //            fragColor.rgb = makeSurplusWhite(fluidColor.rgb);
 //            fragColor.rgb = fluidColor.rgb + (1. - fluidColor.a) * bg;
@@ -1391,7 +1391,9 @@ void main() {
             return;
         case _MASTER_TO_SCREEN:
             fragColor = texture(texColor, st);
-            fragColor.rgb = postprocessFluid(fragColor, ENABLE_SUNRAYS_ON_MASTER == 1, false);
+            fragColor.rgb = postprocessFluid(fragColor,
+                ENABLE_SUNRAYS_ON_MASTER == 1, ENABLE_BLOOM_ON_MASTER == 1
+            );
             fragColor.a = 1.;
             return;
     }

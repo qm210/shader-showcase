@@ -76,6 +76,7 @@ export default {
             ),
             enable: {
                 sunraysOnMaster: true,
+                bloomOnMaster: true,
                 // only on fluid:
                 sunrays: true,
                 bloom: true,
@@ -222,7 +223,7 @@ export default {
                 tempForBlur: createFramebufferWithTexture(gl, state.opt.sunrays),
             };
         }
-        if (state.opt.enable.bloom) {
+        if (state.opt.enable.bloom || state.opt.enable.bloomOnMaster) {
             state.framebuffer.post.bloom = {
                 options: state.opt.bloom,
                 effect: createFramebufferWithTexture(gl, state.opt.bloom),
@@ -698,7 +699,7 @@ function render(gl, state) {
     processFluid(gl, state);
     state.query.profiler.record("processFluid() done");
     if (state.opt.enable.bloom) {
-        postFluidBloom(gl, state);
+        postFluidBloom(gl, state, state.framebuffer.fluid.color, TEXTURE_UNITS.COLOR_DENSITY);
     }
     if (state.opt.enable.sunrays) {
         postFluidSunrays(gl, state, state.framebuffer.fluid.color, TEXTURE_UNITS.COLOR_DENSITY);
@@ -727,9 +728,11 @@ function render(gl, state) {
 
     // Experimental: Maybe some post processing on the master..?
 
+    if (state.opt.enable.bloomOnMaster) {
+        postFluidBloom(gl, state, state.framebuffer.master, TEXTURE_UNITS.COLOR_DENSITY);
+    }
     if (state.opt.enable.sunraysOnMaster) {
         postFluidSunrays(gl, state, state.framebuffer.master, TEXTURE_UNITS.COLOR_DENSITY);
-    } else {
     }
 
     // Master -> Back Buffer
@@ -935,7 +938,7 @@ function processFluid(gl, state) {
     /// END OF FLUID DYNAMICS ///////////////////
 }
 
-function postFluidBloom(gl, state) {
+function postFluidBloom(gl, state, sourcePingPongFramebuffers, sourceTextureUnit = 0) {
 
     /// POST: BLOOM /////////////////////////////
 
@@ -946,8 +949,10 @@ function postFluidBloom(gl, state) {
     gl.viewport(0, 0, write.width, write.height);
     gl.uniform2fv(state.location.iResolution, write.resolution);
 
-    readPrevious = state.framebuffer.fluid.color.currentRead();
-    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.COLOR_DENSITY);
+    readPrevious = sourcePingPongFramebuffers.currentRead();
+    // readPrevious = state.framebuffer.fluid.color.currentRead();
+    gl.activeTexture(gl.TEXTURE0 + sourceTextureUnit);
+    // gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.COLOR_DENSITY);
     gl.bindTexture(gl.TEXTURE_2D, readPrevious.texture);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
