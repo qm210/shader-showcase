@@ -238,6 +238,10 @@ export function createTimeSeeker(parent, state) {
         state.play.loop.active =
             active ?? !state.play.loop.active;
 
+        if (state.track) {
+            state.track.actions.toggleLoop(state.play.loop.active);
+        }
+
         stretchLoopMarker(el, state);
     };
 

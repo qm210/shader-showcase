@@ -67,7 +67,7 @@ export function initAudioState(state, audioSource) {
             audio.loop = force === undefined
                 ? !audio.loop
                 : force;
-            console.log("[AUDIO] Now Looping", audio.loop ? "is" : "isn't");
+            console.log("[AUDIO] Now Looping?", audio.loop ? "is" : "isn't");
         },
         toggleMuted: (force = undefined) => {
             audio.muted = force === undefined
