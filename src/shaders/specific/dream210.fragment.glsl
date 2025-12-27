@@ -916,6 +916,8 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
     vec2 pos, _unused;
     float d, sd;
     GlyphInstance letter;
+    vec4 sumColor = c.yyyy;
+    vec4 sumGlow = c.yyyy;
     for (int t = 0; t < lettersUsed; t++) {
         letter = letterInstance(t);
         pos = uv - letter.pos;
@@ -925,8 +927,15 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
         d = clamp(-sd/fwidth(sd) + 0.5, 0., 1.0);
         // d = abs(d) - 0.5;
         baseColor = mix(letter.color, noiseBase, iFree0);
+        baseColor = c.xxxw;
+        baseColor.rgb *= baseColor.a;
         d *= d * baseColor.a;
-        col.rgb = mix(col.rgb, baseColor.xyz, d);
+        // col.rgb = mix(col.rgb, baseColor.rgb, 1. - d);
+        // col += (1. - col.a) * baseColor * d;
+        // TODO: CANNOT DRAW SOMETHING BLACK YET -- THINK AGAIN IF NEEDED
+        sumColor += d * baseColor;
+//        sumColor.rgb = mix(sumColor.rgb, baseColor.rgb, d);
+//        sumColor.a = 1.;
 
         sd += letter.glowArgs.y;
         vec4 glow = letter.glowColor * letter.glowArgs.x
@@ -937,8 +946,10 @@ void printGlyphInstances(in vec2 uv, inout vec4 col) {
         glow *= mask * smoothstep(iFree5, iFree4, abs(d));
         */
         glow.rgb = pow(glow.rgb, vec3(letter.glowArgs.w));
-        col += glow;
+        sumGlow += glow;
     }
+    col.rgb = sumColor.rgb + sumGlow.rgb;
+    col.a = max(sumColor.a, sumGlow.a);
 }
 
 /////
@@ -1063,7 +1074,6 @@ void finalComposition(in vec2 uv) {
     fragColor.rgb = col;
 
     if (debugOption == 1) {
-        // printYay(uv, fragColor, c.yyyx);
         printGlyphInstances(uv, fragColor); // , noiseBase);
     }
 
@@ -1119,39 +1129,40 @@ void finalComposition(in vec2 uv) {
 #define _MASTER_TO_SCREEN 100
 
 #define ENABLE_SUNRAYS 1
+#define ENABLE_SUNRAYS_ON_MASTER 1
 #define ENABLE_BLOOM 1
 
 #define EVENT_CLEAR_FLUID 4
 #define EVENT_DRAIN 6
 #define EVENT_DRAW_TEXT 7
 
-vec3 postprocessFluid(inout vec4 color) {
+vec3 postprocessFluid(inout vec4 color, bool applySunrays, bool applyBloom) {
     const vec3 bg = c.yyy;
     vec3 col = makeSurplusWhite(color.rgb);
     col = color.rgb + (1. - color.a) * bg;
 
     float sunrays = 1.;
-#if ENABLE_SUNRAYS
-    sunrays = texture(texPostSunrays, st).r;
-    col *= sunrays;
-#endif
-#if ENABLE_BLOOM
-    vec3 bloom = texture(texPostBloom, st).rgb;
-    bloom *= iBloomIntensity;
-    bloom *= sunrays;
-    if (iBloomDithering > 0.) {
-        const vec2 ditherTexSize = vec2(64.); // textureSize(texPostDither, 0)
-        vec2 scale = iResolution / ditherTexSize;
-        float dither = texture(texPostDither, st * scale).r;
-        dither = dither * 2. - 1.;
-        bloom += dither * iBloomDithering / 255.;
+    if (applySunrays) {
+        sunrays = texture(texPostSunrays, st).r;
+        col *= sunrays;
     }
-    bloom = max(
+    if (applyBloom) {
+        vec3 bloom = texture(texPostBloom, st).rgb;
+        bloom *= iBloomIntensity;
+        bloom *= sunrays;
+        if (iBloomDithering > 0.) {
+            const vec2 ditherTexSize = vec2(64.);// textureSize(texPostDither, 0)
+            vec2 scale = iResolution / ditherTexSize;
+            float dither = texture(texPostDither, st * scale).r;
+            dither = dither * 2. - 1.;
+            bloom += dither * iBloomDithering / 255.;
+        }
+        bloom = max(
         1.055 * pow(max(bloom, c.yyy), vec3(0.4167)) - 0.055,
         c.yyy
-    );
-    col += bloom;
-#endif
+        );
+        col += bloom;
+    }
     return col;
 }
 
@@ -1180,14 +1191,6 @@ void main() {
             fragColor.a = max3(fragColor.rgb);
             return;
 
-//        case _INIT_TEXT0:
-//            fragColor = c.yyyy;
-//            printQmSaysHi(uv, fragColor);
-//            return;
-//        case _INIT_TEXT1:
-//            fragColor = c.yyyy;
-//            printYay(uv, fragColor, someYayColor);
-//            return;
         case _INIT_GLYPH_INSTANCES:
             fragColor = c.yyyy;
             printGlyphInstances(uv, fragColor);
@@ -1204,7 +1207,6 @@ void main() {
             if (eventType == EVENT_DRAW_TEXT) {
                 fragColor = c.yyyy;
                 printGlyphInstances(uv, spawnColor);
-                // print(uv, spawnColor, someYayColor);
             }
             // "Over" Mixing with RGBA each:
             fragColor.rgb = mix(fluidColor.rgb, spawnColor.rgb, spawnColor.a);
@@ -1347,7 +1349,7 @@ void main() {
             }
             // debugOption == 1 see below
 
-            fragColor.rgb = postprocessFluid(fluidColor);
+            fragColor.rgb = postprocessFluid(fluidColor, ENABLE_SUNRAYS == 1, ENABLE_BLOOM == 1);
 //            const vec3 bg = c.yyy;
 //            fragColor.rgb = makeSurplusWhite(fluidColor.rgb);
 //            fragColor.rgb = fluidColor.rgb + (1. - fluidColor.a) * bg;
@@ -1389,6 +1391,7 @@ void main() {
             return;
         case _MASTER_TO_SCREEN:
             fragColor = texture(texColor, st);
+            fragColor.rgb = postprocessFluid(fragColor, ENABLE_SUNRAYS_ON_MASTER == 1, false);
             fragColor.a = 1.;
             return;
     }

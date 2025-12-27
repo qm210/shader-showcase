@@ -85,7 +85,7 @@ export default {
         state.framebuffer = {
             clouds: createPingPongFramebuffersWithTexture(gl, state.opt.floatImage),
             noiseBase: createFramebufferWithTexture(gl, state.opt.image),
-            master: createFramebufferWithTexture(gl, state.opt.image),
+            master: createPingPongFramebuffersWithTexture(gl, state.opt.floatImage),
         };
 
         const glyphDef = createGlyphDef(fontMsdfJson);
@@ -711,7 +711,7 @@ function render(gl, state) {
 
     gl.uniform1i(state.location.passIndex, PASS.MASTER_RENDERING);
 
-    write = state.framebuffer.master;
+    write = state.framebuffer.master.currentWrite();
     gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.noiseBase.texture);
@@ -720,17 +720,29 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.fluid.result.texture);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+    state.framebuffer.master.doPingPong();
 
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.NOISE_BASE);
     gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Experimental: Maybe some post processing on the master..?
+
+    if (state.opt.enable.sunraysOnMaster) {
+        postFluidSunrays(gl, state, state.framebuffer.master, TEXTURE_UNITS.COLOR_DENSITY);
+    } else {
+    }
 
     // Master -> Back Buffer
 
     gl.uniform1i(state.location.passIndex, PASS.RENDER_MASTER_TO_SCREEN);
 
+    readPrevious = state.framebuffer.master.currentRead();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, state.opt.image.width, state.opt.image.height);
+    gl.uniform2fv(state.location.iResolution, state.resolution);
+
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS.COLOR_DENSITY);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.master.texture);
+    gl.bindTexture(gl.TEXTURE_2D, readPrevious.texture);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 

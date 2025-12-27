@@ -161,7 +161,7 @@ export function createGlyphInstanceManager(state, instances) {
                 ascii,
                 scale,
                 pos,
-                color: [0, 0, 0, 0.7],
+                color: [0, 0, 0, 1],
                 glowColor: [0.5, 0, 0.7, 0.1],
                 glowArgs: [1.9, 0.155, 11.2, 0.33],
                 randAmp: [0.02, 0.2],
