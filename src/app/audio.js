@@ -54,7 +54,6 @@ export function initAudioState(state, audioSource) {
             audio.stopped = true;
         },
         togglePlay: async (force = undefined) => {
-            console.log("[TRACK] togglePlay(", force, "), paused currently?", audio.paused, track);
             if (audio.paused || force) {
                 await audio.play().catch((err) =>
                     console.warn("[AUDIO BLOCKED]", err)
@@ -67,7 +66,7 @@ export function initAudioState(state, audioSource) {
             audio.loop = force === undefined
                 ? !audio.loop
                 : force;
-            console.log("[AUDIO] Now Looping", audio.loop ? "is" : "isn't");
+            console.log("[AUDIO] Now Looping?", audio.loop ? "is" : "isn't");
         },
         toggleMuted: (force = undefined) => {
             audio.muted = force === undefined

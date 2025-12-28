@@ -1,3 +1,4 @@
+import {label} from "happy-dom/lib/PropertySymbol.js";
 
 export function loadExtensions(gl, extensions) {
     for (const extension of extensions) {
@@ -25,9 +26,9 @@ function enrichWithTimerHelpers(gl, ext) {
     };
     gl.timer.createQueryProfiler = ({title, enabled}) => {
         const records = [];
-        if (!enabled) {
+        if (enabled === false) {
             return {
-                record: label => {},
+                record: (label) => {},
                 finalize: async () => null,
             }
         }

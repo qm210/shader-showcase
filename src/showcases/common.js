@@ -101,3 +101,17 @@ export async function readPixelsAndEvaluate(gl, resolution, resultBuffer, target
     );
 }
 
+export function readSomeLimits(gl) {
+    const limits = {};
+    limits.textureUnits = {
+        total: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
+        fragment: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),
+        vertex: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
+    };
+    limits.uniforms = {
+        vectors: gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS),
+        components: gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_COMPONENTS)
+    };
+    console.info("[SYSTEM LIMITS", limits);
+    return limits;
+}

@@ -2,17 +2,23 @@ export function clamp(x, min, max) {
     return Math.min(Math.max(x, min), max);
 }
 
-export function binarySearchInsert(event, queue, key) {
-    let low = 0, high = queue.length;
-    while (low < high) {
-        const mid = (low + high) >> 1;
-        if (queue[mid][key] < event[key]) {
-            low = mid + 1;
+export function binarySearch(targetValue, array, key) {
+    let lower = 0;
+    let upper = array.length;
+    while (lower < upper) {
+        const middle = (lower + upper) >> 1;
+        if (array[middle][key] < targetValue) {
+            lower = middle + 1;
         } else {
-            high = mid;
+            upper = middle;
         }
     }
-    queue.splice(low, 0, event);
+    return lower;
+}
+
+export function binarySearchInsert(event, queue, key) {
+    const lower = binarySearch(event[key], queue, key);
+    queue.splice(lower, 0, event);
 }
 
 export async function evaluateReadData(buffer, mapFunc = undefined) {

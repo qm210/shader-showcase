@@ -152,7 +152,7 @@ export function createUboForArraylikeStruct(gl, program, opt) {
         const obj = {
             offset,
             workdata,
-            update: updateFunc,
+            updateFields: updateFunc,
             write: void 0,
         };
         obj.write = (data = undefined) => {
@@ -312,7 +312,6 @@ export function createDataTextureForStructArray(gl, opt) {
         : Object.keys(opt.memberMap).length;
 
     context.texWidth = Math.ceil(opt.structSize / RGBA_CHANNELS);
-    context.resolution = [context.texWidth, opt.memberCount];
     context.floatsPerRow = context.texWidth * RGBA_CHANNELS;
     context.buffer = new Float32Array(context.floatsPerRow * opt.memberCount);
 
@@ -322,12 +321,36 @@ export function createDataTextureForStructArray(gl, opt) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D,
-        0, gl.RGBA32F,
-        ...context.resolution,
-        0, gl.RGBA, gl.FLOAT,
-        context.buffer
-    );
+
+    context.writeWhole = () => {
+        gl.bindTexture(gl.TEXTURE_2D, context.tex);
+        gl.texImage2D(gl.TEXTURE_2D,
+            0,
+            gl.RGBA32F,
+            context.texWidth,
+            opt.memberCount,
+            0,
+            gl.RGBA,
+            gl.FLOAT,
+            context.buffer
+        );
+    };
+
+    context.writePartial = (firstRow, rowCount) => {
+        gl.bindTexture(gl.TEXTURE_2D, context.tex);
+        gl.texSubImage2D(gl.TEXTURE_2D,
+            0,
+            0,
+            firstRow,
+            context.texWidth,
+            rowCount,
+            gl.RGBA,
+            gl.FLOAT,
+            context.buffer
+        );
+    };
+
+    context.writeWhole();
 
     for (let i = 0; i < opt.memberCount; i++) {
         const offset = i * context.floatsPerRow;
@@ -335,7 +358,7 @@ export function createDataTextureForStructArray(gl, opt) {
         context.members[i] = {
             offset,
             view,
-            update: (args, reset = true) =>
+            updateFields: (args, reset = true) =>
                 updateStruct(context.members[i], args, reset),
             write: () => {
                 gl.bindTexture(gl.TEXTURE_2D, context.tex);
@@ -343,16 +366,6 @@ export function createDataTextureForStructArray(gl, opt) {
             }
         };
     }
-
-    context.writeWhole = () => {
-        gl.bindTexture(gl.TEXTURE_2D, context.tex);
-        gl.texImage2D(gl.TEXTURE_2D,
-            0, gl.RGBA32F,
-            ...context.resolution,
-            0, gl.RGBA, gl.FLOAT,
-            context.buffer
-        );
-    };
 
     context.debug = addSanityChecks(context);
     console.info("[PACKED TEXTURE]", context);
@@ -369,7 +382,7 @@ export function createDataTextureForStructArray(gl, opt) {
         const fields = context.structFields;
         for (let f = 0; f < fields.length; f++) {
             const [field, start, size] = fields[f];
-            if (!(field in update)) {
+            if (!(field in update) || update[field] === undefined) {
                 continue;
             }
             if (size > 1) {

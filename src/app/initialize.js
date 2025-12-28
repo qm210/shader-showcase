@@ -37,9 +37,9 @@ function withPlaybackFeatures(state) {
             end: null,
             active: false,
         },
-        markers: [], // yet unused
         sync: {
-            bpm: null // yet unused
+            bpm: null,
+            bookmarks: [],
         },
         signal: {
             reset: false,

@@ -17,6 +17,8 @@ export function createEventsManager(state, events) {
             reset: false,
         }
     };
+    const glyphManager = state.glyphs.manager;
+
     const schedule = (event) =>
         binarySearchInsert(event, scheduled, "timeSec");
 
@@ -30,7 +32,7 @@ export function createEventsManager(state, events) {
          *  from the actual struct, and for scheduling
          *  launch: {in? , at?} and expire: {in? , at?} in seconds each
          *  */
-        event.timeSec = asScheduled(event.launch);
+        event.timeSec = asScheduled(event.launch, state.time);
         if (event.timeSec > 0) {
             schedule(event);
         } else {
@@ -41,11 +43,15 @@ export function createEventsManager(state, events) {
     };
 
     const handle = (event) => {
+        if (event.member === events.SPECIAL_MEMBER.GLYPH_INSTANCES) {
+            handleGlyphInstanceScript(event);
+            return;
+        }
         event.type ??= -1;
         event.members ??= [event.member];
         event.data.timeStart = state.time;
         for (const member of event.members) {
-            member.update(event.data);
+            member.updateFields(event.data);
         }
         if (event.expire) {
             schedule({
@@ -75,11 +81,6 @@ export function createEventsManager(state, events) {
             console.info("[EVENT][SCHEDULED] Handle", event);
         }
 
-        // if (manager.flag.debug && scheduled.length === 0) {
-        //     console.info("[EVENT MANAGER] Schedule Empty.", manager.queue, manager.events);
-        //     manager.flag.debug = false;
-        // }
-
         if (manager.flag.reset) {
             manager.queue.scheduled.length = 0;
             handle({
@@ -96,6 +97,11 @@ export function createEventsManager(state, events) {
     }
 
     return manager;
+
+    function handleGlyphInstanceScript(event) {
+        // We quick-and-dirty merge the concepts of these two managers now
+        glyphManager.setGlyphs(event.data);
+    }
 }
 
 /**
@@ -118,7 +124,8 @@ export function createGlyphInstanceManager(state, instances) {
     const manager = {
         def: instances,
         instanceFields: Array(instances.opt.memberCount),
-        replacePhrase: void 0,
+        setGlyphs: void 0,
+        setSinglePhrase: void 0,
         debug: {}
     };
 
@@ -131,13 +138,32 @@ export function createGlyphInstanceManager(state, instances) {
         manager.instanceFields[i] = instance;
     }
 
-    manager.replacePhrase = (text, remember = true) => {
-        text = text.substring(0, manager.instanceFields.length);
-        if (remember) {
-            manager.lastPhrase = text;
-        }
+    manager.setGlyphs = (data) => {
+        let {text, fromIndex, lettersUsed,
+            posX, posY, scale, color,
+            glowColor, glowArgs, randAmp, randFreq, freeArgs,
+            lengthRelativePosX, letterPosX, letterPosY, letterScale,
+        } = data;
+        text ??= "";
+        fromIndex ??= 0; // TODO: doesn't work completely yet (3 phrases -> only last shows all)
+        posX ??= 0;
+        posY ??= 0;
+        scale ??= 1;
+        color ??= [1, 1, 1, 1];
+        glowColor ??= [1, 1, 1, 1];
+        glowArgs ??= [1.9, 0.155, 11.2, 0.33];
+        randAmp ??= [0, 0];
+        // randFreq ??= [1, 1];
+        lengthRelativePosX ??= 0.1;
+        letterPosX ??= () => 0;
+        letterPosY ??= () => 0;
+        letterScale ??= () => 1;
 
-        const pixelUnit = 0.0067;
+        const maxLength = manager.instanceFields.length - fromIndex;
+        text = text.substring(0, maxLength);
+
+        const baseScale = scale;
+        const pixelUnit = 0.0067 * scale;
         const space = 0.667 * state.glyphs.detailed.size;
         const chars = state.glyphs.detailed.chars;
 
@@ -146,8 +172,8 @@ export function createGlyphInstanceManager(state, instances) {
         manager.debug.pos = [];
         manager.debug.pixelUnit = pixelUnit;
 
-        let cursorX = -text.length * 0.125;
-        let used = 0;
+        let cursorX = posX - text.length * lengthRelativePosX;
+        let index = fromIndex;
         for (let t = 0; t < text.length; t++) {
             if (text[t] === " ") {
                 cursorX += space * pixelUnit;
@@ -155,29 +181,56 @@ export function createGlyphInstanceManager(state, instances) {
             }
             const ascii = text.charCodeAt(t);
             const glyph = chars[ascii];
-            const scale = 0.7 + 0.6 * Math.random();
-            const pos = [cursorX, (Math.random() - 0.5) / 10 - 0.2]
-            instances.members[used].update({
+            if (!glyph) {
+                continue;
+            }
+            scale = baseScale * letterScale(t);
+            const pos = [
+                cursorX + letterPosX(t),
+                posY + letterPosY(t)
+            ];
+            instances.members[index].updateFields({
                 ascii,
                 scale,
                 pos,
-                color: [0, 0, 0, 0.7],
-                glowColor: [0.5, 0, 0.7, 1],
-                glowArgs: [1.9, 0.155, 11.2, 0.33],
-                randAmp: [0., 0.2],
-                randFreq: [0., 0.5],
-                freeArgs: [1, 0, 0, 0]
+                color,
+                glowColor,
+                glowArgs,
+                randAmp,
+                randFreq,
+                freeArgs
             });
             const advance = (chars[ascii].xadvance) * pixelUnit / scale;
             manager.debug.advance.push(advance);
             manager.debug.pos.push(pos);
             manager.debug.glyph.push(glyph);
             cursorX += advance;
-            used++;
+            index++;
         }
-        state.glyphs.meta.lettersUsed.update(used);
-        instances.writeWhole();
-        console.info(`[GLYPH INSTANCES] replaced with "${text}".`, state.glyphs, manager.debug, instances);
+        lettersUsed ??= index;
+        state.glyphs.meta.lettersUsed.update(lettersUsed);
+        instances.writePartial(fromIndex, lettersUsed - fromIndex);
+        console.info("[GLYPH INSTANCES] setGlyphs():", data, "advance:", cursorX,
+            "Also:", state.glyphs, manager.debug, instances
+        );
+    };
+
+    manager.setSinglePhrase = (text, remember = true) => {
+        if (remember) {
+            manager.lastPhrase = text;
+        }
+        manager.setGlyphs({
+            text,
+            color: [0, 0, 0, 1],
+            glowColor: [0.5, 0, 0.7, 0.1],
+            glowArgs: [1.9, 0.155, 11.2, 0.33],
+            randAmp: [0.02, 0.2],
+            randFreq: [0.1, 0.5],
+            freeArgs: [1, 0, 0, 0],
+            lengthRelativePosX: 0.11,
+            letterPosY: () => (Math.random() - 0.5) / 15 - 0.2,
+            letterScale: () => 1 + 0.6 * Math.random(),
+        });
     };
 
     return manager;

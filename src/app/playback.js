@@ -94,9 +94,10 @@ function advanceTime(moveTimestep, state, timestamp) {
 
     doFpsMeasurement(state);
 
-    if (state.play.loop.active) {
+    if (state.play.loop.active && !state.track.useAsTimer) {
+        // TODO: handle unified like the "moveTimestep" clock, not asking about useAsTimer...
         const lastSecond = state.play.loop.end ?? state.play.range.max;
-        if (state.time > lastSecond) {
+        if (state.time >= lastSecond) {
             state.play.actions.jump({
                 to: state.play.loop.start ?? 0
             });
@@ -179,11 +180,11 @@ function doFpsMeasurement(state) {
         }
         fpsMeter.avg.index = (fpsMeter.avg.index + 1) % fpsMeter.avg.taken;
         fpsMeter.avg.fps = fpsMeter.avg.sum / fpsMeter.avg.taken;
-        if (isNaN(fpsMeter.avg.fps)) {
-            console.log("[FPS NAN?]", fpsMeter.avg, fpsMeter.last.time);
-        } else if (!isFinite(fpsMeter.avg.fps)) {
-            console.log("[FPS INF?]", fpsMeter);
-        }
+        // if (isNaN(fpsMeter.avg.fps)) {
+        //     console.log("[FPS NAN?]", fpsMeter.avg, fpsMeter.last.time);
+        // } else if (!isFinite(fpsMeter.avg.fps)) {
+        //     console.log("[FPS INF?]", fpsMeter);
+        // }
     }
     fpsMeter.last.time = state.time;
     fpsMeter.last.frame = state.iFrame;

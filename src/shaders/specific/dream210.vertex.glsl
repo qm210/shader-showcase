@@ -14,6 +14,10 @@ out vec2 stL;
 out vec2 stR;
 out vec2 stU;
 out vec2 stD;
+out vec2 texelL;
+out vec2 texelR;
+out vec2 texelU;
+out vec2 texelD;
 
 void main() {
     gl_Position = vec4(aPosition.xy, 0., 1.);
@@ -30,9 +34,13 @@ void main() {
     // mit den Differentialen für die Fluiddynamik
     // (die die y-Konvention nicht so derbe juckt)
     texelSize = 1. / iResolution.xy;
+    texelL = -vec2(texelSize.x, 0.);
+    texelR = +vec2(texelSize.x, 0.);
+    texelU = +vec2(0., texelSize.y);
+    texelD = -vec2(0., texelSize.y);
     st = aPosition.xy * 0.5 + 0.5;
-    stL = st - vec2(texelSize.x, 0.);
-    stR = st + vec2(texelSize.x, 0.);
-    stU = st + vec2(0., texelSize.y);
-    stD = st - vec2(0., texelSize.y);
+    stL = st + texelL;
+    stR = st + texelR;
+    stU = st + texelU;
+    stD = st + texelD;
 }

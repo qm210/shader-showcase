@@ -1,6 +1,7 @@
-import {clamp} from "../../algorithms.js";
+import {binarySearchInsert, clamp} from "../../algorithms.js";
+import {createDiv} from "../dom.js";
 
-export function createTimeSeeker(parent, state) {
+export function createTimeSeeker(parent, state, bookmarkElement) {
     parent.innerHTML =
         `<svg xmlns="http://www.w3.org/2000/svg"
               width="100%"
@@ -63,6 +64,7 @@ export function createTimeSeeker(parent, state) {
                 title: "Play Track?"
             }),
         },
+        bookmarks: bookmarkElement,
         rect: {
             bounds: null,
             track: null,
@@ -83,6 +85,7 @@ export function createTimeSeeker(parent, state) {
             jump: undefined,
             toggle: undefined,
             toggleLoop: undefined,
+            setBookmark: undefined,
         },
         remember: {
             timestamp: undefined,
@@ -238,7 +241,51 @@ export function createTimeSeeker(parent, state) {
         state.play.loop.active =
             active ?? !state.play.loop.active;
 
+        if (state.track) {
+            state.track.actions.toggleLoop(state.play.loop.active);
+        }
+
         stretchLoopMarker(el, state);
+    };
+
+    el.do.setBookmark = (args) => {
+        if (args.bar !== undefined) {
+            args.beat = 4. * args.bar;
+        }
+        if (args.beat !== undefined) {
+            if (!state.play.sync.bpm) {
+                console.warn("[SEEKER] setBookmark() with", args, "does need state.play.sync.bpm given!");
+                args.time = 0;
+            } else {
+                args.time = 60 / state.play.sync.bpm * args.beat;
+            }
+        }
+        args.timeLabel =
+            args.bar ? `Bar${args.bar}`
+                : args.beat ? `Beat${args.beat}`
+                : args.time === 0 ? "0"
+                : `${args.time}s`;
+        const {time, label, color, unset} = args;
+        if (unset) {
+            state.play.sync.bookmarks = state.play.sync.bookmarks.filter(m =>
+                (m.time === time || time === undefined) &&
+                (m.label === label || label === undefined) &&
+                (m.color === color || color === undefined)
+            );
+        } else {
+            binarySearchInsert(args, state.play.sync.bookmarks, "time");
+        }
+        el.bookmarks.innerHTML = "";
+        for (const bookmark of state.play.sync.bookmarks) {
+            const link = createDiv(`${bookmark.timeLabel}\n\u00bb${bookmark.label}`, "small-link wrap-centered");
+            link.addEventListener("click", () => {
+                el.do.jump({to: bookmark.time});
+            });
+            if (color) {
+                link.style.color = color;
+            }
+            el.bookmarks.appendChild(link);
+        }
     };
 
     addDocumentListeners(el, state);
@@ -267,7 +314,6 @@ function intervalPixels(el, state) {
 function secondsAsPixels(seconds, el, state, offset = 0) {
     // String is a no-cost inlined version to make linters happy while passing a number
     // i.e. .toString() would actually calculate something needlessly, thus be not-good.
-    // console.log("SAP", el.handleBar.span, seconds, state.play.range.max, offset, "=", String(el.handleBar.span * seconds / state.play.range.max + offset));
     offset += el.rect.handle.width / 2;
     // <-- TODO: Shift required so the handle is centered at t == 0,
     //           check whether that is consistent in current implementation
@@ -496,7 +542,10 @@ function addMouseInteraction(el, state) {
         const second =
             promptFloat(el, state.play.range.max, "Enter new MAX Second:");
         if (second) {
-            state.play.range.max = second;
+            // state.play.range.max = second;
+            adjustMaxRange(el, state, {
+                max: second
+            });
         }
     });
 
@@ -509,7 +558,6 @@ function addMouseInteraction(el, state) {
     });
     el.icons.loop.addEventListener("contextmenu", (event) => {
         event.preventDefault();
-        console.log(state.play.loop);
         const answer = promptFloatArray(
             el,
             [state.play.loop.start, state.play.loop.end],
@@ -598,6 +646,9 @@ export function promptFloatArray(el, defaultValues, message, separator = " ") {
         message ?? `Enter new values. separated with \"${separator}\":`,
         defaultValues.join(separator)
     );
+    if (input === null) {
+        return null;
+    }
     return input
         .split(separator)
         .filter(s => s.length > 0)
