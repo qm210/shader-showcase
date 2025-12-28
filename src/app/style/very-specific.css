@@ -1,6 +1,8 @@
 #time-controls {
     display: flex;
-    justify-content: stretch;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
     flex: 1;
 }
 
@@ -27,6 +29,16 @@
     fill: currentColor;
 }
 
+#time-bookmarks {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 1rem;
+    width: 100%;
+    height: fit-content;
+    justify-content: space-between;
+    font-size: smaller;
+}
+
 #fps {
     font-size: smaller;
     font-weight: bold;
@@ -50,6 +62,11 @@
     text-decoration: underline;
     cursor: pointer;
     white-space: nowrap;
+}
+
+.wrap-centered {
+    white-space: pre-wrap;
+    text-align: center;
 }
 
 .readout-stats {

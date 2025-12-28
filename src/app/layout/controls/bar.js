@@ -5,17 +5,25 @@ import {createTimeSeeker} from "./time.js";
 
 
 export function createMainControlBar(elements, state, controls) {
-    const seeker = createTimeSeeker(elements.controlBar.time.seeker, state);
-    elements.controlBar.time.frame.append(
+    const seeker = createTimeSeeker(
+        elements.controlBar.time.seeker, state, elements.controlBar.time.bookmarks
+    );
+    const rows = Array(2)
+        .fill("")
+        .map(text => createDiv(text, "full-row"));
+    rows[0].append(
         createDiv("Time", "value-label"),
         createDiv("", "half spacer"),
         elements.controlBar.time.seeker,
     );
+    rows[1].append(elements.controlBar.time.bookmarks);
+    elements.controlBar.time.frame.append(...rows);
     elements.controlBar.time.value.id = "iTime";
     elements.controlBar.time.update = seeker.callback.update;
 
     elements.controlBar.main.append(
         elements.controlBar.time.frame,
+        // TODO: Reset-All-Button might go into the Display Controls (right bar)
         createResetAllButton(elements, state, controls)
     );
 

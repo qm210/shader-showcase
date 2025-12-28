@@ -180,11 +180,11 @@ function doFpsMeasurement(state) {
         }
         fpsMeter.avg.index = (fpsMeter.avg.index + 1) % fpsMeter.avg.taken;
         fpsMeter.avg.fps = fpsMeter.avg.sum / fpsMeter.avg.taken;
-        if (isNaN(fpsMeter.avg.fps)) {
-            console.log("[FPS NAN?]", fpsMeter.avg, fpsMeter.last.time);
-        } else if (!isFinite(fpsMeter.avg.fps)) {
-            console.log("[FPS INF?]", fpsMeter);
-        }
+        // if (isNaN(fpsMeter.avg.fps)) {
+        //     console.log("[FPS NAN?]", fpsMeter.avg, fpsMeter.last.time);
+        // } else if (!isFinite(fpsMeter.avg.fps)) {
+        //     console.log("[FPS INF?]", fpsMeter);
+        // }
     }
     fpsMeter.last.time = state.time;
     fpsMeter.last.frame = state.iFrame;

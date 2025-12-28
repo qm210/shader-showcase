@@ -184,6 +184,14 @@
     opacity: 0.5;
 }
 
+.full-row {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .free-row {
     grid-column: 2 / -1;
     font-size: var(--font-size-large);

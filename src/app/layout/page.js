@@ -36,6 +36,7 @@ export default function initLayout(rootId) {
                 value: emptyDiv({className: "value-label"}),
                 update: void 0,
                 seeker: emptyDiv({id: "time-seek"}),
+                bookmarks: emptyDiv({id: "time-bookmarks"}),
             }
         },
         buttons: {},
