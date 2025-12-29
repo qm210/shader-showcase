@@ -1,4 +1,4 @@
-import {binarySearch, binarySearchInsert} from "./algorithms.js";
+import {binarySearchRight, binarySearchInsert, binarySearchLeft} from "./algorithms.js";
 
 const Interpolation = {
     Linear: "linear",
@@ -22,33 +22,46 @@ export class UniformAutomationizer {
 
     constructor(state) {
         this.state = state;
+        this.barSec = 240 / this.state.play.sync.bpm;
+        if (!isFinite(this.barSec)) {
+            console.error("UniformAutomationizer needs to know BPM!");
+        }
         // TODO: move uniform management here -> after Dream210, obvy
         this.uniforms = {};
         this.values = {};
         this.automations = {};
-        this.hasChanged = new Set();
+        // this.hasChanged = new Set();
         // just in case of debug-deschmug...
         this.updatedAt = null;
     }
 
-    update(time) {
+    update() {
+        // call this at the top of the render loop
+        const s = this.state;
+        this.updatedAt = s.time;
+
         for (const uniformName of Object.keys(this.automations)) {
-            const value = this.evaluate(uniformName, time);
+            const value = this.evaluate(uniformName, s.time);
             if (value !== this.values[uniformName]) {
                 this.values[uniformName] = value;
-                this.hasChanged.add(uniformName);
+                s[uniformName] = value;
+                // this.hasChanged.add(uniformName);
             }
         }
-        this.updatedAt = time;
     }
 
-    // Keyframe: {time, value, interpolation, arg / controlValue (für gewisse Interpolationen), label (nur zur Übersicht)}
-    addKeyFrame(uniformName, keyframes) {
+    // Keyframe: {time / bar, value, interpolation, arg / controlValue (für gewisse Interpolationen), label (nur zur Übersicht)}
+    addKeyFrame(uniformName, ...keyframes) {
         const automation = this.automations[uniformName] ?? [];
         for (const keyframe of keyframes) {
+            if (keyframe.bar !== undefined) {
+                keyframe.time = this.barSec * keyframe.bar;
+            }
             binarySearchInsert(keyframe, automation, "time");
         }
         this.automations[uniformName] = automation;
+
+        console.log("[AUTOMATIONS]", this.automations);
     }
 
     removeKeyFrame(uniformName, time) {
@@ -65,23 +78,23 @@ export class UniformAutomationizer {
         if (time < automation[0].time) {
             return this.defaultValue(uniformName);
         }
-        const frames = automation.length;
-        const lastFrame = automation[frames - 1];
-        if (time > lastFrame.time) {
+        const nFrames = automation.length;
+        const lastFrame = automation[nFrames - 1];
+        if (time > lastFrame.time || nFrames < 2) {
             return lastFrame.value;
         }
-        const startIndex = binarySearch(time, automation, "time");
+        const startIndex = binarySearchLeft(time, automation, "time");
         const startFrame = automation[startIndex];
         const segment = {
             startFrame,
-            endFrame: automation[startIndex + 1],
+            endFrame: automation[startIndex + 1] ?? startFrame,
             interpolation: startFrame.interpolation,
             startControlFrame: null,
             endControlFrame: null,
         };
         if (segment.interpolation === Interpolation.CatmullRom) {
             segment.startControlFrame = automation[startIndex - 1] ?? startFrame;
-            segment.endControlFrame = automation[startIndex + 2] ?? endFrame;
+            segment.endControlFrame = automation[startIndex + 2] ?? segment.endFrame;
         }
         return this.interpolateValue(time, segment);
     }
@@ -169,19 +182,5 @@ export class UniformAutomationizer {
             + (2 * v0 - 5 * v1 + 4 * v2 - v3) * t2
             + (-v0 + 3 * v1 - 3 * v2 + v3) * t3
         );
-    }
-
-    submitChanges() {
-        for (const uniformName of this.hasChanged) {
-            const uniform = this.uniforms[uniformName];
-            const value = this.values[uniformName];
-            console.warn("[UNIFORM AUTOMATIONS] NOT YET IMPLEMENTED: Submit Change of", uniform, "->", value);
-        }
-    }
-
-    // need...?
-    setDirectly(uniformName, value) {
-        this.values[uniformName] = value;
-        this.hasChanged.add(uniformName);
     }
 }

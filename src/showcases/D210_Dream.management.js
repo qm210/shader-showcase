@@ -33,6 +33,7 @@ export function createEventsManager(state, events) {
          *  launch: {in? , at?} and expire: {in? , at?} in seconds each
          *  */
         event.timeSec = asScheduled(event.launch, state.time);
+        console.log("TIMESEC", event.timeSec, event.timeSec > 0);
         if (event.timeSec > 0) {
             schedule(event);
         } else {

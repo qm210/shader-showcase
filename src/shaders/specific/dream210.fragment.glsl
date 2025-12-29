@@ -185,6 +185,20 @@ uniform float iMarbleRange;
 uniform float iColorStrength;
 uniform vec3 iColorCosineFreq;
 uniform vec3 iColorCosinePhase;
+uniform float iBlurBlending;
+uniform int iBlurBlendMode;
+uniform float iHazeStrength;
+uniform float iHazeScale;
+uniform float iCaleidoscopeCurvature;
+uniform float iCaleidoscopeDivisions;
+uniform float iCaleidoscopeOpacity;
+uniform float iCaleidoscopeAberration;
+uniform float iCaleidoscopeAberration2;
+uniform vec2 iForceRingCenter;
+uniform float iForceRingRadius;
+uniform float iForceRingBorder;
+uniform float iForceRingStrength;
+uniform float iHappyWorld;
 
 uniform float iFree0;
 uniform float iFree1;
@@ -1055,7 +1069,7 @@ vec2 stSwirled(vec2 st, float rClean, float rSwirled, float strength) {
     return 0.5 * uvSwirled(st2uv, rClean, rSwirled, strength) + 0.5;
 }
 
-void starCaleidoscope(inout vec3 col, in vec2 center) {
+void starCaleidoscope(in vec2 uv, in vec2 center, inout vec3 col) {
     vec2 rand = perlin2D(uv + iTime);
     vec2 uv0 = uv - center;
     float r = length(uv0);
@@ -1067,20 +1081,31 @@ void starCaleidoscope(inout vec3 col, in vec2 center) {
     float beatyness = 1. - exp(-0.09 * iTime);
     float rotation = mix(iTime, beatingTime, beatyness) * rotationSpeed;
 
-    float theta = atan(uv0.y, uv0.x) + log(r + 1.0) * 3.0 + rotation;
+    // iCaleidoscopeDivisions ~ 3
+    // iCaleidoscopeCurvature ~ 1
+    // iCaleidoscopeAberration ~ 1
+    // float sign = int(4. * bar) % 2 == 0 ? 1. : -1.;
+    float aberration = iCaleidoscopeAberration
+        + iCaleidoscopeAberration2 * exp(-fract(4. * bar));
+    float theta = atan(uv0.y, uv0.x)
+        + log(iCaleidoscopeCurvature * r + 1.0) * iCaleidoscopeDivisions
+        + rotation;
     center = 0.9 * vec2(cos(theta), sin(theta)) * r;
-    uv0 = uv - center;
     vec2 rotatedUV;
-    float angle = atan(uv.y - center.y, uv.x - center.x) * 3. + rotation;
+    float angle = atan(uv0.y, uv0.x) * 3. + rotation;
     r = length(uv - center);
-    rotatedUV = vec2(cos(angle), sin(angle)) * r * 0.5 + 0.51;
+    rotatedUV = vec2(cos(angle), sin(angle)) * r * 0.5 + 0.5
+        + aberration * 0.01;
     vec4 tex = monaAtlasCenteredAt(atlasLTRB_stars, 0.5 * rotatedUV);
     col.rb = mix(col.rb, tex.rb, tex.a);
+
     angle += exp(-r) * (0.06 + 0.1 * rand.x);
-    rotatedUV = vec2(cos(angle), sin(angle)) * r * 0.5 + 0.49 + 0.01 * sin(0.2 * iTime);
+    rotatedUV = vec2(cos(angle), sin(angle)) * r * 0.5 + 0.5
+        + aberration * (-0.01 + 0.01 * sin(0.2 * iTime));
     tex = monaAtlasCenteredAt(atlasLTRB_stars, 0.5 * rotatedUV);
     col.rg = mix(col.rg, tex.rg, tex.a);
-    angle += exp(-2.*r) * (0.06 + 0.5 * rand.y);
+
+    angle += exp(-2. * r) * (0.06 + 0.5 * rand.y);
     rotatedUV = vec2(cos(angle), sin(angle)) * r * 0.5 + 0.5;
     tex = monaAtlasCenteredAt(atlasLTRB_stars, 0.5 * rotatedUV);
     col.gb = mix(col.gb, tex.gb, tex.a);
@@ -1097,11 +1122,6 @@ vec2 forcePushedUV(in vec2 uv, in vec2 center, float ringRadius, float border, f
     return uv0;
 }
 
-uniform vec2 iForceRingCenter;
-uniform float iForceRingRadius;
-uniform float iForceRingBorder;
-uniform float iForceRingStrength;
-
 void masterComposition(in vec2 uv) {
     vec4 accumulus = texture(texAccumulusClouds, st);
 
@@ -1110,7 +1130,14 @@ void masterComposition(in vec2 uv) {
     vec3 colAdd;
     vec3 col = fragColor.rgb;
 
-    vec2 uv0 = forcePushedUV(0.5 * uv, c.yy, 0.54, 0.1, -1.28);
+//    uniform vec2 iForceRingCenter; c.yy
+//    uniform float iForceRingRadius; 0.54
+//    uniform float iForceRingBorder; 0.1
+//    uniform float iForceRingStrength; -1.28
+
+    vec2 uv0 = forcePushedUV(0.5 * uv,
+        iForceRingCenter, iForceRingRadius, iForceRingBorder, iForceRingStrength
+    );
     tex = monaAtlasCenteredAt(atlasLTRB_city, uv0);
 
 
@@ -1147,20 +1174,20 @@ void masterComposition(in vec2 uv) {
     colAdd = mix(vec3(luma), colAdd, 1.2) + 0.1;
     colAdd = colAdd / (1.0 + colAdd) * (1. + iFree5);
     col = mix(col, colAdd, tex.a);
-    fragColor = vec4(col, 1.);
-    return;
-
-    // starCaleidoscope(col, c.yy);
+    // fragColor = vec4(col, 1.);
+    // return;
 
     // mostly legacy... and not the good kind.
     vec4 noiseBase = texture(texNoiseBase, st);
     vec2 rand = perlin2D(uv);
 //    noiseBase = texture(texNoiseBase, stSwirled(st, 0.3 * rand.x, 0.8 * rand.y, iFree4));
 
+    vec3 colSad = col;
+
     col = sunnySkyBackground() * (1. + iNoiseLevel * noiseBase.rgb);
     col = mix(col, accumulus.rgb, accumulus.a);
 
-    float swirl = 4. + 0.2 * 4. * BEAT_SEC - 0.2 * max(0., iTime - 4. * BEAT_SEC);
+    float swirl = 4. + 0.2 * 4. * BEAT_SEC - 0.2 * max(0., iTime - 7. * BAR_SEC);
     const float scale = 0.4;
     tex = monaAtlasCenteredAt(atlasLTRB_buildings, scale * uvSwirled(0.1 * rand, 0.2, .8, swirl) - 0.25 * c.xy);
     tex.a *= 1. - pow(accumulus.a, 0.1);
@@ -1182,6 +1209,13 @@ void masterComposition(in vec2 uv) {
     tex = monaAtlasCenteredAt(atlasLTRB_rainbow, 0.29 * (uv - vec2(-0.1, 0.2)));
       tex.rgb *= noiseBase.r;
     col = mix(col, tex.rgb, tex.a);
+
+    col = mix(colSad, col, iHappyWorld);
+
+    colAdd = col;
+    vec2 uv2 = vec2(uv.x, uv.y + 0.5 * sin(1.26 * uv.x + 0.1 * iTime));
+    starCaleidoscope(uv2, c.yy, colAdd);
+    col = mix(col, colAdd, iCaleidoscopeOpacity);
 
     fragColor.rgb = col;
 
@@ -1313,37 +1347,38 @@ vec4 simple1DGaussBlur(sampler2D texSource) {
 
 #define SCREEN_BLEND 1
 #define SOFT_LIGHT_BLEND 2
-#define LUMINANCE_BLEND 3
-#define PASTEL_BLEND 4
+#define LUMINANCE_AWARE_BLEND 3
+#define PASTEL_DIFFUSION_BLEND 4
 
 vec3 applyBlending(int modeIndex, vec4 baseColor, vec4 blendColor, float amount) {
     // these are especially nice for mixing a blurred image into its original :)
     vec3 base = baseColor.rgb * baseColor.a;
     vec3 blend = blendColor.rgb * blendColor.a * amount;
     switch (modeIndex) {
+        default:
+            return mix(baseColor, blendColor, amount).rgb;
         case SCREEN_BLEND:
             return 1. - (1. - base) * (1. - blend);
         case SOFT_LIGHT_BLEND:
             vec3 light = 2.0 * blend * base;
             vec3 dark = 1.0 - 2.0 * (1.0 - blend) * (1.0 - base);
             return mix(dark, light, step(0.5, blend));
-        case LUMINANCE_BLEND:
-            // TODO: Luminance Blend
-        case PASTEL_BLEND:
-            // Pastel Diffusion blend
+        case LUMINANCE_AWARE_BLEND:
+            float lumaOrig = luminance(base);
+            float glowMask = smoothstep(0.3, 0.8, luminance(blend));
+            return base + blend * glowMask * 1.5;
+        case PASTEL_DIFFUSION_BLEND:
             vec3 pastel = pow(base, vec3(0.8));
             vec3 glow = blend * 0.6;
             return mix(pastel, glow, 0.4);
-        default:
-            return mix(baseColor, blendColor, amount).rgb;
     }
 }
 
 void finalEndboss() {
     vec4 blurred = texture(texColor, st);
     vec4 unblurred = texture(texPostSunrays, st);
-    fragColor = unblurred;
-            // <-- we just re-used that sampler2D, it does not contain sunrays here. hopefully.
+    // <-- we just re-used that sampler2D, it does not contain sunrays here. hopefully.
+
             // Mixing Methods?
             // - Linear Blend with e.g. a ratio 1.23 is nice:
 //             fragColor = mix(fragColor, blurred, iFree6);
@@ -1353,25 +1388,16 @@ void finalEndboss() {
 
     // hm. are these broken? check again, simply on the pure RGB (A is already 1):
 
-    vec3 base = unblurred.rgb;
-    vec3 blend = blurred.rgb * iFree6;
+    vec3 col = applyBlending(iBlurBlendMode, unblurred, blurred, iBlurBlending);
 
-//            vec3 softLightSimple(vec3 base, vec3 blend) {...}
-//
-
-    //  + 0.1;  // + haze 0.1
     // better haze:
-    vec2 hazeDir = uv;
+    float rHaze = length(uv); // always centered for now
     const vec3 hazeColor = vec3(0.9, 0.96, 1.);
-    float hazeAmount = exp(-length(hazeDir) * 3.) * iFree4 * smoothstep(2.52, 2.5, bar);
-    fragColor.rgb += hazeColor * hazeAmount;
-
-            // Luma-Aware Smart Bloom
-//            float lumaOrig = luminance(base);
-//            float glowMask = smoothstep(0.3, 0.8, luminance(blend));
-//            fragColor.rgb = base + blend * glowMask * 1.5;
-
-            // float beatFlicker = beatPhase(max(iTime - 7. * BAR_SEC, 0.), 4.);
+    //float hazeAmount = exp(-rHaze * (0.5 - 0.5 * cos(20. * rHaze - 10. * iTime)) * iHazeScale) * iHazeStrength;
+    float hazeAmount = exp(-rHaze * iHazeScale) * iHazeStrength;
+    // * smoothstep(2.52, 2.5, bar);
+    fragColor.rgb = col + hazeColor * hazeAmount;
+    // float beatFlicker = beatPhase(max(iTime - 7. * BAR_SEC, 0.), 4.);
     fragColor.rgb = postprocessFluid(fragColor,
         ENABLE_SUNRAYS_ON_MASTER == 1,
         ENABLE_BLOOM_ON_MASTER == 1,
@@ -1387,7 +1413,7 @@ void main() {
 //    fragColor = debugColor;
 //    return;
 
-    bar = beat(iTime) * 4.;
+    bar = 0.25 * beat(iTime);
 
     int colorEvent = int(fluidColorEvent.type);
     int velocityEvent = int(fluidVelocityEvent.type);

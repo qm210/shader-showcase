@@ -18,6 +18,7 @@ import {
 import {compactifyGlyphJson, createGlyphDef, toAscii} from "../app/algorithms.js";
 import {createEventsManager, createGlyphInstanceManager} from "./D210_Dream.management.js";
 import {initAudioState} from "../app/audio.js";
+import {UniformAutomationizer} from "../app/automation.js";
 
 import vertexShaderSource from "../shaders/specific/dream210.vertex.glsl";
 import fragmentShaderSource from "../shaders/specific/dream210.fragment.glsl";
@@ -30,7 +31,6 @@ import fontMsdfJson from "../textures/dream210/Kalnia-SemiBold.msdf.json";
 import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
 import monaAtlas from "../textures/dream210/mona/mona_atlas.png";
-import {UniformAutomationizer} from "../app/automation.js";
 
 
 export default {
@@ -45,8 +45,6 @@ export default {
         }
 
         initAudioState(state, track);
-
-        state.automationizer = new UniformAutomationizer(state);
 
         state.play.sync.bpm = 105;
         const syncBookmarks = [{
@@ -83,8 +81,10 @@ export default {
         // UGLY HACK BECAUSE THIS FUNCTION GETS INITIALIZED LATER..!!
         setTimeout(() =>
             syncBookmarks.forEach(state.play.actions.setBookmark),
-            500
+            2000
         );
+
+        state.automationizer = new UniformAutomationizer(state);
 
         state.monaTextures = await createTextureFromImageAsync(gl, monaAtlas, {
             internalFormat: gl.RGBA8
@@ -373,7 +373,68 @@ export default {
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        // Textures that are always bound (for now):
+        state.automationizer.addKeyFrame(
+            "iForceRingStrength",
+            {
+                bar: 0,
+                value: -10
+            }, {
+                bar: 4,
+                value: -1.28
+            },
+        );
+        state.automationizer.addKeyFrame(
+            "iBlurBlending",
+            {
+                bar: 0,
+                value: 1,
+            }, {
+                bar: 7,
+                value: 0.2
+            },
+        );
+        state.automationizer.addKeyFrame(
+            "iHappyWorld",
+            {
+                bar: 7,
+                value: 0,
+            }, {
+                bar: 12,
+                value: 1
+            },
+        );
+
+        const timeBar = 240 / state.play.sync.bpm * 4;
+        state.events.manager.launch({
+            member: state.events.SPECIAL_MEMBER.GLYPH_INSTANCES,
+            data: {
+                text: "huh?",
+                posX: 0,
+                posY: 0,
+                scale: 1,
+                color: [0.7, 0, 0.9, 0.03],
+                glowColor: [0.6, 0, 0.3, 1.3],
+                glowArgs: [10, 0.005, 10, 10],
+                randAmp: [0.1, 0.21],
+                randFreq: [0.1, 0.21],
+                freeArgs: [1, 0, 0, 0],
+            },
+            launch: {
+                in: 4 * timeBar,
+            }
+        });
+        state.events.manager.launch({
+            member: state.events.members.fluidColorEvent,
+            data: { type: state.events.types.DRAW_TEXT },
+        });
+        state.events.manager.launch({
+            member: state.events.members.fluidVelocityEvent,
+            data: {
+                type: state.events.types.DRAIN,
+                coords: [0, -2],
+                args: [0.1]
+            },
+        });
 
         return state;
     },
@@ -448,7 +509,7 @@ export default {
                         },
                         expire: { in: (nPhrases + 1) * timeBar },
                     });
-                    },
+                },
                 onRightClick: () => {
                     state.events.manager.clear();
                     console.info("[EVENTS]", state.events, "- Queues:", state.events.manager.queue);
@@ -631,6 +692,8 @@ function render(gl, state) {
     });
     state.query.profiler.record("Start.");
 
+    state.automationizer.update();
+
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform1f(state.location.deltaTime, state.play.dt);
     gl.uniform2fv(state.location.iResolution, state.resolution);
@@ -708,6 +771,16 @@ function render(gl, state) {
     gl.uniform1f(state.location.iForceRingRadius, state.iForceRingRadius);
     gl.uniform1f(state.location.iForceRingBorder, state.iForceRingBorder);
     gl.uniform1f(state.location.iForceRingStrength, state.iForceRingStrength);
+    gl.uniform1i(state.location.iBlurBlendMode, state.iBlurBlendMode);
+    gl.uniform1f(state.location.iBlurBlending, state.iBlurBlending);
+    gl.uniform1f(state.location.iHazeScale, state.iHazeScale);
+    gl.uniform1f(state.location.iHazeStrength, state.iHazeStrength);
+    gl.uniform1f(state.location.iCaleidoscopeCurvature, state.iCaleidoscopeCurvature);
+    gl.uniform1f(state.location.iCaleidoscopeDivisions, state.iCaleidoscopeDivisions);
+    gl.uniform1f(state.location.iCaleidoscopeOpacity, state.iCaleidoscopeOpacity);
+    gl.uniform1f(state.location.iCaleidoscopeAberration, state.iCaleidoscopeAberration);
+    gl.uniform1f(state.location.iCaleidoscopeAberration2, state.iCaleidoscopeAberration2);
+    gl.uniform1f(state.location.iHappyWorld, state.iHappyWorld);
 
     // SOURCE: FONTS -- TEXTURE8 für MSDF-Png
 
@@ -1627,10 +1700,71 @@ function createUniforms() {
         }, {
             type: "int",
             name: "extraMasterBlurs",
-            defaultValue: 0,
+            defaultValue: 8,
             min: 0,
             max: 15,
             notAnUniform: true,
+        }, {
+            type: "int",
+            name: "iBlurBlendMode",
+            defaultValue: 0,
+            min: 0,
+            max: 4,
+        }, {
+            type: "float",
+            name: "iBlurBlending",
+            defaultValue: 0,
+            min: -1,
+            max: 2,
+        }, {
+            type: "float",
+            name: "iHazeScale",
+            defaultValue: 3.,
+            min: 0.01,
+            max: 30.,
+        }, {
+            type: "float",
+            name: "iHazeStrength",
+            defaultValue: 0.14,
+            min: -100,
+            max: 200,
+        }, {
+            type: "float",
+            name: "iHappyWorld",
+            defaultValue: 0,
+            min: 0,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iCaleidoscopeDivisions",
+            defaultValue: 3,
+            min: 0,
+            max: 20,
+            step: 1,
+        }, {
+            type: "float",
+            name: "iCaleidoscopeCurvature",
+            defaultValue: 1,
+            min: 0.,
+            max: 100,
+        }, {
+            type: "float",
+            name: "iCaleidoscopeOpacity",
+            defaultValue: 1.,
+            min: 0,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iCaleidoscopeAberration",
+            defaultValue: 1.,
+            min: -10,
+            max: 10,
+        }, {
+            type: "float",
+            name: "iCaleidoscopeAberration2",
+            defaultValue: 1.,
+            min: -10,
+            max: 10,
         }, {
             separator: "Sunrays-Effekt"
         }, {

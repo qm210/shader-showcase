@@ -2,11 +2,11 @@ export function clamp(x, min, max) {
     return Math.min(Math.max(x, min), max);
 }
 
-export function binarySearch(targetValue, array, key) {
+export function binarySearchRight(targetValue, array, key) {
     let lower = 0;
     let upper = array.length;
     while (lower < upper) {
-        const middle = (lower + upper) >> 1;
+        const middle = Math.floor((lower + upper) / 2);
         if (array[middle][key] < targetValue) {
             lower = middle + 1;
         } else {
@@ -16,8 +16,15 @@ export function binarySearch(targetValue, array, key) {
     return lower;
 }
 
+export function binarySearchLeft(targetValue, array, key) {
+    const right = binarySearchRight(targetValue, array, key);
+    return right > 0 && targetValue < array[right][key]
+        ? right - 1
+        : right;
+}
+
 export function binarySearchInsert(event, queue, key) {
-    const lower = binarySearch(event[key], queue, key);
+    const lower = binarySearchRight(event[key], queue, key);
     queue.splice(lower, 0, event);
 }
 

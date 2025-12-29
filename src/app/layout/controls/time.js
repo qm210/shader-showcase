@@ -220,14 +220,13 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
     };
 
     el.do.toggle = (force = undefined) => {
-        if (state.play.running || force === false) {
-            state.play.running = false;
-        } else {
-            state.play.running = true;
+        if (!state.play.running) {
             state.play.previousTimestamp = null;
         }
+        const running = force ?? !state.play.running;
+        state.play.running = running;
         if (state.track) {
-            void state.track.actions.togglePlay(state.play.running);
+            void state.track.actions.togglePlay(running);
         }
     };
 
