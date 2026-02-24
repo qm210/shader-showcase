@@ -1,6 +1,8 @@
 import {createSmallButton} from "./layout/controls.js";
-import {createPreset, deletePreset, initializePresetStore, loadPresets} from "./database.js";
+import {createPreset, deletePreset, loadPresets} from "./database.js";
 import {createDiv} from "./layout/dom.js";
+
+const ADVANCED = import.meta.env.VITE_MODE_ADVANCED;
 
 const HEADER = {
     IDENTIFIER: "qm210.uniforms",
@@ -67,6 +69,10 @@ function updateFromBundle(json, state, elements) {
 }
 
 export function createClipboardButtons(elements, state) {
+    if (!ADVANCED) {
+        return [];
+    }
+
     const copyButton = createSmallButton("→ Clipboard", "right-align");
     const pasteButton = createSmallButton("Paste", "right-align");
 
@@ -126,11 +132,17 @@ function queryOption(selector, value) {
 
 export function createPresetSelector(elements, state) {
     const selector = document.createElement("select");
+    const container = document.createElement("div");
+    const result = {selector, container};
+
+    if (!ADVANCED) {
+        return result;
+    }
+
     selector.classList.add("presets-selector");
     addOption(selector, "Loading Presets...");
     selector.disabled = true;
 
-    const container = document.createElement("div");
     container.appendChild(selector);
     container.appendChild(createDiv("Presets...", "presets-hint"));
 
@@ -179,7 +191,7 @@ export function createPresetSelector(elements, state) {
         }
     });
 
-    return {selector, container};
+    return result;
 
     function selectedPreset() {
         return elements.db.presets.find(p =>

@@ -1,4 +1,4 @@
-import showcase1 from "./showcases/1_PlainColor.js";
+import showcase1 from "./showcases/1_PlainBasics.js";
 import showcase2 from "./showcases/2_GeometryPlayground.js";
 import showcase2b from "./showcases/2_GeometryPlayground_sdBox.js";
 import showcase2c from "./showcases/2_GeometryPlayground_grid.js";
@@ -7,6 +7,7 @@ import showcase3a from "./showcases/3a_Textures.js";
 import showcase3b from "./showcases/3b_Textures.js";
 import showcase3c from "./showcases/3c_Textures.js";
 import showcase3d from "./showcases/3d_Textures.js";
+import showcase3x from "./showcases/3x_TextureProcessing.js";
 import showcase4 from "./showcases/4_ColorPlayground.js";
 import showcase5 from "./showcases/5a_Noise.js";
 import showcase5b from "./showcases/5b_NoiseExtended.js";
@@ -19,15 +20,8 @@ import showcase9 from "./showcases/9_FramebufferPingPong.js";
 import showcase9bUnfinished from "./showcases/9b_MultiPassAndExtraData.js";
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
-import showcaseFb210 from "./showcases/11b_MoreFramebufferProcessing.js";
-import showcase12 from "./showcases/12_PerformancePlayground.js";
-import showcaseRIOW from "./showcases/RIOW_StochasticRayTracing.js";
-import showcaseOld8 from "./showcases/retired/old8_Multipass.js";
-import showcaseOld11 from "./showcases/retired/old11_Volumetric.js";
-import showcaseX from "./showcases/X_SimulationPlayground.js";
-import showcaseZClouds from "./showcases/Z_NR4_Clouds.js";
 
-const defaultShowcase = showcase12;
+const defaultShowcase = showcase1;
 
 const MAP_PATH = {
     // Zum Anfang ein sehr, sehr langweiliger Anfang.
@@ -36,12 +30,13 @@ const MAP_PATH = {
     "2": showcase2,
     "2b": showcase2b,
     "2c": showcase2c,
-    // Texturen Basics (ist derselbe schader, nur nach den verschiedenen #define-Optionen aufgeschlüsselt:
+    // Texturen Basics (ist derselbe Shader, nur nach den verschiedenen #define-Optionen aufgeschlüsselt:
     "3": showcase3,
     "3a": showcase3a,
     "3b": showcase3b,
     "3c": showcase3c,
     "3d": showcase3d,
+    "3x": showcase3x,
     // Farbräume
     "4": showcase4,
     // Prozedurales Rauschen (Perlin Noise, FBM) -- nachgereicht, weil wir Ähnliches besprochen haben (z.B. Voronoi)
@@ -65,23 +60,6 @@ const MAP_PATH = {
     // Demonstration eines sehr ausgiebigen Multi Pass / Framebuffer-Setups
     // aber UNVOLLSTÄNDIG -- den müsst ihr also nicht vertiefen.
     "11": showcase11Unfinished,
-    // <-- bis hierhin kamen wir nun bis Mitte November
-
-    // --> Hier machen wir im Dezember weiter - "12": Performance-Somewhat-Deep-Dive.
-    "12": showcase12,
-
-    // spezifische Referenzen, die ich mal rangezogen habe, aber nicht zum Durchkauen gedacht.
-    "iq": showcaseIQ, // same as "6b"
-    "riow": showcaseRIOW,
-    // Zwei Shader aus der VL im Frühjahr, die ich auch mal als Beispiel referenziert habe.
-    // (Könnt ihr gerne anschauen um rauszukriegen, was ich euch wohl damit demonstriert habe,
-    //  aber es wird keine tiefstgreifende Kenntnis vorausgesetzt. Fragt gerne ob der Relevanz nach.)
-    "old8": showcaseOld8,
-    "old11": showcaseOld11,
-    // Einzelne Untersuchungen, die hier nur zur Demonstration liegen. Ggf. unfertig. IRRELEVANT.
-    "210": showcaseX,
-    "fb210": showcaseFb210,
-    "nr4": showcaseZClouds,
 };
 
 export function selectShowcase() {

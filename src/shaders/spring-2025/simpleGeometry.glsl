@@ -4,7 +4,7 @@ out vec4 fragColor;
 uniform vec2 iResolution;
 uniform float iTime;
 
-// nice abbreviation for concise but uneasily readable glslCode
+// nice abbreviation for conciser glslCode (but needs getting used to)
 vec4 c = vec4(1., 0., -1., 0.5);
 
 void circle(in vec2 uv, inout vec3 col, inout float d) {

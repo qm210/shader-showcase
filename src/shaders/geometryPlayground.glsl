@@ -168,15 +168,15 @@ void demonstrateNormalVector(inout vec3 col, in vec2 uv) {
 }
 
 void letsGoElsewhere(inout vec3 col, in vec2 uv) {
-    vec2 p = (uv - vec2(-1.2, -0.1)) * rotate(iTime);
+    vec2 p = (uv - vec2(-1.2, 0.0)) * rotate(iTime);
     // vec2 p = (uv * rotate(iTime) - vec2(-1.2, -0.1));
     float d = sdBox(p, vec2(0.4, .25));
     col.g = max(step(abs(d), 0.004), col.g); // <-- Randa uch mit step(abs(d), dicke)
-    col.b = 0.75 * sin(80. * d);
-    col.b = exp(-30. * d);
-    col.b = clamp(col.b, 0., 1.);
-    // <-- ...warum wohl? --> man achte mal auf die Deckkraft des Blaus, mit vs. ohne
-    col.b *= 0.7;
+    col.r = 0.75 * sin(80. * d);
+    col.r = exp(-30. * d);
+    col.r = clamp(col.r, 0., 1.);
+    // <-- ...warum wohl? --> man achte mal auf die Deckkraft mit vs. ohne
+    col.r *= 0.7;
 }
 
 void vectorStuff(inout vec3  col, in vec2 uv) {
@@ -244,7 +244,7 @@ void applyGrid(inout vec3 col, in vec2 uv) {
 
 void main() {
     vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
-/*
+    /*
     vec3 col = c.xxx;
 
     vec2 p = vec2(uv.x, sin(twoPi * uv.x));
@@ -260,64 +260,64 @@ void main() {
         col = vec3(0);
     }
 
-    vec3 red = c.xyy;
+    vec3 blue = c.yyx;
 
     vec2 pos = vec2(-1.4, 0.7);
     if (length(uv - pos) < 0.05) {
-        col = red;
+        col = blue;
     }
 
     pos.x += 0.2;
     float d = sdCircle(uv - pos, 0.05);
     if (d < 0.) {
         // ums schonmal gehört haben: branches sind uncool im Shader
-        col = red;
+        col = blue;
     }
 
     pos.x += 0.2;
     d = sdCircle(uv - pos, 0.05);
     d = smoothstep(0.01, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
     // smoothstep again! see examples at
     // https://graphtoy.com/?f1(x,t)=smoothstep(0.0,1.,x)&v1=true&f2(x,t)=smoothstep(0.1,0.,x)&v2=true&f3(x,t)=1%20-%20smoothstep(0.0,1.,x)&v3=true&f4(x,t)=&v4=false&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=0.8245328922861012,0.4568651909764677,1.3401378935309718
 
     pos.x += 0.2;
     d = sdCircle(uv - pos, 0.05);
     d = smoothstep(0.03, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     pos.x += 0.22;
     d = sdCircle(uv - pos, 0.05);
     d = abs(d - 0.02);
     d = smoothstep(0.02, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     // for starters, check SDFs at https://iquilezles.org/articles/distfunctions2d/
 
     pos.x += 0.22;
     d = sdBox(uv - pos, vec2(0.05));
     d = smoothstep(0.01, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     pos.x += 0.22;
     d = sdBox(uv - pos, vec2(0.05));
     d -= 0.02;
     d = smoothstep(0.01, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     pos.x += 0.22;
     d = sdBox(uv - pos, vec2(0.05));
     float dRing = abs(sdCircle(uv - pos, 0.05) - 0.02);
     d = min(d, dRing); // <-- kombiniert
     d = smoothstep(0.01, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     pos.x += 0.22;
     d = sdBox(uv - pos, vec2(0.05));
     dRing = abs(sdCircle(uv - pos, 0.05) - 0.02);
     d = max(d, dRing); // <-- schneidet aus
     d = smoothstep(0.01, 0., d);
-    col = mix(col, red, d);
+    col = mix(col, blue, d);
 
     applyGrid(col, uv);
 

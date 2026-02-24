@@ -1,8 +1,8 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {createFramebufferWithTexture} from "../webgl/helpers.js";
+import {startRenderLoop} from "../../webgl/render.js";
+import {createFramebufferWithTexture} from "../../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/performancePlayground.glsl";
-import {initBasicState} from "./common.js";
+import fragmentShaderSource from "../../shaders/performancePlayground.glsl";
+import {initBasicState} from "../common.js";
 
 export default {
     title: "Performance Considerations",

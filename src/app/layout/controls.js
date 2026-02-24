@@ -48,7 +48,12 @@ export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator
         container.appendChild(value);
     }
     if (content instanceof Array) {
-        content.forEach(c => container.appendChild(c));
+        content.forEach(child => {
+            if (!child) {
+                return;
+            }
+            container.appendChild(child);
+        });
     } else if (content) {
         container.appendChild(content);
     }
@@ -285,8 +290,7 @@ const randomVec = (control) =>
     Array(control.dim).fill(null)
         .map((_, i) => {
             const random = (control.max[i] - control.min[i]) * Math.random();
-            const result = round(control.min[i] + random, control.step[i]);;
-            return result;
+            return round(control.min[i] + random, control.step[i]);
         });
 
 export const asVecInput = (elements, state, control) => {
@@ -553,6 +557,10 @@ export const asBoolInput = (elements, state, control) => {
 };
 
 export function createResetAllButton(elements, state, controls) {
+    if (!controls.uniforms) {
+        return undefined;
+    }
+
     const button = createSmallButton("Reset All", "right-align");
     button.addEventListener("click", event => {
         const allResetButtons = elements.controls.querySelectorAll("button.reset");

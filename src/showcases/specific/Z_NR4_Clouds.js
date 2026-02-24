@@ -1,12 +1,12 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {initBasicState} from "./common.js";
-import fragmentShaderSource from "../shaders/specific/nr4_clouds.glsl";
+import {startRenderLoop} from "../../webgl/render.js";
+import {initBasicState} from "../common.js";
+import fragmentShaderSource from "../../shaders/specific/nr4_clouds.glsl";
 import {
     clearFramebuffers,
     createPingPongFramebuffersWithTexture,
     evaluateReadData,
     updateResolutionInState
-} from "../webgl/helpers.js";
+} from "../../webgl/helpers.js";
 
 export default {
     title: "NR4's Clouds",

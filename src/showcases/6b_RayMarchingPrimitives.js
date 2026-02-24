@@ -34,9 +34,6 @@ export default {
             );
         },
         uniforms: [{
-            type: "label",
-            name: "iTime",
-        }, {
             type: "float",
             name: "iFree0",
             defaultValue: 0,

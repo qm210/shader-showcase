@@ -75,9 +75,6 @@ export default {
             );
         },
         uniforms: [{
-            type: "label",
-            name: "iTime",
-        }, {
             type: "float",
             name: "iGamma",
             defaultValue: 1,

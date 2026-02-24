@@ -1,5 +1,5 @@
 {
-  "name": "webgl-simple-sample",
+  "name": "shader-showcase",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,13 +9,12 @@
     "test": "vitest"
   },
   "devDependencies": {
-    "happy-dom": "20.0.10",
-    "vite": "7.1.12",
-    "vite-plugin-glsl": "1.5.4",
-    "vitest": "3.2.4"
+    "happy-dom": "20.6.1",
+    "vite": "7.3.1",
+    "vitest": "4.0.18"
   },
   "dependencies": {
-    "diff": "7.0.0",
+    "diff": "8.0.3",
     "idb": "8.0.3"
   }
 }

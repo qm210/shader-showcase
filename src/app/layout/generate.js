@@ -138,6 +138,7 @@ export const addControlsToPage = (elements, state, controls, autoRenderOnLoad) =
         });
     }
 
+    controls.uniforms ??= [];
     const groups = collectGroups(controls);
 
     for (const control of controls.uniforms) {
@@ -309,7 +310,7 @@ function addDisplayControls(elements, state, glContext) {
     const info = appendElement(elements.displayControls, "", "div", "fps-box");
     elements.fps = {
         label: createElement("label", "FPS"),
-        display: createDiv("", "fps"),
+        display: createDiv("\u2013 ? \u2013", "fps"),
     }
     info.appendChild(elements.fps.label);
     info.appendChild(elements.fps.display);
@@ -327,7 +328,7 @@ function addDisplayControls(elements, state, glContext) {
             width = Math.max(Math.round(width * factor), 1);
             height = Math.max(Math.round(height * factor), 1);
             setCanvasResolution(elements.canvas, glContext, width, height);
-            updateResolutionInState(state, gl);
+            updateResolutionInState(state, glContext);
             /*
             // TODO: must recreate framebuffers, but for that we need a short break from rendering
             whilePausingRendering(state, () => {

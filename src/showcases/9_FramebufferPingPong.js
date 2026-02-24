@@ -58,10 +58,7 @@ export default {
                 elements
             );
         },
-        uniforms: [{
-            type: "label",
-            name: "iTime",
-        }]
+        uniforms: []
     })
 };
 

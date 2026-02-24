@@ -5,18 +5,13 @@ import {idForLine} from "./layout/shaderCode.js";
 export function createScrollStackOn(parent) {
     const scrollStack = [];
 
-    parent.addEventListener("mousedown", (event) => {
-        const isBackButton = event.button === 3;
-        if (!isBackButton) {
-            return;
-        }
-
+    parent.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
         const stackElement = scrollStack.pop();
         if (!stackElement) {
+            flashNotAllowedCursor(parent);
             return;
         }
-
-        event.preventDefault();
         stackElement.scrollIntoView({
             behavior: "smooth",
             block: "center"
@@ -25,6 +20,13 @@ export function createScrollStackOn(parent) {
     });
 
     return scrollStack;
+}
+
+function flashNotAllowedCursor(parent) {
+    parent.style.cursor = "not-allowed";
+    setTimeout(() => {
+        parent.style.cursor = "";
+    }, 100);
 }
 
 export function addShaderCodeEventListeners(analyzed, parent, scrollStack) {

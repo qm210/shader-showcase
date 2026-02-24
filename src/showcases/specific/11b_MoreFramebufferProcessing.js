@@ -1,12 +1,12 @@
-import {startRenderLoop} from "../webgl/render.js";
+import {startRenderLoop} from "../../webgl/render.js";
 import {
     createPingPongFramebuffersWithTexture, createTextureFromImage, updateResolutionInState
-} from "../webgl/helpers.js";
+} from "../../webgl/helpers.js";
 
-import vertexShaderSource from "../shaders/vertex.basicWithDifferentials.glsl"
-import fragmentShaderSource from "../shaders/moreProcessingPlayground.glsl";
-import {initBasicState} from "./common.js";
-import image from "../textures/210_schnoerkel.png";
+import vertexShaderSource from "../../shaders/vertex.basicWithDifferentials.glsl"
+import fragmentShaderSource from "../../shaders/moreProcessingPlayground.glsl";
+import {initBasicState} from "../common.js";
+import image from "../../textures/210_schnoerkel.png";
 
 export default {
     title: "Framebuffer Postprocessing",

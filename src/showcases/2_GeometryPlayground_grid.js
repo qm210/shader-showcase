@@ -34,10 +34,7 @@ export default {
     generateControls: (gl, state, elements) => ({
         onRender: () =>
             startRenderLoop(state => render(gl, state), state, elements),
-        uniforms: [{
-            type: "label",
-            name: "iTime",
-        }]
+        uniforms: []
     })
 }
 

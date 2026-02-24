@@ -36,9 +36,6 @@ export default {
         onRender: () =>
             startRenderLoop(state => render(gl, state), state, elements),
         uniforms: [{
-            type: "label",
-            name: "iTime",
-        }, {
             type: "float",
             name: "helloThere",
             defaultValue: 1.00,

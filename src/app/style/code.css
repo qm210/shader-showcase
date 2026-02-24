@@ -1,5 +1,5 @@
 .code-block {
-    --shadow: 1px 1px 1px #4442;
+    --shadow: 1px 1px 1px #44444422;
     --code-background: #f0f9ff;
 
     text-align: left;
@@ -152,7 +152,7 @@ pre.error {
 }
 
 .code .builtin {
-    color: darkblue;
+    color: mediumblue;
     text-shadow: var(--shadow);
 }
 

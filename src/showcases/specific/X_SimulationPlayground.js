@@ -1,9 +1,9 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {createFramebufferWithTexture, createTextureFromImage} from "../webgl/helpers.js";
+import {startRenderLoop} from "../../webgl/render.js";
+import {createFramebufferWithTexture, createTextureFromImage} from "../../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/xSimulationPlayground.glsl";
-import {initBasicState} from "./common.js";
-import schnoergl210 from "../textures/210_schnoerkel.png";
+import fragmentShaderSource from "../../shaders/xSimulationPlayground.glsl";
+import {initBasicState} from "../common.js";
+import schnoergl210 from "../../textures/210_schnoerkel.png";
 
 export default {
     title: "Advanced Playground",
@@ -131,9 +131,6 @@ export default {
             );
         },
         uniforms: [{
-            type: "label",
-            name: "iTime",
-        }, {
             type: "float",
             name: "iNoiseLevel",
             defaultValue: 1,
