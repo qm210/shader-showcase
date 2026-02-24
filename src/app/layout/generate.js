@@ -3,7 +3,7 @@ import {registerShaderCode} from "./shaderCode.js";
 import {appendButton, appendElement, createDiv, createElement} from "./dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
 import {deferExtendedAnalysis} from "../../glslCode/deferredAnalysis.js";
-import {shiftTime} from "../../webgl/render.js";
+import {shiftTime, startRenderLoop} from "../../webgl/render.js";
 import {setCanvasResolution} from "../../webgl/setup.js";
 import {updateResolutionInState} from "../../webgl/helpers.js";
 import {addCanvasMouseInteraction} from "../mouse.js";
@@ -11,7 +11,7 @@ import {createClipboardButtons, createPresetSelector, refreshPresets} from "../e
 import {initializePresetStore} from "../database.js";
 
 
-const generatePage = (glContext, elements, state, controls, autoRenderOnLoad = true) => {
+const generatePage = (glContext, elements, state, controls) => {
 
     if (!state.program) {
         elements.workingShader.remove();
@@ -65,7 +65,7 @@ const generatePage = (glContext, elements, state, controls, autoRenderOnLoad = t
         .then(scrollToFirstInterestingLine);
 
     addCanvasMouseInteraction(elements, state);
-    addControlsToPage(elements, state, controls, autoRenderOnLoad);
+    addControlsToPage(elements, state, controls, glContext);
     addDisplayControls(elements, state, glContext);
 
     state.selectedPreset = null;
@@ -82,7 +82,7 @@ const generatePage = (glContext, elements, state, controls, autoRenderOnLoad = t
 export default generatePage;
 
 
-export const addControlsToPage = (elements, state, controls, autoRenderOnLoad) => {
+export const addControlsToPage = (elements, state, controls, glContext) => {
     if (!state.program) {
         elements.controls.innerHTML = `
             <div class="error" style="text-align: right;">
@@ -92,15 +92,18 @@ export const addControlsToPage = (elements, state, controls, autoRenderOnLoad) =
         return;
     }
 
-    if (autoRenderOnLoad) {
-        controls.onRender();
-    } else {
-        addButton({
-            parent: elements.controls,
-            title: "Render!",
-            onClick: controls.onRender,
-        });
+    if (!controls.onRender) {
+        if (!controls.renderLoop) {
+            throw new Error("generateControls() needs either onRender or renderLoop defined!");
+        }
+        controls.onRender = () =>
+            startRenderLoop(
+                state => controls.renderLoop(glContext, state, elements),
+                state,
+                elements
+            );
     }
+    controls.onRender();
 
     elements.iTime = addFreeRow({
         parent: elements.controls,

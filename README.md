@@ -41,5 +41,11 @@ so in case you are confused, just ask your local Dr. Weinreuter for anything.
 ## Troubleshooting
 * Windows Terminal / PowerShell Complaints about Execution Policy? Run as Admin:
 ```
-Set-ExecutionPolicy RemoteSigned
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
+
+### Useful stuff 
+- https://www.khronos.org/files/opengles3-quick-reference-card.pdf
+- https://www.shadertoy.com/
+- https://graphtoy-plus.csprance.com/
+- https://iquilezles.org/articles/distfunctions2d/

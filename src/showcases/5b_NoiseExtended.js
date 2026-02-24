@@ -22,14 +22,8 @@ export default {
 
         return state;
     },
-    generateControls: (gl, state, elements) => ({
-        onRender: () => {
-            startRenderLoop(
-                state => render(gl, state, elements),
-                state,
-                elements
-            );
-        },
+    generateControls: (state) => ({
+        renderLoop: render,
         uniforms: defineUniformControls(state)
     })
 };

@@ -1,10 +1,7 @@
-import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 import {startRenderLoop} from "../webgl/render.js";
-import {evaluateReadData} from "../webgl/helpers.js";
+import {initBasicState, readPixelsAndEvaluate} from "./common.js";
 
 import fragmentShaderSource from "../shaders/noisePlayground.glsl";
-import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import {initBasicState, readPixelsAndEvaluate} from "./common.js";
 
 export default {
     title: "Noise Playground",
@@ -25,14 +22,8 @@ export default {
 
         return state;
     },
-    generateControls: (gl, state, elements) => ({
-        onRender: () => {
-            startRenderLoop(
-                state => render(gl, state, elements),
-                state,
-                elements
-            );
-        },
+    generateControls: (state) => ({
+        renderLoop: render,
         uniforms: defineUniformControls(state)
     })
 };

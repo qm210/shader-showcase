@@ -1,10 +1,10 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 
-import vertexShaderSource from "../shaders/spring-2025/basic.vertex.glsl";
+import vertexShaderSource from "../shaders/vertex.basic.glsl";
 import fragmentShaderSource from "../shaders/firstBasics.glsl";
 
 export default {
-    title: "Very simple example",
+    title: "Very First Basics",
     init: (gl, sources = {}) => {
         createStaticVertexBuffer(
             gl,
@@ -22,10 +22,15 @@ export default {
 
         return state;
     },
-    generateControls: (gl, state) => ({
-        onRender: () => {
-            gl.useProgram(state.program);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-        }
+    generateControls: () => ({
+        renderLoop: render,
     })
+}
+
+function render(gl, state) {
+    gl.useProgram(state.program);
+
+    // gl.uniform1f(state.location.iTime, state.time);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

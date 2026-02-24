@@ -20,14 +20,8 @@ export default {
 
         return state;
     },
-    generateControls: (gl, state, elements) => ({
-        onRender: () => {
-            startRenderLoop(
-                state => render(gl, state),
-                state,
-                elements
-            );
-        },
+    generateControls: () => ({
+        renderLoop: render,
         uniforms: [{
             type: "float",
             name: "iFieldOfViewDegrees",
