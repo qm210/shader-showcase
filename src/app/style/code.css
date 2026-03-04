@@ -90,7 +90,11 @@ pre.error {
 
 .comment {
     opacity: 0.5;
-    color: gray;
+    color: dimgray;
+}
+
+.comment > span {
+    color: dimgray !important;
 }
 
 .empty {

@@ -86,8 +86,18 @@ export default {
             step: 0.001,
         }, {
             type: "bool",
+            name: "drawBezierPoint2",
+            description: "iBezierPoint2 extra einzeichnen",
+            defaultValue: false,
+        }, {
+            type: "bool",
             name: "point2byMouse",
             description: "iBezierPoint2 per Maus setzen",
+            defaultValue: false,
+        }, {
+            type: "bool",
+            name: "drawPoint2UsingStep",
+            description: "Vergleiche step() statt smoothstep() im mix()-Parameter",
             defaultValue: false,
         }, {
             separator: "Kombinieren zweier SDF"
@@ -149,7 +159,9 @@ function render(gl, state) {
     gl.uniform2fv(state.location.iBezierPoint2, state.iBezierPoint2);
     gl.uniform2fv(state.location.iBezierPoint3, state.iBezierPoint3);
     gl.uniform1f(state.location.iBezierThickness, state.iBezierThickness);
+    gl.uniform1i(state.location.drawBezierPoint2, state.drawBezierPoint2);
     gl.uniform1i(state.location.point2byMouse, state.point2byMouse);
+    gl.uniform1i(state.location.drawPoint2UsingStep, state.drawPoint2UsingStep);
     gl.uniform1f(state.location.iSmoothing, state.iSmoothing);
 
     gl.uniform1f(state.location.free0, state.free0);

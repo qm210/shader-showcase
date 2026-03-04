@@ -186,7 +186,7 @@ button.render-button {
 }
 
 .small-button {
-    padding: 0.12em 0.5em 0.25em;
+    padding: 0.12em 0.5em 0.25em !important;
     margin: 0;
     font-size: smaller;
     white-space: nowrap;

@@ -296,17 +296,24 @@ const PAGE_FONT = {
     storageKey: "qm.fontsize.factor"
 };
 
+const CHAR = {
+    PLUS: "+",
+    MINUS: "\u2013",
+    ARROW_UP: "\u2191",
+    ARROW_DOWN: "\u2193",
+}
+
 function addDisplayControls(elements, state, glContext) {
     const canvasControls = createDiv();
     elements.displayControls.appendChild(canvasControls);
-    appendButton(canvasControls, "+", canvasResize(1.05));
-    appendButton(canvasControls, "–", canvasResize(0.95));
+    appendButton(canvasControls, CHAR.PLUS, canvasResize(1.05));
+    appendButton(canvasControls, CHAR.MINUS, canvasResize(0.95));
     appendElement(canvasControls, "canvas", "label");
 
     const fontControls = createDiv();
     elements.displayControls.appendChild(fontControls);
-    appendButton(fontControls, "↑", pageFontResize(1.05));
-    appendButton(fontControls, "￬", pageFontResize(0.95));
+    appendButton(fontControls, CHAR.ARROW_UP, pageFontResize(1.05));
+    appendButton(fontControls, CHAR.ARROW_DOWN, pageFontResize(0.95));
     appendElement(fontControls, "font", "label");
     pageFontInitialize();
 

@@ -15,10 +15,12 @@ uniform vec2 iBezierPoint1;
 uniform vec2 iBezierPoint2;
 uniform vec2 iBezierPoint3;
 uniform float iBezierThickness;
+uniform bool drawBezierPoint2;
+uniform bool drawPoint2UsingStep;
 uniform bool point2byMouse;
 uniform float iSmoothing;
 
-// macht was ihr wollt :P
+// macht damit, was ihr wollt :P
 uniform float free0;
 uniform float free1;
 uniform float free2;
@@ -29,22 +31,36 @@ uniform vec2 vecFree2;
 vec4 c = vec4(1., 0., -1., .5);
 float pixelSize;
 
+mat2 rotate(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat2(c, -s,
+                s,  c);
+    /// <-- ist eine 2x2-Matrix, hervorragend um vec2 zu drehen
+    ///     Vorsicht: column-major (-s ist unten links, +s oben rechts)
+}
+
+float dot2(vec2); /// <-- forward declaration geht auch
+
 float sdCircle( in vec2 p, in float r )
 {
     return length(p) - r;
+    /// Kreis sieht noch human aus...
 }
 
 float sdBox( in vec2 p, in vec2 b )
 {
     vec2 d = abs(p) - b;
     return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+    /// ... Rechteck ... kann man sich dran gewöhnen ...
 }
-
-float dot2(vec2);
 
 // cf. https://iquilezles.org/articles/distfunctions2d/
 float sdBezier( in vec2 pos, in vec2 A, in vec2 B, in vec2 C )
 {
+    /// ... hoppla. Hier aber erstmal ein Fall, den wir mal nicht sofort nachrechnen wollen.
+    /// Interessanter ist hier erstmal, wie diese SDF aussieht, nicht, wie sie hergeleitet wird.
+    /// -> Also lieber im Aufruf mal Parameter ändern, Uniforms einsetzen, oder Teile auskommentieren...
     vec2 a = B - A;
     vec2 b = A - 2.0*B + C;
     vec2 c = a * 2.0;
@@ -58,7 +74,7 @@ float sdBezier( in vec2 pos, in vec2 A, in vec2 B, in vec2 C )
     float p3 = p*p*p;
     float q = kx*(2.0*kx*kx-3.0*ky) + kz;
     float h = q*q + 4.0*p3;
-    if( h >= 0.0)
+    if (h >= 0.0)
     {
         h = sqrt(h);
         vec2 x = (vec2(h,-h)-q)/2.0;
@@ -75,10 +91,8 @@ float sdBezier( in vec2 pos, in vec2 A, in vec2 B, in vec2 C )
         vec3  t = clamp(vec3(m+m,-n-m,n-m)*z-kx,0.0,1.0);
         res = min( dot2(d+(c+b*t.x)*t.x),
         dot2(d+(c+b*t.y)*t.y) );
-        // the third root cannot be the closest
-        // res = min(res,dot2(d+(c+b*t.z)*t.z));
     }
-    return sqrt( res );
+    return sqrt(res);
 }
 
 float dot2(vec2 v) {
@@ -86,21 +100,25 @@ float dot2(vec2 v) {
 }
 
 // cf. https://iquilezles.org/articles/distfunctions/
-float opSmoothUnion( float a, float b, float k )
+// oder auch: https://graphtoy.com/?f1(x,t)=x/4&v1=true&f2(x,t)=4*sin(x)&v2=true&f3(x,t)=min(f1(x),f2(x))&v3=false&f4(x,t)=4*fract(0.5*t)&v4=false&f5(x,t)=max(f4(x,t)-abs(f1(x)-f2(x)),0)&v5=false&f6(x,t)=f3(x)-f5(x,t)*f5(x,t)*0.25/f4(x,t)&v6=true&grid=1&coords=0,0,19.227991480866635
+float smoothMinimum( float a, float b, float k )
 {
     k *= 4.0;
     float h = max(k-abs(a-b),0.0);
     return min(a, b) - h*h*0.25/k;
 }
 
-mat2 rotate(float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return mat2(c, -s, s,  c);
-}
-
 void drawTheScene(inout vec3 col, vec2 uv) {
-    // ÜBUNG
+    /// Signed Distance Function == Abstand vom Rand der Form
+    /// Signed? ins Innere negativ, nach außen positiv steigend
+    /// Wegen Distance heißt das gerne "d":
+    float d = sdCircle(uv, iCircleRadius);
+    d = abs(d) - pixelSize;
+    col = mix(col, c.yyy, smoothstep(pixelSize, 0., d));
+
+    /// Wo kämen wir hin, wenn die Szene hier schon aufhört?
+    /* return; */
+
     float dBox = sdBox(uv - iBoxOffset, iBoxHalfSize);
     dBox -= iBoxExtend;
     col = mix(col, c.yww, smoothstep(0.01, 0., dBox));
@@ -112,32 +130,29 @@ void drawTheScene(inout vec3 col, vec2 uv) {
         vec2 clicked = (2. * iMouse.zw - iResolution) / iResolution.y;
         bezier2 = clicked;
     }
-
-    // ÜBUNG... Bezier drehen?
-    float d = sdBezier(uv, bezier1, bezier2, bezier3);
+    d = sdBezier(uv, bezier1, bezier2, bezier3);
     col = mix(col, c.wyw, step(d, iBezierThickness));
 
-    // ... Kombinationen
-    float d2 = d - iBezierThickness;
-    d2 = opSmoothUnion(d2, dBox, iSmoothing);
-    d2 = abs(d2) - 0.005;
+    float dCombined = d - iBezierThickness;
+    dCombined = smoothMinimum(dCombined, dBox, iSmoothing);
+    dCombined = abs(dCombined) - 0.005;
 
-    col = mix(col, c.xwy, 0.5 * smoothstep(0.001, 0., d2));
+    col = mix(col, c.xwy, 0.5 * smoothstep(0.001, 0., dCombined));
 
-    // ÜBUNG: Bezier Point2 zeichnen
-    d = sdCircle(uv - bezier2, 0.03);
-    col = mix(col, c.xyx, step(d, 0.));
-
+    if (drawBezierPoint2) {
+        d = sdCircle(uv - bezier2, 0.05);
+        d = abs(d) - pixelSize;
+        float mixing;
+        if (drawPoint2UsingStep) {
+            mixing = step(d, 0.);
+        } else {
+            mixing = smoothstep(pixelSize, 0., d);
+        }
+        col = mix(col, c.xyx, mixing);
+    }
 }
 
-void drawOrigin(inout vec3 col, vec2 uv) {
-    // (*) just for orientation, a small circle
-    float d = sdCircle(uv, iCircleRadius);
-    d = abs(d) - pixelSize;
-    col = mix(c.yyy, col, smoothstep(0., 0.01, d));
-}
-
-void applyGrid(inout vec3 col, in vec2 uv, in vec3 gridColor) {
+void drawGrid(inout vec3 col, in vec2 uv, in vec3 gridColor) {
     const float gridSize = 0.5;
     const float thickness = 0.005;
     uv = mod(uv, gridSize);
@@ -152,9 +167,7 @@ void main() {
     pixelSize = 1. / iResolution.y;
 
     vec3 col = c.xxx;
-
-    applyGrid(col, uv, vec3(0.75));
-    drawOrigin(col, uv);
+    drawGrid(col, uv, vec3(0.75));
 
     drawTheScene(col, uv);
 
