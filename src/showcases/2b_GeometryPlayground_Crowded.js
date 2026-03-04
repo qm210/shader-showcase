@@ -1,8 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import fragmentShaderSource from "../shaders/investigation_grid.glsl";
-import {startRenderLoop} from "../webgl/render.js";
+import fragmentShaderSource from "../shaders/geometryPlayground.glsl";
 
 
 export default {
@@ -27,13 +26,20 @@ export default {
 
         state.location.iTime = gl.getUniformLocation(state.program, "iTime");
         state.location.iResolution = gl.getUniformLocation(state.program, "iResolution");
+        state.location.helloThere = gl.getUniformLocation(state.program, "helloThere");
         state.resolution = [gl.drawingBufferWidth, gl.drawingBufferHeight];
 
         return state;
     },
     generateControls: () => ({
         renderLoop: render,
-        uniforms: []
+        uniforms: [{
+            type: "float",
+            name: "helloThere",
+            defaultValue: 1.00,
+            min: 0,
+            max: 10.,
+        }]
     })
 }
 
@@ -42,6 +48,7 @@ function render(gl, state) {
 
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform2fv(state.location.iResolution, state.resolution);
+    gl.uniform1f(state.location.helloThere, state.helloThere);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

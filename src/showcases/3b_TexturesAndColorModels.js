@@ -1,24 +1,12 @@
-import {startRenderLoop} from "../webgl/render.js";
+import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 import {createTextureFromImage} from "../webgl/helpers.js";
 
-import originalFragmentShaderSource from "../shaders/texturePlayground.glsl";
-import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
+import fragmentShaderSource from "../shaders/colorSimplePlayground.glsl";
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import image0 from "../textures/frame.png";
-import image1 from "../textures/hubble_extreme_deep_field.jpg";
-import image2 from "../textures/mysterious_capybara.png";
-import {overwriteDefines} from "./common.js";
-
-const fragmentShaderSource = overwriteDefines(originalFragmentShaderSource, {
-    SHOW_SAMPLE_TEXTURE: 0,
-    SHOW_STARFIELD: 1,
-    APPLY_ST_CORRECTION_FOR_TEXTURE2: 0,
-    APPLY_BLENDING_METHODS: 0,
-    APPLY_MANUAL_RGB_SHIFT: 0
-});
+import image0 from "../textures/goofy_floofy.png";
 
 export default {
-    title: "Texture Playground: iTexture1",
+    title: "Colors & Textures",
     init: (gl, sources = {}) => {
         createStaticVertexBuffer(
             gl,
@@ -27,7 +15,6 @@ export default {
 
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
-
         const state = compile(gl, sources);
         if (!state.program) {
             return state;
@@ -42,35 +29,13 @@ export default {
         state.location.iResolution = gl.getUniformLocation(state.program, "iResolution");
         state.resolution = [gl.drawingBufferWidth, gl.drawingBufferHeight];
 
-        state.location.iGamma = gl.getUniformLocation(state.program, "iGamma");
-        state.location.iContrast = gl.getUniformLocation(state.program, "iContrast");
-        state.location.iGray = gl.getUniformLocation(state.program, "iGray");
-        state.location.iFree1 = gl.getUniformLocation(state.program, "iFree1");
-        state.location.iFree2 = gl.getUniformLocation(state.program, "iFree2");
-        state.location.iFree3 = gl.getUniformLocation(state.program, "iFree3");
-        state.location.iFree4 = gl.getUniformLocation(state.program, "iFree4");
-
         state.texture0 = createTextureFromImage(gl, image0, {
             wrapS: gl.CLAMP_TO_EDGE,
             wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.LINEAR,
             magFilter: gl.LINEAR,
         });
-        state.texture1 = createTextureFromImage(gl, image1, {
-            wrapS: gl.REPEAT,
-            wrapT: gl.MIRRORED_REPEAT,
-            minFilter: gl.LINEAR,
-        });
-        state.texture2 = createTextureFromImage(gl, image2, {
-            wrapS: gl.REPEAT,
-            wrapT: gl.REPEAT,
-            minFilter: gl.NEAREST,
-            magFilter: gl.NEAREST
-        });
         state.location.iTexture0 = gl.getUniformLocation(state.program, "iTexture0");
-        state.location.iTexture1 = gl.getUniformLocation(state.program, "iTexture1");
-        state.location.iTexture2 = gl.getUniformLocation(state.program, "iTexture2");
-        state.location.iTexture2AspectRatio = gl.getUniformLocation(state.program, "iTexture2AspectRatio");
 
         gl.useProgram(state.program);
 
@@ -79,20 +44,41 @@ export default {
     generateControls: () => ({
         renderLoop: render,
         uniforms: [{
+            separator: "Manipulation auf RGB-Farben"
+        }, {
+            type: "vec3",
+            name: "iFactor",
+            defaultValue: [1, 1, 1],
+            min: 0,
+            max: 2,
+        }, {
             type: "float",
-            name: "iGamma",
-            defaultValue: 1,
-            min: 0.01,
-            max: 10.,
+            name: "iGray",
+            defaultValue: 0,
+            min: 0,
+            max: 1,
         }, {
             type: "float",
             name: "iContrast",
             defaultValue: 1.,
-            min: -1.,
-            max: 9.,
+            min: -2,
+            max: 2,
         }, {
             type: "float",
-            name: "iGray",
+            name: "iGamma",
+            defaultValue: 1,
+            min: 0.1,
+            max: 10,
+            log: true
+        }, {
+            type: "vec2",
+            name: "iClamp",
+            defaultValue: [0, 1],
+            min: 0,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iCutOut",
             defaultValue: 0,
             min: 0,
             max: 1,
@@ -114,12 +100,6 @@ export default {
             defaultValue: 0,
             min: -2,
             max: +2,
-        }, {
-            type: "float",
-            name: "iFree4",
-            defaultValue: 0,
-            min: -2,
-            max: +2,
         }]
     })
 };
@@ -130,6 +110,9 @@ function render(gl, state) {
     gl.uniform1f(state.location.iGamma, state.iGamma);
     gl.uniform1f(state.location.iContrast, state.iContrast);
     gl.uniform1f(state.location.iGray, state.iGray);
+    gl.uniform3fv(state.location.iFactor, state.iFactor);
+    gl.uniform2fv(state.location.iClamp, state.iClamp);
+    gl.uniform1f(state.location.iCutOut, state.iCutOut);
     gl.uniform1f(state.location.iFree1, state.iFree1);
     gl.uniform1f(state.location.iFree2, state.iFree2);
     gl.uniform1f(state.location.iFree3, state.iFree3);

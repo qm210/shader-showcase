@@ -1,14 +1,10 @@
 import showcase1 from "./showcases/1_PlainBasics.js";
-import showcase2 from "./showcases/2_GeometryPlayground.js";
-import showcase2b from "./showcases/2_GeometryPlayground_sdBox.js";
-import showcase2c from "./showcases/2_GeometryPlayground_grid.js";
-import showcase3 from "./showcases/3_Textures.js";
-import showcase3a from "./showcases/3a_Textures.js";
-import showcase3b from "./showcases/3b_Textures.js";
-import showcase3c from "./showcases/3c_Textures.js";
-import showcase3d from "./showcases/3d_Textures.js";
-import showcase3x from "./showcases/3x_TextureProcessing.js";
-import showcase4 from "./showcases/4_ColorPlayground.js";
+import showcase2a from "./showcases/2a_GeometryPlayground_Starter.js";
+import showcase2b from "./showcases/2b_GeometryPlayground_Crowded.js";
+import showcase2c from "./showcases/2c_Geometry_InvestigateSDBox.js";
+import showcase3a from "./showcases/3a_TexturesAndColor.js";
+import showcase3b from "./showcases/3b_TexturesAndColorModels.js";
+import showcase4 from "./showcases/4_ColorModels.js";
 import showcase5 from "./showcases/5a_Noise.js";
 import showcase5b from "./showcases/5b_NoiseExtended.js";
 import showcase6 from "./showcases/6_RayMarching.js";
@@ -21,22 +17,20 @@ import showcase9bUnfinished from "./showcases/9b_MultiPassAndExtraData.js";
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 
-const defaultShowcase = showcase1;
+const defaultShowcase = showcase2a;
 
 const MAP_PATH = {
     // Zum Anfang ein sehr, sehr langweiliger Anfang.
     "1": showcase1,
     // SDF in 2D, mit "2b" Vertiefung auf die Quadrat-SDF, "2c" zum Kontext der Gitter-Diskussion
-    "2": showcase2,
+    "2": showcase2a,
+    "2a": showcase2a,
     "2b": showcase2b,
     "2c": showcase2c,
-    // Texturen Basics (ist derselbe Shader, nur nach den verschiedenen #define-Optionen aufgeschlüsselt:
-    "3": showcase3,
+    // Basics Farben & Texturen
+    "3": showcase3a,
     "3a": showcase3a,
     "3b": showcase3b,
-    "3c": showcase3c,
-    "3d": showcase3d,
-    "3x": showcase3x,
     // Farbräume
     "4": showcase4,
     // Prozedurales Rauschen (Perlin Noise, FBM) -- nachgereicht, weil wir Ähnliches besprochen haben (z.B. Voronoi)

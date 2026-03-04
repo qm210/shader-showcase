@@ -8,7 +8,14 @@ export default {
     init: (gl, sources = {}) => {
         createStaticVertexBuffer(
             gl,
-            [-1, -1, +1, -1, -1, 1, -1, +1, +1, -1, +1, +1]
+            [
+                -1, -1,
+                +1, -1,
+                -1, 1,
+                -1, +1,
+                +1, -1,
+                +1, +1
+            ]
         );
 
         sources.vertex ??= vertexShaderSource;
@@ -30,7 +37,8 @@ export default {
 function render(gl, state) {
     gl.useProgram(state.program);
 
-    // gl.uniform1f(state.location.iTime, state.time);
+    gl.uniform1f(state.location.iTime, state.time);
+    gl.uniform2fv(state.location.iResolution, state.resolution);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

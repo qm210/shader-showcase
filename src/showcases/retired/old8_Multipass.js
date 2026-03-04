@@ -4,8 +4,8 @@ import {createTextureFromImage} from "../../webgl/helpers.js";
 
 // multiPassMain.glsl ist fast wie texturesAdvanced.glsl
 // aber was ist anders?
-import fragmentShaderSource from "../../shaders/spring-2025/multiPassMain.glsl";
-import postFragmentShaderSource from "../../shaders/spring-2025/multiPassPost.glsl";
+import fragmentShaderSource from "../../shaders/retired-2025/multiPassMain.glsl";
+import postFragmentShaderSource from "../../shaders/retired-2025/multiPassPost.glsl";
 
 import imageFrame from "../../textures/frame.png";
 import imageSpace from "../../textures/hubble_extreme_deep_field.jpg";

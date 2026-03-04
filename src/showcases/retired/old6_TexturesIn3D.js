@@ -2,7 +2,7 @@ import standardSetup from "./old3_SimpleGeometry.js";
 import {createTextureFromImage} from "../../webgl/helpers.js";
 import {startRenderLoop} from "../../webgl/render.js";
 
-import fragmentShaderSource from "../../shaders/spring-2025/texturesAdvanced_K.glsl";
+import fragmentShaderSource from "../../shaders/retired-2025/texturesAdvanced_K.glsl";
 import image0 from "../../textures/frame.png";
 import image1 from "../../textures/hubble_extreme_deep_field.jpg";
 import image2 from "../../textures/Wood066_1K-JPG_Color.jpg";

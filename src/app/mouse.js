@@ -4,6 +4,7 @@ export function addCanvasMouseInteraction(elements, state) {
     //   .xy = the current mouse position when some button is pressed (i.e. dragged to)
     //         and [0, 0] if not pressed
     //   .zw = the last mouse position where the button was pressed (i.e. dragged from)
+    //         <-- but I hate that, I want .zw to be dragged so it stays after mouseup.
     // And I prefer to also have the last position where the drag was dropped, or better
     //   .xy = the currently dragged distance (iMouse.xy - iMouse.zw when dragging)
     //   .zw = the total dragged distance up to now
@@ -22,6 +23,8 @@ export function addCanvasMouseInteraction(elements, state) {
         const dragged = correctedCoordinates(event);
         state.iMouse[0] = dragged.x;
         state.iMouse[1] = dragged.y;
+        state.iMouse[2] = dragged.x;
+        state.iMouse[3] = dragged.y;
         state.iMouseDrag[0] = state.iMouse[0] - state.iMouse[2];
         state.iMouseDrag[1] = state.iMouse[1] - state.iMouse[3];
         state.iMouseDrag[2] = state.drag.total.dx + state.iMouseDrag[0];

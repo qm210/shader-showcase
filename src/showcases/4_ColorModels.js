@@ -1,8 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import fragmentShaderSource from "../shaders/colorPlayground.glsl";
-import {startRenderLoop} from "../webgl/render.js";
+import fragmentShaderSource from "../shaders/retired-2025/colorPlayground.glsl";
 
 
 export default {

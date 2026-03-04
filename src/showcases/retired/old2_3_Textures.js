@@ -1,24 +1,15 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {createTextureFromImage} from "../webgl/helpers.js";
+import {startRenderLoop} from "../../webgl/render.js";
+import {createTextureFromImage} from "../../webgl/helpers.js";
 
-import originalFragmentShaderSource from "../shaders/texturePlayground.glsl";
-import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
-import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import image0 from "../textures/frame.png";
-import image1 from "../textures/hubble_extreme_deep_field.jpg";
-import image2 from "../textures/mysterious_capybara.png";
-import {overwriteDefines} from "./common.js";
-
-const fragmentShaderSource = overwriteDefines(originalFragmentShaderSource, {
-    SHOW_SAMPLE_TEXTURE: 1,
-    SHOW_STARFIELD: 0,
-    APPLY_ST_CORRECTION_FOR_TEXTURE2: 0,
-    APPLY_BLENDING_METHODS: 0,
-    APPLY_MANUAL_RGB_SHIFT: 0
-});
+import fragmentShaderSource from "../../shaders/retired-2025/texturePlayground.glsl";
+import {compile, createStaticVertexBuffer, initVertices} from "../../webgl/setup.js";
+import vertexShaderSource from "../../shaders/vertex.basic.glsl";
+import image0 from "../../textures/frame.png";
+import image1 from "../../textures/hubble_extreme_deep_field.jpg";
+import image2 from "../../textures/mysterious_capybara.png";
 
 export default {
-    title: "Texture Playground: iTexture0",
+    title: "Texture Playground",
     init: (gl, sources = {}) => {
         createStaticVertexBuffer(
             gl,
@@ -27,7 +18,6 @@ export default {
 
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
-
         const state = compile(gl, sources);
         if (!state.program) {
             return state;

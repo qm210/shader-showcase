@@ -1,12 +1,12 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {createTextureFromImage} from "../webgl/helpers.js";
+import {startRenderLoop} from "../../webgl/render.js";
+import {createTextureFromImage} from "../../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/texturePlayground_mehrUniforms.glsl";
-import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import image0 from "../textures/frame.png";
-import image1 from "../textures/hubble_extreme_deep_field.jpg";
-import image2 from "../textures/mysterious_capybara.png";
-import {initBasicState} from "./common.js";
+import fragmentShaderSource from "../../shaders/retired-2025/texturePlayground_mehrUniforms.glsl";
+import vertexShaderSource from "../../shaders/vertex.basic.glsl";
+import image0 from "../../textures/frame.png";
+import image1 from "../../textures/hubble_extreme_deep_field.jpg";
+import image2 from "../../textures/mysterious_capybara.png";
+import {initBasicState} from "../common.js";
 
 export default {
     title: "Texture Playground: Blendingmethoden",
