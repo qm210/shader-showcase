@@ -22,9 +22,10 @@ export function withGlslHighlighting(code) {
             `<span class="number">${match}</span>`
         )
         .replaceAll(REGEX.VISIBLE_LINE_COMMENT, match =>
-            `<span class="comment">${match}</span>`
-        )
-        ;
+            `<span class="comment">${
+                match.replace("///", "//")
+            }</span>`
+        );
 }
 
 const SymbolClass = {

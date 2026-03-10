@@ -147,12 +147,12 @@ function doFpsMeasurement(state) {
     state.fps = 0;
     let weight = 0;
     if (fpsMeter.direct.fps !== null) {
-        state.fps += 0.33 * fpsMeter.direct.fps;
-        weight += 0.5;
+        state.fps += fpsMeter.direct.fps;
+        weight += 1.;
     }
     if (fpsMeter.measuredFps !== null) {
-        state.fps += fpsMeter.measuredFps;
-        weight += 1;
+        state.fps += 4. * fpsMeter.measuredFps;
+        weight += 4.;
     }
     state.fps = weight > 0 ? (state.fps / weight).toFixed(0) : "?";
 }
