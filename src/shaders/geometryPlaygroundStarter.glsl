@@ -11,6 +11,8 @@ uniform float iCircleRadius;
 uniform vec2 iBoxOffset;
 uniform vec2 iBoxHalfSize;
 uniform float iBoxExtend;
+uniform float iBoxRotate;
+uniform float iShouldBeZero;
 uniform vec2 iBezierPoint1;
 uniform vec2 iBezierPoint2;
 uniform vec2 iBezierPoint3;
@@ -51,7 +53,25 @@ float sdCircle( in vec2 p, in float r )
 float sdBox( in vec2 p, in vec2 b )
 {
     vec2 d = abs(p) - b;
-    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+    /// <-- d == vec2(0) beschreibt die Ecken
+    float dMax = max(d.x, d.y);
+    /// 0 < dMax < L beschreibt Quadrat der Seitenlänge L,
+    /// anschaulich erklärbar über die Winkelhalbierende (y == x)
+    /// - oberhalb derer ist y > x -> max == y
+    /// - unterhalb derer ist x > y -> max == x
+    /// in den zwei Teildreiecken muss dann nur "max" beschränkt werden,
+    /// original passiert das bei min(dMax, 0);
+
+    // die "unexakte" Box: passt in der Nähe von d == 0, weit weg davon nicht mehr
+    // return dMax;
+
+    /// max(d, 0) trägt nur bei für d > 0
+    /// float dOutside = length(max(d, 0));
+    float dOutside = length(max(d, iShouldBeZero));
+    /// min(d, 0) trägt nur bei für d < 0
+    /// float dInside = min(max(d.x,d.y), 0);
+    float dInside = min(max(d.x,d.y), iShouldBeZero);
+    return dInside + dOutside;
     /// ... Rechteck ... kann man sich dran gewöhnen ...
 }
 
@@ -114,14 +134,25 @@ void drawTheScene(inout vec3 col, vec2 uv) {
     /// Wegen Distance heißt das gerne "d":
     float d = sdCircle(uv, iCircleRadius);
     d = abs(d) - pixelSize;
+
     col = mix(col, c.yyy, smoothstep(pixelSize, 0., d));
 
     /// Wo kämen wir hin, wenn die Szene hier schon aufhört?
-    /* return; */
+    // return;
 
-    float dBox = sdBox(uv - iBoxOffset, iBoxHalfSize);
+    float dBox = sdBox((uv - iBoxOffset), iBoxHalfSize);
     dBox -= iBoxExtend;
-    col = mix(col, c.yww, smoothstep(0.01, 0., dBox));
+    col = mix(c.xyy, c.yxx, 0.5 * dBox + 0.5);
+    if (abs(dBox) < 0.002) {
+        col = c.xxy;
+    }
+    // col = mix(col, c.yww, smoothstep(0.01, 0., dBox));
+
+    float dBoxCut = sdBox(uv - iBoxOffset, 0.5 * iBoxHalfSize);
+    // dBox = max(dBox, -dBoxCut);
+
+    // col = mix(col, c.yww, smoothstep(0.01, 0., dBox));
+
 
     vec2 bezier1 = iBezierPoint1;
     vec2 bezier2 = iBezierPoint2;
@@ -131,7 +162,9 @@ void drawTheScene(inout vec3 col, vec2 uv) {
         bezier2 = clicked;
     }
     d = sdBezier(uv, bezier1, bezier2, bezier3);
-    col = mix(col, c.wyw, step(d, iBezierThickness));
+    d = abs(d - iBezierThickness);
+    // d = abs(d - 0.35 * iBezierThickness);
+    col = mix(col, c.wyw, step(d, 0.15 * iBezierThickness));
 
     float dCombined = d - iBezierThickness;
     dCombined = smoothMinimum(dCombined, dBox, iSmoothing);
@@ -162,14 +195,22 @@ void drawGrid(inout vec3 col, in vec2 uv, in vec3 gridColor) {
     col = mix(gridColor, col, frame);
 }
 
+#define WEIRD_WAVES 0
+
 void main() {
     vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     pixelSize = 1. / iResolution.y;
 
-    vec3 col = c.xxx;
+    fragColor.a = 1.;
+
+    #if WEIRD_WAVES
+    uv.x += 0.02 * sin(4. * iTime - 13. * uv.y);
+    #endif
+
+    vec3 col = vec3(1); /* c.xxx; */
     drawGrid(col, uv, vec3(0.75));
 
     drawTheScene(col, uv);
 
-    fragColor = vec4(col, 1.0);
+    fragColor.rgb = col;
 }

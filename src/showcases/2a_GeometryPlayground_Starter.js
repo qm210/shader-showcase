@@ -108,19 +108,34 @@ export default {
             min: 0,
             max: 1,
         }, {
-            separator: "Zum Rumprobieren nach Laune..."
+            separator: "Man fragt sich, was das soll..."
+        }, {
+            type: "float",
+            name: "iShouldBeZero",
+            defaultValue: 0,
+            min: -0.1,
+            max: 0.1,
+            step: 0.001,
+        }, {
+            separator: "Zum Rumprobieren nach Laune"
         }, {
             type: "float",
             name: "free0",
             defaultValue: 0,
+            min: -1,
+            max: +1
         }, {
             type: "float",
             name: "free1",
             defaultValue: 0,
+            min: -1,
+            max: +1
         }, {
             type: "float",
             name: "free2",
             defaultValue: 0,
+            min: -1,
+            max: +1
         }, {
             type: "vec2",
             name: "vecFree0",
@@ -164,6 +179,7 @@ function render(gl, state) {
     gl.uniform1i(state.location.drawPoint2UsingStep, state.drawPoint2UsingStep);
     gl.uniform1f(state.location.iSmoothing, state.iSmoothing);
 
+    gl.uniform1f(state.location.iShouldBeZero, state.iShouldBeZero);
     gl.uniform1f(state.location.free0, state.free0);
     gl.uniform1f(state.location.free1, state.free1);
     gl.uniform1f(state.location.free2, state.free2);

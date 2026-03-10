@@ -1,7 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 import {createTextureFromImage} from "../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/colorSimplePlayground.glsl";
+import fragmentShaderSource from "../shaders/colorModelPlayground.glsl";
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
 import image0 from "../textures/goofy_floofy.png";
 
@@ -72,7 +72,7 @@ export default {
             log: true
         }, {
             type: "vec2",
-            name: "iClamp",
+            name: "iSqueeze",
             defaultValue: [0, 1],
             min: 0,
             max: 1,
@@ -105,13 +105,14 @@ export default {
 };
 
 function render(gl, state) {
+    gl.useProgram(state.program);
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform2fv(state.location.iResolution, state.resolution);
     gl.uniform1f(state.location.iGamma, state.iGamma);
     gl.uniform1f(state.location.iContrast, state.iContrast);
     gl.uniform1f(state.location.iGray, state.iGray);
     gl.uniform3fv(state.location.iFactor, state.iFactor);
-    gl.uniform2fv(state.location.iClamp, state.iClamp);
+    gl.uniform2fv(state.location.iSqueeze, state.iSqueeze);
     gl.uniform1f(state.location.iCutOut, state.iCutOut);
     gl.uniform1f(state.location.iFree1, state.iFree1);
     gl.uniform1f(state.location.iFree2, state.iFree2);
