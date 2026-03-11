@@ -1,7 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import fragmentShaderSource from "../shaders/4_texturePlayground.glsl";
+import fragmentShaderSource from "../shaders/4_textureBlending.glsl";
 import {createTextureFromImage} from "../webgl/helpers.js";
 import image0 from "../textures/goofy_floofy_framed.png";
 import image1 from "../textures/stained_glass_window.png";

@@ -4,7 +4,7 @@ import showcase2b from "./showcases/2b_GeometryPlayground_Crowded.js";
 import showcase2c from "./showcases/specific/2c_Geometry_InvestigateSDBox.js";
 import showcase3a from "./showcases/3a_TexturesAndColor.js";
 import showcase3b from "./showcases/3b_TexturesAndColorModels.js";
-import showcase4 from "./showcases/4_TextureProcessing.js";
+import showcase4 from "./showcases/4_TextureBlending.js";
 import showcase5 from "./showcases/5a_Noise.js";
 import showcase5b from "./showcases/5b_NoiseExtended.js";
 import showcase6 from "./showcases/6_RayMarching.js";
@@ -17,7 +17,7 @@ import showcase9bUnfinished from "./showcases/9b_MultiPassAndExtraData.js";
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 
-const defaultShowcase = showcase2a;
+const defaultShowcase = showcase3a;
 
 const MAP_PATH = {
     // Zum Anfang ein sehr, sehr langweiliger Anfang.
@@ -27,11 +27,11 @@ const MAP_PATH = {
     "2a": showcase2a,
     "2b": showcase2b,
     "2c": showcase2c,
-    // Basics Farben & Texturen
+    // Basics Texturen & Farbräume
     "3": showcase3a,
     "3a": showcase3a,
     "3b": showcase3b,
-    // Farbräume
+    // Farbmischungen
     "4": showcase4,
     // Prozedurales Rauschen (Perlin Noise, FBM) -- nachgereicht, weil wir Ähnliches besprochen haben (z.B. Voronoi)
     "5": showcase5,

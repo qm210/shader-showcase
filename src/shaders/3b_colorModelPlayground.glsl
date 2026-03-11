@@ -352,7 +352,7 @@ void drawSomethingExtra(inout vec3 col, in vec2 uv) {
     // Koordinatentransformationen zuerst (hier bspw. nur skalieren)
     uv *= iExtraScale;
 
-    vec4 colFG = drawRainbow(uv);
+    vec4 colFG = drawSomething(uv);
 
     colFG *= iExtraFactor;
 
