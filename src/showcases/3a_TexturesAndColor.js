@@ -1,7 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 import {createTextureFromImage} from "../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/colorSimplePlayground.glsl";
+import fragmentShaderSource from "../shaders/3a_colorSimplePlayground.glsl";
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
 import image0 from "../textures/goofy_floofy.png";
 
@@ -72,7 +72,7 @@ export default {
             log: true
         }, {
             type: "vec2",
-            name: "iClamp",
+            name: "iSqueeze",
             defaultValue: [0, 1],
             min: 0,
             max: 1,
@@ -111,7 +111,7 @@ function render(gl, state) {
     gl.uniform1f(state.location.iContrast, state.iContrast);
     gl.uniform1f(state.location.iGray, state.iGray);
     gl.uniform3fv(state.location.iFactor, state.iFactor);
-    gl.uniform2fv(state.location.iClamp, state.iClamp);
+    gl.uniform2fv(state.location.iSqueeze, state.iSqueeze);
     gl.uniform1f(state.location.iCutOut, state.iCutOut);
     gl.uniform1f(state.location.iFree1, state.iFree1);
     gl.uniform1f(state.location.iFree2, state.iFree2);
@@ -122,15 +122,6 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, state.texture0);
     gl.uniform1i(state.location.iTexture0, 0);
     // <-- letzter Parameter <n> muss zu Texture Unit gl.TEXTURE<n> passen
-
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, state.texture1);
-    gl.uniform1i(state.location.iTexture1, 1);
-
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, state.texture2);
-    gl.uniform1i(state.location.iTexture2, 2);
-    gl.uniform1f(state.location.iTexture2AspectRatio, 0.728);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

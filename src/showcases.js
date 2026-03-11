@@ -4,7 +4,7 @@ import showcase2b from "./showcases/2b_GeometryPlayground_Crowded.js";
 import showcase2c from "./showcases/specific/2c_Geometry_InvestigateSDBox.js";
 import showcase3a from "./showcases/3a_TexturesAndColor.js";
 import showcase3b from "./showcases/3b_TexturesAndColorModels.js";
-import showcase4 from "./showcases/4_ColorModels.js";
+import showcase4 from "./showcases/4_TextureProcessing.js";
 import showcase5 from "./showcases/5a_Noise.js";
 import showcase5b from "./showcases/5b_NoiseExtended.js";
 import showcase6 from "./showcases/6_RayMarching.js";

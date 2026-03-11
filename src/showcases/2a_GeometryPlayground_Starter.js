@@ -1,7 +1,7 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
-import fragmentShaderSource from "../shaders/geometryPlaygroundStarter.glsl";
+import fragmentShaderSource from "../shaders/2a_geometryPlaygroundStarter.glsl";
 
 export default {
     title: "Geometry Playground",

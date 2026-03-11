@@ -64,6 +64,10 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix( vec3(1.0), rgb, c.y);
 }
 
+// Color Conversions based on
+// - http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+// - OKLab: https://bottosson.github.io/posts/oklab/
+
 const mat3 Msrgb = mat3(
     0.4124564, 0.2126729, 0.0193339,
     0.3575761, 0.7151522, 0.1191920,
@@ -78,32 +82,26 @@ const mat3 Msrgb = mat3(
     -0.0040720468, 0.4505937099, -0.8086757660
 );
 
-// Convert rgb to xyz (sRGB) - compare http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 vec3 rgb2xyz_srgb(vec3 rgb) {
     return Msrgb * rgb;
 }
 
-// Convert xyz to rgb (sRGB) - compare http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 vec3 xyz2rgb_srgb(vec3 xyz) {
     return inverse(Msrgb) * xyz;
 }
 
-// Convert xyz to oklab - compare https://bottosson.github.io/posts/oklab/
 vec3 xyz2oklab(vec3 xyz) {
     return M2 * pow(M1 * xyz, c.xxx/3.);
 }
 
-// Convert oklab to xyz - compare https://bottosson.github.io/posts/oklab/
 vec3 oklab2xyz(vec3 lab) {
     return inverse(M1) * pow(inverse(M2) * lab, 3.*c.xxx);
 }
 
-// Convert oklab to oklch - compare https://bottosson.github.io/posts/oklab/
 vec3 oklab2oklch(vec3 lab) {
     return vec3(lab.x, length(lab.yz), atan(lab.z, lab.y));
 }
 
-// Convert oklch to oklab - compare https://bottosson.github.io/posts/oklab/
 vec3 oklch2oklab(vec3 lch) {
     return vec3(lch.x, lch.y * vec2(cos(lch.z), sin(lch.z)));
 }

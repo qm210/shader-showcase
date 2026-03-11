@@ -9,7 +9,7 @@ uniform float iGamma;
 uniform float iContrast;
 uniform float iGray;
 uniform vec3 iFactor;
-uniform vec2 iClamp;
+uniform vec2 iSqueeze;
 uniform float iCutOut;
 uniform float iFree1;
 uniform float iFree2;
@@ -32,23 +32,24 @@ vec3 grayscale(vec3 col) {
     return vec3(gray);
 }
 
-void applyColorEffects(inout vec3 col, in vec2 uv) {
+void applyBasicColorEffects(inout vec3 col, in vec2 uv) {
     col *= iFactor;
 
     col = pow(col, vec3(iGamma));
 
     vec3 gray = grayscale(col);
-    float radius = length(uv);
     col = mix(col, gray, iGray);
-    // ÜBUNG
-    // col = mix(gray, col, smoothstep(1., 0., radius));
 
     col = (col - 0.5) * iContrast + 0.5;
 
-    col = clamp(col, vec3(iClamp.x), vec3(iClamp.y));
+    col = clamp(col, vec3(iSqueeze.x), vec3(iSqueeze.y));
+    col = (col - iSqueeze.x) / (iSqueeze.y - iSqueeze.x);
 
-    // ÜBUNG
-    col = mix(col, c.yyy, step(1. - iCutOut, radius * 0.5));
+    /// ÜBUNG:
+    /// - wie würde man den Cutout rechteckig machen?
+    /// - wie wird der Übergang fließend statt hart?
+    float radius = length(uv);
+    col = mix(col, c.yyy, step(1. - radius * 0.5, iCutOut));
 
 }
 
@@ -57,27 +58,25 @@ void main() {
     float pixelSize = 1. / iResolution.y;
 
     fragColor = c.yyyx;
-    vec3 col, bg, col0, col1, col2;
 
+    /* Beispielhafter Texturzugriffcode */
     vec2 st = gl_FragCoord.xy / iResolution.y;
     ivec2 texSize = textureSize(iTexture0, 0);
     float texAspectRatio = float(texSize.x) / float(texSize.y);
     st.x /= texAspectRatio;
     st.y = 1. - st.y;
-    col0 = texture(iTexture0, st).rgb;
+    fragColor.rgb = texture(iTexture0, st).rgb;
 
+    /* Layout: Textur links unverändert, rechts rechnen wir drauf herum */
     if (abs(uv.x) < pixelSize) {
         discard;
     }
-    else if (uv.x < 0.) {
-        fragColor.rgb = col0.rgb;
-    }
-    else {
+    if (uv.x > 0.) {
         st.x -= 1.;
-        col0 = texture(iTexture0, st).rgb;
-        fragColor.rgb = col0.rgb;
+        fragColor.rgb = texture(iTexture0, st).rgb;
+        // <-- was passiert hier?
 
         uv.x -= 0.5 * iResolution.x / iResolution.y;
-        applyColorEffects(fragColor.rgb, uv);
+        applyBasicColorEffects(fragColor.rgb, uv);
     }
 }
