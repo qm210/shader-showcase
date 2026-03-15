@@ -285,13 +285,13 @@ void transformInOtherColorModels(inout vec3 col, in vec2 uv) {
     }
 }
 
-struct polarCoord {
+struct PolarCoord {
     float r;   /// Radius (= Abstand vom Ursprung)
     float phi; /// Polarwinkel,
 };
 
-polarCoord toPolar(vec2 cartesian) {
-    polarCoord p;
+PolarCoord toPolar(vec2 cartesian) {
+    PolarCoord p;
     p.r = length(cartesian);
     p.phi = atan(cartesian.y, cartesian.x);
     /// atan(y, x) ergibt Polarwinkel in [-pi, pi]
@@ -315,8 +315,69 @@ float periodicGauss(float x, float peak, float width) {
     return gauss(x, 0., width);
 }
 
+vec3 drawSwirl(in vec2 uv, bool colorful) {
+    PolarCoord polar = toPolar(uv);
+    float peakAngle = mod(4. * iTime, twoPi) - piHalf;
+    float widthAngle = piHalf;
+
+    const float spiraling = 4.;
+    polar.phi += spiraling * polar.r;
+
+    float value = periodicGauss(polar.phi, peakAngle, widthAngle);
+    vec3 hsv = vec3(0., 0., value);
+    // alpha = gauss(polar.r, 0.7, 0.4);
+    if (colorful) {
+        hsv.y = 0.5 - 0.5 * cos(1.5 * iTime);
+        hsv.x = 180. - 180. * cos(polar.r - 2. * iTime);
+    }
+    return vec3(hsv2rgb(hsv));
+}
+
+vec4 drawRainbow(vec2 uv) {
+    uv.y -= 0.1;
+    uv *= 0.8;
+
+    PolarCoord polar = toPolar(uv);
+    float peakAngle = mod(4. * iTime, twoPi) - piHalf;
+    float widthAngle = pi / 6.;
+
+    float r = polar.r;
+    vec2 p = abs(uv);
+    float dRechteckig = max(p.x, p.y);
+    // <-- ist die "falsche aber einfachere" Rechteck-SDF, aber reicht uns hier.
+    //     Das ist aber der Grund, warum in den Ecken die Farben stark verzerrt sind.
+
+    // Weil wir da gar nichts kennen: Periodisches Überblenden von Rund und Rechteckig :)
+    r = mix(r, dRechteckig, 0.5 - 0.5 * cos(iTime));
+
+    /*
+    float alpha = 1.;
+    alpha *= gauss(polar.r, 0.72, 0.16);
+    alpha *= periodicGauss(polar.phi, peakAngle, widthAngle);
+    */
+    // float alpha = periodicGauss(polar.phi, peakAngle, widthAngle);
+    float alpha = 1.;
+    // float alpha = 1.;
+    float rpeak = 0.5; // + 0.05 * sin(polar.phi - (2. * iTime));
+    alpha *= gauss(r, rpeak, 0.11);
+    alpha *= step(0., polar.phi);
+    // alpha *= smoothstep(0., 0.2, polar.phi) * smoothstep(pi, pi - 0.2, polar.phi);
+
+    float hue = smoothstep(0.65, 0.2, r) * 360.;
+
+    float value = 1.;
+    // float value = 0.5 + 0.5 * sin(1.63 * iTime);
+    // value = pow(value, 2.8);
+    vec3 hsv = vec3(hue, 1., value);
+
+    vec3 rgb = hsv2rgb(hsv);
+    alpha = pow(alpha, iAlphaGrading);
+    rgb = mix(c.yyy, rgb, alpha);
+    return vec4(rgb, alpha);
+}
+
 vec4 drawSomething(vec2 uv) {
-    polarCoord polar = toPolar(uv);
+    PolarCoord polar = toPolar(uv);
     float peakAngle = mod(1.2 * iTime, twoPi) - piHalf;
     float widthAngle = pi / 6.;
 
@@ -332,6 +393,8 @@ vec4 drawSomething(vec2 uv) {
     alpha = pow(alpha, iAlphaGrading);
     rgb = mix(c.yyy, rgb, alpha);
     return vec4(rgb, alpha);
+    /// Ist vielleicht nur ein komischer weißer Fleck,
+    /// aber demonstriert eine Polarkoordinaten-Transformation.
 }
 
 void applyToneMapping(inout vec3 col) {
@@ -352,7 +415,11 @@ void drawSomethingExtra(inout vec3 col, in vec2 uv) {
     // Koordinatentransformationen zuerst (hier bspw. nur skalieren)
     uv *= iExtraScale;
 
-    vec4 colFG = drawSomething(uv);
+    vec4 colFG = c.yyyx;
+    // colFG = drawSomething(uv);
+    colFG = drawRainbow(uv);
+    vec3 colMix = drawSwirl(uv, true);
+    colFG.rgb = mix(colFG.rgb, colMix.rgb, 0.5);
 
     colFG *= iExtraFactor;
 
