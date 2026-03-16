@@ -90,11 +90,11 @@ export default {
             description: "HSL-Modell transformieren",
             defaultValue: false,
         }, {
-            // type: "bool",
-            // name: "transformYCh",
-            // group: "colorModel",
-            // description: "YCh-Modell transformieren",
-            // defaultValue: false,
+            type: "bool",
+            name: "transformYCh",
+            group: "colorModel",
+            description: "YCh-Modell transformieren",
+            defaultValue: false,
         }, {
             type: "bool",
             name: "transformOKLCh",
@@ -141,8 +141,23 @@ export default {
             separator: "\"Komposition\" und Nachbearbeitung"
         }, {
             type: "bool",
-            name: "drawExtraOnTop",
-            description: "",
+            name: "addGreyCirclingThing",
+            description: "malen wir etwas zusätzlich drauf...",
+            defaultValue: false,
+        }, {
+            type: "bool",
+            name: "addRainbow",
+            description: "... oder auch einen Regenbogen...",
+            defaultValue: false,
+        }, {
+            type: "bool",
+            name: "makeRainbowSquare",
+            description: "... der auch nicht rund sein muss...",
+            defaultValue: false,
+        }, {
+            type: "bool",
+            name: "mixWithSwirl",
+            description: "... und noch eine Extraschicht drauf.",
             defaultValue: false,
         }, {
             type: "float",
@@ -224,7 +239,10 @@ function render(gl, state) {
     gl.uniform1f(state.location.iGray, state.iGray);
     gl.uniform3fv(state.location.iFactor, state.iFactor);
     gl.uniform2fv(state.location.iSqueeze, state.iSqueeze);
-    gl.uniform1i(state.location.drawExtraOnTop, state.drawExtraOnTop);
+    gl.uniform1i(state.location.addGreyCirclingThing, state.addGreyCirclingThing);
+    gl.uniform1i(state.location.addRainbow, state.addRainbow);
+    gl.uniform1i(state.location.makeRainbowSquare, state.makeRainbowSquare);
+    gl.uniform1i(state.location.mixWithSwirl, state.mixWithSwirl);
     gl.uniform1f(state.location.iAlphaGrading, state.iAlphaGrading);
     gl.uniform1f(state.location.iGammaPost, state.iGammaPost);
 

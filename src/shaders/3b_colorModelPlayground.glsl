@@ -22,7 +22,10 @@ uniform bool transformHSV;
 uniform bool transformHSL;
 uniform bool transformYCh;
 uniform bool transformOKLCh;
-uniform bool drawExtraOnTop;
+uniform bool addGreyCirclingThing;
+uniform bool addRainbow;
+uniform bool makeRainbowSquare;
+uniform bool mixWithSwirl;
 uniform float iAlphaGrading;
 uniform float iExtraScale;
 uniform float iExtraFactor;
@@ -104,6 +107,7 @@ vec3 hsv2rgb(vec3 colHSV) {
 //// HSL
 
 vec3 hsl2rgb(in vec3 col) {
+    col.x /= 360.;
     vec3 rgb = clamp( abs(mod(col.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0 );
     return col.z + col.y * (rgb-0.5)*(1.0-abs(2.0*col.z-1.0));
 }
@@ -121,9 +125,11 @@ vec3 rgb2hsl(in vec3 col) {
     float maxc = max( col.r, max(col.g, col.b) );
     vec3  mask = step(col.grr,col.rgb) * step(col.bbg,col.rgb);
     vec3 h = mask * (vec3(0.0,2.0,4.0) + (col.gbr-col.brg)/(maxc-minc + eps)) / 6.0;
-    return vec3(fract( 1.0 + h.x + h.y + h.z ),              // H
-    (maxc-minc)/(1.0-abs(minc+maxc-1.0) + eps),  // S
-    (minc+maxc)*0.5 );                           // L
+    return vec3(
+        fract( 1.0 + h.x + h.y + h.z ) * 360.,       // H
+        (maxc-minc)/(1.0-abs(minc+maxc-1.0) + eps),  // S
+        (minc+maxc)*0.5                              // L
+    );
 }
 
 struct LCh {
@@ -347,21 +353,31 @@ vec4 drawRainbow(vec2 uv) {
     // <-- ist die "falsche aber einfachere" Rechteck-SDF, aber reicht uns hier.
     //     Das ist aber der Grund, warum in den Ecken die Farben stark verzerrt sind.
 
-    // Weil wir da gar nichts kennen: Periodisches Überblenden von Rund und Rechteckig :)
-    r = mix(r, dRechteckig, 0.5 - 0.5 * cos(iTime));
+    // Falls wir da gar nichts kennen: Periodisches Überblenden von Rund und Rechteckig :)
+    // r = mix(r, dRechteckig, 0.5 - 0.5 * cos(iTime));
+
+    if (makeRainbowSquare) {
+        r = dRechteckig;
+    }
 
     /*
     float alpha = 1.;
     alpha *= gauss(polar.r, 0.72, 0.16);
     alpha *= periodicGauss(polar.phi, peakAngle, widthAngle);
     */
-    // float alpha = periodicGauss(polar.phi, peakAngle, widthAngle);
+    const float bisschenWabern = 0.05;
     float alpha = 1.;
-    // float alpha = 1.;
-    float rpeak = 0.5; // + 0.05 * sin(polar.phi - (2. * iTime));
+    // alpha = periodicGauss(polar.phi, peakAngle, widthAngle);
+    float rpeak = 0.5 + bisschenWabern * sin(polar.phi - (2. * iTime));
     alpha *= gauss(r, rpeak, 0.11);
-    alpha *= step(0., polar.phi);
-    // alpha *= smoothstep(0., 0.2, polar.phi) * smoothstep(pi, pi - 0.2, polar.phi);
+
+    // Abschneiden könnte man mit step(), aber smoothstep() ist smoother (Überraschung!)
+    const bool hartAbschneiden = false;
+    if (hartAbschneiden) {
+        alpha *= step(0., polar.phi);
+    } else {
+        alpha *= smoothstep(0., 0.2, polar.phi) * smoothstep(pi, pi - 0.2, polar.phi);
+    }
 
     float hue = smoothstep(0.65, 0.2, r) * 360.;
 
@@ -376,13 +392,16 @@ vec4 drawRainbow(vec2 uv) {
     return vec4(rgb, alpha);
 }
 
-vec4 drawSomething(vec2 uv) {
+vec4 drawGreyCirclingThing(vec2 uv) {
+    /// Ist zwar vielleicht nur ein komischer weißer Fleck,
+    /// aber demonstriert schonmal eine Polarkoordinaten-Transformation (:
+
     PolarCoord polar = toPolar(uv);
-    float peakAngle = mod(1.2 * iTime, twoPi) - piHalf;
+    float peakAngle = mod(4. * iTime, twoPi) - piHalf;
     float widthAngle = pi / 6.;
 
     float alpha = 1.;
-    alpha *= gauss(polar.r, 0.72, 0.16);
+    alpha *= gauss(polar.r, 0.9, 0.16);
     alpha *= periodicGauss(polar.phi, peakAngle, widthAngle);
 
     float value = 0.5 + 0.5 * sin(1.63 * iTime);
@@ -393,8 +412,6 @@ vec4 drawSomething(vec2 uv) {
     alpha = pow(alpha, iAlphaGrading);
     rgb = mix(c.yyy, rgb, alpha);
     return vec4(rgb, alpha);
-    /// Ist vielleicht nur ein komischer weißer Fleck,
-    /// aber demonstriert eine Polarkoordinaten-Transformation.
 }
 
 void applyToneMapping(inout vec3 col) {
@@ -409,25 +426,37 @@ void applyToneMapping(inout vec3 col) {
     col = mix(col, mapped, iToneMapping);
 }
 
-void drawSomethingExtra(inout vec3 col, in vec2 uv) {
-    vec3 colBG = col;
-
+void drawExtraStuff(inout vec3 col, in vec2 uv) {
     // Koordinatentransformationen zuerst (hier bspw. nur skalieren)
     uv *= iExtraScale;
 
-    vec4 colFG = c.yyyx;
-    // colFG = drawSomething(uv);
-    colFG = drawRainbow(uv);
-    vec3 colMix = drawSwirl(uv, true);
-    colFG.rgb = mix(colFG.rgb, colMix.rgb, 0.5);
-
-    colFG *= iExtraFactor;
-
     // Front-to-Back-Blending: (Hintergrund sichtbar, wo Vordergrund Alpha < 1 übriglässt)
-    // col = colOnTop.rgb * colOnTop.a + colBG * (1 - colOnTop.a);
-    col = mix(colBG, colFG.rgb, colFG.a);
+    // col = colFront.rgb * colFront.a + col * (1 - colFront.a);
+    //     = mix(col, colFront.rgb, colFront.a);
+    // (hier mit opakem (nicht-transparentem) Hintergrund (vec3!)
+    // Es gibt aber je nach Anwendungsfall verschiedene Formeln, Farben zu mischen.
+    // (ähnlich in der echten Welt: Licht mischt anders als Pigmentfarben (z.B. Wasserfarben))
 
-    /// ... Transformation auf anderem Farbmodell denkbar?
+    vec4 colFront = c.yyyy;
+    vec4 colAdd;
+    if (addGreyCirclingThing) {
+        colAdd = drawGreyCirclingThing(uv);
+        colFront = mix(colFront, colAdd, colAdd.a);
+    }
+    if (addRainbow) {
+        colAdd = drawRainbow(uv);
+        colFront = mix(colFront, colAdd, colAdd.a);
+    }
+    if (mixWithSwirl) {
+        vec3 colMix = drawSwirl(uv, true);
+        colFront.rgb = mix(colFront.rgb, colMix, 0.5);
+        // warum nicht mal halb-halb mischen?
+    }
+
+    colFront *= iExtraFactor;
+
+    // ...am Ende macht Front-to-Back aber am meisten Sinn:
+    col = mix(col, colFront.rgb, colFront.a);
 }
 
 void applyEffects(inout vec3 col, vec2 uv, bool decodeSRGB) {
@@ -439,9 +468,7 @@ void applyEffects(inout vec3 col, vec2 uv, bool decodeSRGB) {
     applyRgbColorEffects(col, uv);
     transformInOtherColorModels(col, uv);
 
-    if (drawExtraOnTop) {
-        drawSomethingExtra(col, uv);
-    }
+    drawExtraStuff(col, uv);
 
     // Tone Mapping & nachträgliche Gamma-Korrektur /-Grading
     applyToneMapping(col);
