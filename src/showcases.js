@@ -5,22 +5,22 @@ import showcase2c from "./showcases/specific/2c_Geometry_InvestigateSDBox.js";
 import showcase3a from "./showcases/3a_TexturesAndColor.js";
 import showcase3b from "./showcases/3b_TexturesAndColorModels.js";
 import showcase4 from "./showcases/4_TextureBlending.js";
-import showcase5 from "./showcases/5a_Noise.js";
-import showcase5b from "./showcases/5b_NoiseExtended.js";
-import showcase6 from "./showcases/6_RayMarching.js";
-import showcaseIQ from "./showcases/6b_RayMarchingPrimitives.js";
-import showcase7 from "./showcases/7_VariousConceptsFor3D.js";
-import showcase8 from "./showcases/8_RayTracingFirstSteps.js"
-import showcase8b from "./showcases/8b_RayTracingPlusVolumetric.js"
-import showcase9 from "./showcases/9_FramebufferPingPong.js";
-import showcase9bUnfinished from "./showcases/9b_MultiPassAndExtraData.js";
+import showcase5a from "./showcases/5a_MultipassProcessing.js";
+import showcase5b from "./showcases/5b_FramebufferPingPong.js";
+import previousShowcase5 from "./showcases/6a_Noise.js";
+import previousShowcase5b from "./showcases/6b_NoiseExtended.js";
+import previousShowcase6 from "./showcases/7_RayMarching.js";
+import showcaseIQ from "./showcases/7b_RayMarchingPrimitives.js";
+import previousShowcase7 from "./showcases/8_VariousConceptsFor3D.js";
+import previousShowcase8 from "./showcases/9_RayTracingFirstSteps.js"
+import previousShowcase8b from "./showcases/9b_RayTracingPlusVolumetric.js"
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 
-const defaultShowcase = showcase3a;
+const defaultShowcase = showcase5a;
 
 const MAP_PATH = {
-    // Zum Anfang ein sehr, sehr langweiliger Anfang.
+    // Zum Anfang mal... ein Anfang.
     "1": showcase1,
     // SDF in 2D, mit "2b" Vertiefung auf die Quadrat-SDF, "2c" zum Kontext der Gitter-Diskussion
     "2": showcase2a,
@@ -33,26 +33,26 @@ const MAP_PATH = {
     "3b": showcase3b,
     // Farbmischungen
     "4": showcase4,
+    // Einführung von Framebuffern
+    "5": showcase5a,
+    "5a": showcase5a,
+    "5b": showcase5b, // Der wurde nicht fertig. Könnt ihr anschauen, ist aber wenig tiefgängig.
     // Prozedurales Rauschen (Perlin Noise, FBM) -- nachgereicht, weil wir Ähnliches besprochen haben (z.B. Voronoi)
-    "5": showcase5,
-    "5a": showcase5,
-    "5b": showcase5b,
+    "6": previousShowcase5,
+    "6a": previousShowcase5,
+    "6b": previousShowcase5b,
     // Ray Marching mit SDF in 3D;
-    "6": showcase6,
-    "6a": showcase6,
-    "6b": showcaseIQ, // s.u., ist zur Referenz der übersetzte Shadertoy-Shader von IQ
+    "7": previousShowcase6,
+    "7a": previousShowcase6,
+    "7b": showcaseIQ, // s.u., ist zur Referenz der übersetzte Shadertoy-Shader von IQ
     // Aufbauend auf "6" mit _etlichen_ gängigen 3D-Konzepten (Kamerapfade, Texturen, Beleuchtung, Amb. Occlusion)
-    "7": showcase7,
+    "8": previousShowcase7,
     // Ray Tracing ("8b" mit Volumetric Ray Marching am Rand, der wurde im Nachhinein ergänzt)
-    "8": showcase8,
-    "8b": showcase8b,
-    // Einführung von Framebuffern, wobei "8" keine Zeit mehr fand. "9" ist ein einfacher Framebuffer-Showcase.
-    "9": showcase9,
-    "9b": showcase9bUnfinished, // Der wurde nicht fertig. Könnt ihr anschauen, ist aber wenig tiefgängig.
+    "9": previousShowcase8,
+    "9b": previousShowcase8b,
     // Multi-Pass-Anwendung: "Tiefenunschärfe" auf Showcase8 aufbauend
     "10": showcase10,
-    // Demonstration eines sehr ausgiebigen Multi Pass / Framebuffer-Setups
-    // aber UNVOLLSTÄNDIG -- den müsst ihr also nicht vertiefen.
+    // UNVOLLSTÄNDIG: Demonstration eines sehr ausgiebigen Multi Pass / Framebuffer-Setups
     "11": showcase11Unfinished,
 };
 

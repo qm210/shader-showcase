@@ -1,5 +1,5 @@
 import {compile, createStaticVertexBuffer, initVertices} from "../webgl/setup.js";
-import {evaluateReadData} from "../webgl/helpers.js";
+import {evaluateReadData, updateResolution} from "../webgl/helpers.js";
 import {REGEX} from "../glslCode/definitions.js";
 
 const basicVertexShaderSource =
@@ -30,6 +30,8 @@ export function initBasicState(gl, sources) {
     }
 
     initVertices(gl, state, "aPosition");
+
+    updateResolution(state, gl);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

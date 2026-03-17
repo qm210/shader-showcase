@@ -2,7 +2,7 @@ import {startRenderLoop} from "../webgl/render.js";
 import {
     createFramebufferWithTexture,
     createPingPongFramebuffersWithTexture, createTextureFromImage, halfFloatOptions, resolutionScaled,
-    updateResolutionInState
+    updateResolution
 } from "../webgl/helpers.js";
 import {initBasicState} from "./common.js";
 
@@ -24,7 +24,7 @@ export default {
         }
 
         // TODO: Resizing the canvas DOES NOT scale the framebuffers / textures yet!! MUST DO
-        const {width, height} = updateResolutionInState(state, gl);
+        const {width, height} = updateResolution(state, gl);
 
         state.framebuffer = {
             image: createPingPongFramebuffersWithTexture(gl, {

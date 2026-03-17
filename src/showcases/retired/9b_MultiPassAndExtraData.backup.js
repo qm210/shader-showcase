@@ -2,7 +2,7 @@ import {startRenderLoop} from "../../webgl/render.js";
 import {
     createFramebufferWithTexture,
     createPingPongFramebuffersWithTexture,
-    updateResolutionInState
+    updateResolution
 } from "../../webgl/helpers.js";
 
 import vertexShaderSource from "../../shaders/vertex.basicWithDifferentials.glsl"
@@ -23,7 +23,7 @@ export default {
         gl.disable(gl.BLEND);
 
         // TODO: Resizing the canvas DOES NOT scale the framebuffers / textures yet!! MUST DO
-        const {width, height} = updateResolutionInState(state, gl);
+        const {width, height} = updateResolution(state, gl);
         state.nPasses = 2;
 
         state.framebuffer = [0, 1].map((index) =>

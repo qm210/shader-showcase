@@ -191,8 +191,9 @@ export function createFramebufferWithTexture(gl, options, fbIndex = undefined) {
         texelSize: [1/opt.width, 1/opt.height],
         params: opt,
         // <-- Speichern wir hier, weil wir bei einem Resize reagieren müssen
-        //     TODO: mache ich aber noch nicht! Canvas-Resizing braucht F5-Reload.
-        // Und für die Fehlersuche:
+        //     TODO: fehlt uns aber noch! Canvas-Resizing braucht F5-Reload.
+
+        // nur fürs Debugging:
         index: fbIndex,
         status,
     };
@@ -310,7 +311,7 @@ export function takePingPongFramebuffers(state) {
     }
 }
 
-export function updateResolutionInState(state, glContext) {
+export function updateResolution(state, glContext) {
     const width = glContext.drawingBufferWidth;
     const height = glContext.drawingBufferHeight;
     state.resolution = [width, height];

@@ -1,7 +1,7 @@
 import {startRenderLoop} from "../webgl/render.js";
 import {initBasicState} from "./common.js";
 import fragmentShaderSource from "../shaders/raytracingWithMultipass.glsl";
-import {createFramebufferWithTexture, updateResolutionInState} from "../webgl/helpers.js";
+import {createFramebufferWithTexture, updateResolution} from "../webgl/helpers.js";
 
 export default {
     title: "Ray Tracing: First Steps",
@@ -17,7 +17,7 @@ export default {
         // innerhalb initBasicState() abgehandelt, war auf Dauer zuviel zu duplizieren.
         // Hier kommt also noch, was wir darüber hinaus initialisieren müssen (Texturen, Framebuffer, Sonstiges)
 
-        const {width, height} = updateResolutionInState(state, gl);
+        const {width, height} = updateResolution(state, gl);
         state.framebuffer = createFramebufferWithTexture(gl, {
             width,
             height,

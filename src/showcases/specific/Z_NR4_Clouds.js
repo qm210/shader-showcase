@@ -5,7 +5,7 @@ import {
     clearFramebuffers,
     createPingPongFramebuffersWithTexture,
     evaluateReadData,
-    updateResolutionInState
+    updateResolution
 } from "../../webgl/helpers.js";
 
 export default {
@@ -18,7 +18,7 @@ export default {
             return state;
         }
 
-        const {width, height} = updateResolutionInState(state, gl);
+        const {width, height} = updateResolution(state, gl);
         state.framebuffer =
             createPingPongFramebuffersWithTexture(gl, {
                 width,
