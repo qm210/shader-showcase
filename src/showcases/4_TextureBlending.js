@@ -216,18 +216,20 @@ function render(gl, state) {
     gl.uniform1i(state.location.decodeSRGB, state.decodeSRGB);
     gl.uniform1i(state.location.compareDecodeSRGB, state.compareDecodeSRGB);
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, state.texture0);
-    gl.uniform1i(state.location.iTexture0, 0);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, state.texture1);
-    gl.uniform1i(state.location.iTexture1, 1);
-    // ... man erkenne ein Muster...?
-
     gl.uniform1f(state.location.iFree1, state.iFree1);
     gl.uniform1f(state.location.iFree2, state.iFree2);
     gl.uniform1f(state.location.iFree3, state.iFree3);
     gl.uniform1f(state.location.iFree4, state.iFree4);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, state.texture0);
+    gl.uniform1i(state.location.iTexture0, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, state.texture1);
+    gl.uniform1i(state.location.iTexture1, 1);
+
+    // ... man erkenne ein Muster...?
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

@@ -392,6 +392,12 @@ function render(gl, state) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass0.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    /*
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    return;
+    */
+
     gl.uniform1i(loc.iPass, 1);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass1.fbo);
     gl.activeTexture(gl.TEXTURE2);
