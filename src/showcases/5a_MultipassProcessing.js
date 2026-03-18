@@ -51,9 +51,11 @@ export default {
             internalFormat: gl.RGBA32F,
         };
         state.framebuffer = {
-            passZero: createFramebufferWithTexture(gl, fbOptions),
-            passOne: createFramebufferWithTexture(gl, fbOptions),
-            passTwo: createFramebufferWithTexture(gl, fbOptions),
+            pass0: createFramebufferWithTexture(gl, fbOptions),
+            pass1: createFramebufferWithTexture(gl, fbOptions),
+            pass2: createFramebufferWithTexture(gl, fbOptions),
+            pass3: createFramebufferWithTexture(gl, fbOptions),
+            pass4: createFramebufferWithTexture(gl, fbOptions),
         };
 
         return state;
@@ -64,69 +66,260 @@ export default {
             type: "label",
             name: "iTime",
         }, {
+            type: "boolean",
+            name: "compareOriginal",
+            defaultValue: false,
+            description: "Originalbild(-textur) auf linker Seite",
+        }, {
+            separator: "Gauss Blur / Bloom Filter"
+        }, {
+            type: "int",
+            name: "iBlurSamples",
+            defaultValue: 0,
+            min: 0,
+            max: 64,
+        }, {
             type: "float",
-            name: "iNoiseLevel",
+            name: "iBlurPixels",
             defaultValue: 1,
             min: 0.,
+            max: 50.,
+        }, {
+            type: "float",
+            name: "iBlurGaussWidth",
+            defaultValue: 0.5,
+            min: 0.01,
             max: 2.,
         }, {
-            type: "float",
-            name: "iNoiseFreq",
-            defaultValue: 1,
-            min: 0.01,
-            max: 10.,
+            type: "boolean",
+            name: "enableBlurDithering",
+            defaultValue: false,
+            description: "offset blur sampling points by pseudorandom \"jitter\"",
         }, {
             type: "float",
-            name: "iNoiseOffset",
+            name: "iBlurDithering",
+            defaultValue: 0.1,
+            min: 0,
+            max: 1,
+        }, {
+            type: "boolean",
+            name: "showOnlyDithered",
+            defaultValue: false,
+            description: "",
+        }, {
+            type: "boolean",
+            name: "useBloomFilterInsteadOfBlur",
+            defaultValue: false,
+            description: "uses the blur loop for another effect",
+        }, {
+            type: "boolean",
+            name: "showOnlyBloom",
+            defaultValue: false,
+            description: "comparison: show only the Bloom color layer",
+        }, {
+            type: "float",
+            name: "iBloomIntensity",
+            defaultValue: 0.0,
+            min: 0,
+            max: 3,
+        }, {
+            type: "float",
+            name: "iBloomThreshold",
+            defaultValue: 0.6,
+            min: 0,
+            max: 1,
+        }, {
+            separator: "Tone Mapping / Gamma Grading"
+        }, {
+            type: "boolean",
+            name: "useReinhardMapping",
+            group: "tonemapping",
+            defaultValue: false,
+            description: "apply the most simple Tone Mapping after Bloom",
+        }, {
+            type: "boolean",
+            name: "useACESMapping",
+            group: "tonemapping",
+            defaultValue: false,
+            description: "... or the \"ACES\" Tone Mapping",
+        }, {
+            type: "boolean",
+            name: "useHableMapping",
+            group: "tonemapping",
+            defaultValue: false,
+            description: "... or the \"John Hable / Uncharted 2\" Tone Mapping",
+        }, {
+            type: "float",
+            name: "iToneMapExposure",
+            defaultValue: 1,
+            min: 0,
+            max: 10,
+        }, {
+            type: "float",
+            name: "iGamma",
+            defaultValue: 1,
+            min: 0.1,
+            max: 5,
+            log: true,
+        }, {
+            separator: "Ein bisschen HSV-Transformation"
+        }, {
+            type: "float",
+            name: "iHueShift",
             defaultValue: 0,
             min: -1,
             max: 1,
         }, {
             type: "float",
-            name: "iFractionalOctaves",
+            name: "iSaturationGrading",
             defaultValue: 1,
-            min: 1,
-            max: 10.,
-            step: 1,
+            min: 0.33,
+            max: 3,
+            log: true,
         }, {
             type: "float",
-            name: "iFractionalScale",
-            defaultValue: 2.,
-            min: 0.01,
-            max: 10.,
+            name: "iCutValueMin",
+            defaultValue: 0,
+            min: 0,
+            max: 0.5,
         }, {
             type: "float",
-            name: "iFractionalDecay",
-            defaultValue: 0.5,
-            min: 0.01,
-            max: 2.,
+            name: "iCutValueMax",
+            defaultValue: 1,
+            min: 0.5,
+            max: 1,
+        }, {
+            separator: "Farbfehler: Chromatic Aberration"
         }, {
             type: "float",
-            name: "iCloudMorph",
+            name: "iChrAberrStrength",
+            defaultValue: 0,
+            min: -.2,
+            max: .2,
+        }, {
+            type: "float",
+            name: "iChrAberrRadialShape",
             defaultValue: 0,
             min: 0,
             max: 2,
         }, {
+            separator: "Retro-Effekt: Rauschen (Perlin Noise) + Scan Lines + Grünstich"
+        }, {
             type: "float",
-            name: "iCloudVelX",
+            name: "iNoise",
             defaultValue: 0,
-            min: -2.,
-            max: 2,
+            min: 0.,
+            max: 1.,
         }, {
-            type: "vec3",
+            type: "float",
+            name: "iNoiseScale",
+            defaultValue: 64,
+            min: 1,
+            max: 256,
+            step: 0.1,
+        }, {
+            type: "boolean",
+            name: "animateNoise",
+            defaultValue: false,
+            description: "Zeit als Pseudorandom-Seed verwenden"
+        }, {
+            type: "float",
+            name: "iScanLineScale",
+            defaultValue: 0.,
+            min: 0.,
+            max: 1.,
+        }, {
+            type: "float",
+            name: "iScanLineGrading",
+            defaultValue: 2.,
+            min: 0.5,
+            max: 4.,
+            log: true,
+        }, {
+            type: "float",
+            name: "iPhosphorGlowing",
+            defaultValue: 0.,
+            min: 0.,
+            max: 1.,
+        }, {
+            separator: "Fassverzerrung"
+        }, {
+            type: "boolean",
+            name: "showBarrelDistortion",
+            defaultValue: false,
+            description: "Nichtlineare Koordinatenverzerrung (anhand Abstand von Mitte)",
+        }, {
+            type: "float",
+            name: "iBarrelDistortion",
+            defaultValue: 0.2,
+            min: -1,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iBarrelDistortionExponent",
+            defaultValue: 2,
+            min: -2,
+            max: 40,
+        }, {
+            separator: "Vignette"
+        }, {
+            type: "boolean",
+            name: "showVignette",
+            defaultValue: false,
+            description: "Ecken abdunkeln (das heißt Vignette)",
+        }, {
+            type: "float",
+            name: "iVignetteInner",
+            defaultValue: 0.8,
+            min: 0.5,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iVignetteOuter",
+            defaultValue: 1.3,
+            min: 0.9,
+            max: 2.,
+        }, {
+            separator: "..."
+        }, {
+            type: "float",
             name: "iFree0",
-            defaultValue: [0, 0, 0],
-            min: -9.99,
-            max: +9.99,
+            defaultValue: 0,
+            min: -1,
+            max: 1,
         }, {
-            type: "vec3",
+            type: "float",
             name: "iFree1",
+            defaultValue: 0,
+            min: -1,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iFree2",
+            defaultValue: 0,
+            min: -1,
+            max: 1,
+        }, {
+            type: "float",
+            name: "iFree3",
+            defaultValue: 0,
+            min: -1,
+            max: 1,
+        }, {
+            type: "vec3",
+            name: "vecFree0",
             defaultValue: [0, 0, 0],
             min: -9.99,
             max: +9.99,
         }, {
             type: "vec3",
-            name: "iFree2",
+            name: "vecFree1",
+            defaultValue: [0, 0, 0],
+            min: -9.99,
+            max: +9.99,
+        }, {
+            type: "vec3",
+            name: "vecFree2",
             defaultValue: [0, 0, 0],
             min: -9.99,
             max: +9.99,
@@ -140,17 +333,48 @@ function render(gl, state) {
     gl.uniform2fv(loc.iResolution, state.resolution);
     gl.uniform2fv(loc.texelSize, state.texelSize);
     gl.uniform1i(loc.iFrame, state.iFrame);
-    gl.uniform1f(loc.iNoiseLevel, state.iNoiseLevel);
-    gl.uniform1f(loc.iNoiseFreq, state.iNoiseFreq);
-    gl.uniform1f(loc.iNoiseOffset, state.iNoiseOffset);
-    gl.uniform1f(loc.iFractionalOctaves, state.iFractionalOctaves);
-    gl.uniform1f(loc.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(loc.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(loc.iCloudMorph, state.iCloudMorph);
-    gl.uniform1f(loc.iCloudVelX, state.iCloudVelX);
-    gl.uniform3fv(loc.iFree0, state.iFree0);
-    gl.uniform3fv(loc.iFree1, state.iFree1);
-    gl.uniform3fv(loc.iFree2, state.iFree2);
+    gl.uniform1i(loc.compareOriginal, state.compareOriginal);
+    gl.uniform1i(loc.iBlurSamples, state.iBlurSamples);
+    gl.uniform1f(loc.iBlurPixels, state.iBlurPixels);
+    gl.uniform1f(loc.iBlurGaussWidth, state.iBlurGaussWidth);
+    gl.uniform1i(loc.enableBlurDithering, state.enableBlurDithering);
+    gl.uniform1f(loc.iBlurDithering, state.iBlurDithering);
+    gl.uniform1i(loc.showOnlyDithered, state.showOnlyDithered);
+    gl.uniform1i(loc.useBloomFilterInsteadOfBlur, state.useBloomFilterInsteadOfBlur);
+    gl.uniform1i(loc.showOnlyBloom, state.showOnlyBloom);
+    gl.uniform1f(loc.iBloomIntensity, state.iBloomIntensity);
+    gl.uniform1f(loc.iBloomThreshold, state.iBloomThreshold);
+    gl.uniform1i(loc.useReinhardMapping, state.useReinhardMapping);
+    gl.uniform1i(loc.useACESMapping, state.useACESMapping);
+    gl.uniform1i(loc.useHableMapping, state.useHableMapping);
+    gl.uniform1f(loc.iToneMapExposure, state.iToneMapExposure);
+    gl.uniform1f(loc.iGamma, state.iGamma);
+    gl.uniform1f(loc.iChrAberrStrength, state.iChrAberrStrength);
+    gl.uniform1f(loc.iChrAberrRadialShape, state.iChrAberrRadialShape);
+    gl.uniform1f(loc.iHueShift, state.iHueShift);
+    gl.uniform1f(loc.iSaturationGrading, state.iSaturationGrading);
+    gl.uniform1f(loc.iCutValueMin, state.iCutValueMin);
+    gl.uniform1f(loc.iCutValueMax, state.iCutValueMax);
+    gl.uniform1f(loc.iNoise, state.iNoise);
+    gl.uniform1f(loc.iNoiseScale, state.iNoiseScale);
+    gl.uniform1i(loc.animateNoise, state.animateNoise);
+    gl.uniform1f(loc.iScanLineScale, state.iScanLineScale);
+    gl.uniform1f(loc.iScanLineGrading, state.iScanLineGrading);
+    gl.uniform1f(loc.iPhosphorGlowing, state.iPhosphorGlowing);
+    gl.uniform1i(loc.showBarrelDistortion, state.showBarrelDistortion);
+    gl.uniform1f(loc.iBarrelDistortion, state.iBarrelDistortion);
+    gl.uniform1f(loc.iBarrelDistortionExponent, state.iBarrelDistortionExponent);
+    gl.uniform1i(loc.showVignette, state.showVignette);
+    gl.uniform1f(loc.iVignetteInner, state.iVignetteInner);
+    gl.uniform1f(loc.iVignetteOuter, state.iVignetteOuter);
+
+    gl.uniform1f(loc.iFree0, state.iFree0);
+    gl.uniform1f(loc.iFree1, state.iFree1);
+    gl.uniform1f(loc.iFree2, state.iFree2);
+    gl.uniform1f(loc.iFree3, state.iFree3);
+    gl.uniform3fv(loc.vecFree0, state.vecFree0);
+    gl.uniform3fv(loc.vecFree1, state.vecFree1);
+    gl.uniform3fv(loc.vecFree2, state.vecFree2);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, state.texFloofy);
@@ -161,27 +385,39 @@ function render(gl, state) {
     gl.uniform1i(state.location.texWindow, 1);
 
     gl.uniform1i(loc.iPass, 0);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.passZero.fbo);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass0.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     gl.uniform1i(loc.iPass, 1);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.passOne.fbo);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass1.fbo);
     gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.passZero.texture);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass0.texture);
     gl.uniform1i(state.location.texPrevious, 2);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    // <-- ist allgemeine Form, die Textur Unit können wir jetzt lassen:
+
     gl.uniform1i(loc.iPass, 2);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.passTwo.fbo);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.passOne.texture);
-    gl.uniform1i(state.location.texPrevious, 2);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass2.fbo);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass1.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     gl.uniform1i(loc.iPass, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass3.fbo);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass2.texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.uniform1i(loc.iPass, 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass4.fbo);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass3.texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // Bildschirm == Backbuffer == Framebuffer Null
+
+    gl.uniform1i(loc.iPass, 5);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.passTwo.texture);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass4.texture);
     gl.uniform1i(state.location.texPrevious, 2);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

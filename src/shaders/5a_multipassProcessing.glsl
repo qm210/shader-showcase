@@ -11,71 +11,57 @@ uniform int iPass;
 uniform sampler2D texFloofy;
 uniform sampler2D texWindow;
 uniform sampler2D texPrevious;
+uniform bool compareOriginal;
 
-uniform float iNoiseFreq;
-uniform float iNoiseLevel;
-uniform float iNoiseOffset;
-uniform int iFractionalOctaves;
-uniform float iFractionalScale;
-uniform float iFractionalDecay;
-uniform float iCloudMorph;
-uniform float iCloudVelX;
-uniform float iCloudVelY;
-uniform vec3 iFree0;
-uniform vec3 iFree1;
-uniform vec3 iFree2;
+uniform int iBlurSamples;
+uniform float iBlurPixels;
+uniform float iBlurGaussWidth;
+uniform bool enableBlurDithering;
+uniform float iBlurDithering;
+uniform bool showOnlyDithered;
+uniform bool useBloomFilterInsteadOfBlur;
+uniform bool showOnlyBloom;
+uniform float iBloomIntensity;
+uniform float iBloomThreshold;
+
+uniform bool useReinhardMapping;
+uniform bool useACESMapping;
+uniform bool useHableMapping;
+uniform float iToneMapExposure;
+uniform float iGamma;
+
+uniform float iHueShift;
+uniform float iSaturationGrading;
+uniform float iCutValueMin;
+uniform float iCutValueMax;
+uniform float iChrAberrStrength;
+uniform float iChrAberrRadialShape;
+uniform float iNoise;
+uniform float iNoiseScale;
+uniform bool animateNoise;
+uniform float iScanLineScale;
+uniform float iScanLineGrading;
+uniform float iPhosphorGlowing;
+uniform bool showBarrelDistortion;
+uniform float iBarrelDistortion;
+uniform float iBarrelDistortionExponent;
+uniform bool showVignette;
+uniform float iVignetteOuter;
+uniform float iVignetteInner;
+
+uniform float iFree0;
+uniform float iFree1;
+uniform float iFree2;
+uniform float iFree3;
+uniform vec3 vecFree0;
+uniform vec3 vecFree1;
+uniform vec3 vecFree2;
 
 const float pi = 3.1415923;
 const float twoPi = 2. * pi;
 
 const vec4 c = vec4(1., 0., -1., .5);
 
-mat2 rot2D(float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return mat2(
-        c, -s,
-        s,  c
-    );
-}
-
-mat3 rotY(float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return mat3(
-        c, 0.0,  -s,
-        0.0, 1.0, 0.0,
-        s, 0.0,   c
-    );
-}
-
-float sdCircle( in vec2 p, in float r )
-{
-    return length(p)-r;
-}
-
-float sdBox( vec3 p, vec3 b )
-{
-    vec3 d = abs(p) - b;
-    return min(max(d.x,max(d.y,d.z)),0.0) + length(max(d,0.0));
-}
-
-vec3 mightBeCloudNoise(vec3 ray, float t) {
-    return c.yyy; // just some white, gotta start somewhere :D
-}
-
-
-void applyGrid(inout vec3 col, in vec2 uv, float gridStep) {
-    uv = mod(uv, gridStep);
-    // <-- verallgemeinert fract(x) == mod(x, 1.)
-    float dMin = min(uv.x, uv.y);
-    // >> step(edge, x) = "0 if x <= edge else 1"
-    // >> step(x, a) = 1. - step(a, x)
-    // col *= 1. - 0.1 * (step(dMin, 0.002));
-    col *= 1. - 0.05 * (1. - smoothstep(0., 0.01, dMin));
-    // >> step(edge, x) vs. smootshstep(0.0025, 0.0015, dMin);
-    // col *= 1. - 0.1 * (smoothstep(dMin, 0.002));
-}
 float hash11(float n) {
     return fract(sin(n) * 43758.5453123);
 }
@@ -135,28 +121,6 @@ float perlin2D(vec2 p, float seed) {
     return mix(xm1, xm2, w.y);
 }
 
-float fractionalNoiseSum(vec2 p) {
-    p *= 4.;
-    float a = 1., r = 0., s = 0., noise;
-    for (int i=0; i < iFractionalOctaves; i++) {
-        noise = perlin2D(p * iNoiseFreq);
-        r += a * noise;
-        s += a;
-        p *= iFractionalScale;
-        a *= iFractionalDecay;
-    }
-    return r/s;
-}
-// interesting modifications possible,
-// e.g. see "marble", ... at https://www.shadertoy.com/view/Md3SzB
-
-vec3 gradientNoise(vec2 p) {
-    p *= 2.;
-    vec3 col = vec3(fractionalNoiseSum(p));
-    // brighten up
-    return 0.5 + 0.5 * col;
-}
-
 float stackedPerlin2D(vec2 uv, float seed) {
     float n = 0.0;
     float scale = 1.;
@@ -172,12 +136,8 @@ float stackedPerlin2D(vec2 uv, float seed) {
 
 vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
-    vec4 p = mix(vec4(c.bg, K.wz),
-    vec4(c.gb, K.xy),
-    step(c.b, c.g));
-    vec4 q = mix(vec4(p.xyw, c.r),
-    vec4(c.r, p.yzx),
-    step(p.x, c.r));
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
     float d = q.x - min(q.w, q.y);
     float e = 1.0e-10;
     return vec3(
@@ -193,6 +153,138 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+const vec3 lumaBT601 = vec3(0.299, 0.587, 0.114);
+const vec3 lumaBT709 = vec3(0.2126, 0.7152, 0.0722);
+
+vec4 drawWithChromaticAberration(sampler2D sampler, in vec2 st) {
+    vec2 stCentered = st - 0.5;
+    float r = length(stCentered);
+    float amount = iChrAberrStrength * pow(r, iChrAberrRadialShape);
+    vec2 shift = amount * stCentered;
+
+    vec4 col = c.yyyx;
+    col.r = texture(sampler, st + shift).r;
+    col.g = texture(sampler, st).g;
+    col.b = texture(sampler, st - shift).b;
+    return col;
+}
+
+void applyPhosphorGlow(inout vec3 col) {
+    const vec3 phosphorGreen = vec3(0.1, 0.4, 0.1);
+    float luminosity = dot(col, lumaBT601);
+    luminosity *= iPhosphorGlowing;
+    col *= (1. + phosphorGreen * luminosity);
+}
+
+vec3 filmic(vec3 col, float a, float b, float c, float d, float e) {
+    return (col * (a * col + b))
+        / (col * (c * col + d) + e);
+}
+
+void applyToneMapping_FilmicACES(inout vec3 col) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    col *= iToneMapExposure;
+    col = filmic(col, a, b, c, d, e);
+}
+
+vec3 hable(vec3 col) {
+    const float a = 0.15;
+    const float b = 0.50;
+    const float c = 0.10;
+    const float d = 0.20;
+    const float e = 0.02;
+    const float f = 0.30;
+    return (
+        (col * (a * col + c * b) + d * e)
+        / (col * (a * col + b) + d * f)
+    ) - e / f;
+}
+
+void applyToneMapping_HableUncharted2(inout vec3 col) {
+    col *= iToneMapExposure;
+    col = hable(col);
+    vec3 white = hable(vec3(11.2));
+    col /= white;
+}
+
+void applyToneMappingAndGamma(inout vec3 col) {
+    /// Comparison of Tone Mapping Curves (Reinhard, ACES, Hable)
+    /// https://graphtoy.com/?f1(x,t)=x%20/%20(1%20+%20x)&v1=true&f2(x,t)=(x%20*%20(2.51%20*%20x%20+%200.03))%20/%20(x%20*%20(2.43%20*%20x%20+%200.59)%20+%200.14)&v2=true&f3(x,t)=(x%20*%20(0.15%20*%20x%20+%200.5*0.1)%20+%200.2*0.02)%20/%20(x%20*%20(0.15%20*%20x%20+%200.5)%20+%200.2*0.3)%20-%200.02/0.3&v3=true&f4(x,t)=&v4=true&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=1.807181496351828,0.979521495144816,2.611549629481785
+
+    if (useReinhardMapping) {
+        col *= iToneMapExposure;
+        col *= 1. / (1. + col);
+    } else if (useACESMapping) {
+        applyToneMapping_FilmicACES(col.rgb);
+    } else if (useHableMapping) {
+        applyToneMapping_HableUncharted2(col.rgb);
+    }
+    // ... oder was ganz eigenes? (z.B. filmic(...) mit eigenen uniforms?)
+
+    col.rgb = pow(col.rgb, vec3(1./iGamma));
+}
+
+vec3 bloomColor(vec3 col) {
+    float luminosity = dot(col, lumaBT709);
+    float weight = smoothstep(iBloomThreshold, 1.0, luminosity);
+    return col * weight;
+}
+
+vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
+    if (iBlurSamples < 1) {
+        return texture(sampler, st);
+    }
+    float halfSamples = float(iBlurSamples) * 0.5;
+    float blurOffset = iBlurPixels * texelSize.y;
+    float gaussExponent = 2. / (blurOffset * blurOffset * iBlurGaussWidth * iBlurGaussWidth);
+    vec2 dithering = iBlurDithering * iBlurPixels * texelSize;
+
+    if (showOnlyDithered) {
+        vec2 delta = dithering * hash22(st, 0.);
+        return texture(sampler, st + delta);
+    }
+
+    float weightSum  = 0.0;
+    vec4 colSum = c.yyyy;
+    vec3 bloom = c.yyy;
+    vec4 col;
+    for (float dx = -halfSamples; dx <= halfSamples; dx += 1.) {
+        for (float dy = -halfSamples; dy <= halfSamples; dy += 1.) {
+
+            vec2 delta = vec2(dx, dy) * blurOffset / halfSamples;
+
+            if (enableBlurDithering) {
+                delta += dithering * hash22(st + delta, 0.);
+            }
+
+            float weight = exp(-gaussExponent * dot(delta, delta));
+            weightSum += weight;
+            col = texture(sampler, st + delta);
+            colSum += col * weight;
+
+            bloom += bloomColor(col.rgb) * weight;
+        }
+    }
+    col = colSum / weightSum;
+
+    if (!useBloomFilterInsteadOfBlur)
+        return col;
+
+    bloom /= weightSum;
+
+    if (showOnlyBloom)
+        return vec4(bloom, 1.);
+
+    col = texture(sampler, st);
+    col.rgb += iBloomIntensity * bloom;
+
+    return col;
+}
+
 vec4 drawImageTexture(sampler2D sampler) {
     vec2 st = gl_FragCoord.xy / iResolution.y;
     vec2 texSize = vec2(textureSize(sampler, 0));
@@ -203,9 +295,8 @@ vec4 drawImageTexture(sampler2D sampler) {
 
 vec4 drawTextureBarrelDistorted(sampler2D sampler, in vec2 st) {
     vec2 p = st * 2. - 1.;
-    float r2 = dot(p, p);
-    float k = 0.2;
-    p *= 1. + k * r2;
+    float r = length(p);
+    p *= 1. + iBarrelDistortion * pow(r, iBarrelDistortionExponent);
     st = p * 0.5 + 0.5;
     if (min(st.x, st.y) < 0. || max(st.x, st.y) > 1.) {
         return c.yyyx;
@@ -213,58 +304,85 @@ vec4 drawTextureBarrelDistorted(sampler2D sampler, in vec2 st) {
     return texture(sampler, st);
 }
 
-void applyPass1(inout vec4 col, in vec2 st) {
+void applySomeHSVTransformations(inout vec4 col, in vec2 st) {
     vec3 hsv = rgb2hsv(col.rgb);
-    hsv.y = pow(hsv.y, 1.8);
-    hsv.z = smoothstep(0., 1., hsv.z);
+    hsv.x += iHueShift;
+    hsv.y = pow(hsv.y, iSaturationGrading);
+    hsv.z = smoothstep(iCutValueMin, iCutValueMax, hsv.z);
     col.rgb = hsv2rgb(hsv);
 }
 
-void applyPass2(inout vec4 col, in vec2 st, in vec2 uv) {
-    const float scale = 64.;
+void applyRetroNoise(inout vec4 col, in vec2 st, in vec2 uv) {
+    float flicker = animateNoise ? iTime : 0.;
     float noise = 1.;
-    float flicker = 0.1 * iTime;
-//    noise = hash12(scale * uv, flicker);
-//    noise = perlin2D(scale * uv, flicker);
-    noise = stackedPerlin2D(scale * uv, flicker);
-    col.rgb += noise - 0.5;
+//    noise = hash12(iNoiseScale * uv, flicker);
+//    noise = perlin2D(iNoiseScale * uv, flicker);
+    noise = stackedPerlin2D(iNoiseScale * uv, flicker);
+    col.rgb += iNoise * (noise - 0.5);
 
-    float scanlines = 0.8 + 0.2 * cos(0.5 * iResolution.y * uv.y);
-    scanlines = pow(scanlines, 2.4);
+    float scanlines = 0.8 + 0.2 * cos(iScanLineScale * iResolution.y * uv.y);
+    scanlines = pow(scanlines, iScanLineGrading);
     col.rgb *= scanlines;
 
     col = clamp(col, 0., 1.);
 }
 
-void applyFinalPass(inout vec4 col, in vec2 st) {
+void applyVignette(inout vec3 col, in vec2 st) {
+    if (!showVignette) {
+        return;
+    }
     float r = length(2. * st - 1.);
-    float vignette = smoothstep(1.3, 0.8, r);
-    col.rgb *= vignette;
+    float vignette = smoothstep(iVignetteOuter, iVignetteInner, r);
+    col *= vignette;
 }
 
 void main() {
     vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     vec2 st = gl_FragCoord.xy / iResolution.xy;
 
-    switch (iPass) {
-        case 0:
-            fragColor = drawImageTexture(texFloofy);
-            break;
-        case 1:
+    if (iPass == 0) {
+        fragColor = drawImageTexture(texFloofy);
+        return;
+    }
+
+    if (compareOriginal) {
+        if (abs(uv.x) <= texelSize.x) {
+            discard;
+        }
+        if (uv.x < 0.) {
             fragColor = texture(texPrevious, st);
-            applyPass1(fragColor, st);
-            break;
+            return;
+        }
+    }
+
+    switch (iPass) {
+        case 1:
+            fragColor = drawWithBlur(texPrevious, st);
+            applyToneMappingAndGamma(fragColor.rgb);
+            return;
         case 2:
             fragColor = texture(texPrevious, st);
-            applyPass2(fragColor, st, uv);
-            break;
+            applySomeHSVTransformations(fragColor, st);
+            return;
         case 3:
-            fragColor = drawTextureBarrelDistorted(texPrevious, st);
-            applyFinalPass(fragColor, st);
-            fragColor.a = 1.;
-            break;
+            fragColor = drawWithChromaticAberration(texPrevious, st);
+            return;
+        case 4:
+            fragColor = texture(texPrevious, st);
+            applyRetroNoise(fragColor, st, uv);
+            applyPhosphorGlow(fragColor.rgb);
+            return;
+        case 5:
+            fragColor = showBarrelDistortion
+                ? drawTextureBarrelDistorted(texPrevious, st)
+                : texture(texPrevious, st);
+            applyVignette(fragColor.rgb, st);
+            return;
+        /*
+        /// lieber: fail early
         default:
-            fragColor = c.xyxx;
-            break;
+            fragColor = texture(texPrevious, st);
+            return;
+        */
     }
 }
