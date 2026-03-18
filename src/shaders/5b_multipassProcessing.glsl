@@ -10,6 +10,7 @@ uniform int iFrame;
 uniform int iPass;
 uniform sampler2D texFloofy;
 uniform sampler2D texWindow;
+uniform bool alternativeImage;
 uniform sampler2D texPrevious;
 uniform bool compareOriginal;
 
@@ -213,8 +214,7 @@ void applyToneMapping_HableUncharted2(inout vec3 col) {
 
 void applyToneMappingAndGamma(inout vec3 col) {
     /// Comparison of Tone Mapping Curves (Reinhard, ACES, Hable)
-    /// https://graphtoy.com/?f1(x,t)=x%20/%20(1%20+%20x)&v1=true&f2(x,t)=(x%20*%20(2.51%20*%20x%20+%200.03))%20/%20(x%20*%20(2.43%20*%20x%20+%200.59)%20+%200.14)&v2=true&f3(x,t)=(x%20*%20(0.15%20*%20x%20+%200.5*0.1)%20+%200.2*0.02)%20/%20(x%20*%20(0.15%20*%20x%20+%200.5)%20+%200.2*0.3)%20-%200.02/0.3&v3=true&f4(x,t)=&v4=true&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=1.807181496351828,0.979521495144816,2.611549629481785
-
+    // https://graphtoy.com/?f1(x,t)=x%20/%20(1%20+%20x)&v1=true&f2(x,t)=(x%20*%20(2.51%20*%20x%20+%200.03))%20/%20(x%20*%20(2.43%20*%20x%20+%200.59)%20+%200.14)&v2=true&f3(x,t)=(x%20*%20(0.15%20*%20x%20+%200.5*0.1)%20+%200.2*0.02)%20/%20(x%20*%20(0.15%20*%20x%20+%200.5)%20+%200.2*0.3)%20-%200.02/0.3&v3=true&f4(x,t)=&v4=true&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=1.807181496351828,0.979521495144816,2.611549629481785
     if (useReinhardMapping) {
         col *= iToneMapExposure;
         col *= 1. / (1. + col);
@@ -293,6 +293,14 @@ vec4 drawImageTexture(sampler2D sampler) {
     return texture(sampler, st);
 }
 
+vec4 drawBaseImage() {
+    if (alternativeImage) {
+        return drawImageTexture(texWindow);
+    } else {
+        return drawImageTexture(texFloofy);
+    }
+}
+
 vec4 drawTextureBarrelDistorted(sampler2D sampler, in vec2 st) {
     vec2 p = st * 2. - 1.;
     float r = length(p);
@@ -341,7 +349,7 @@ void main() {
     vec2 st = gl_FragCoord.xy / iResolution.xy;
 
     if (iPass == 0) {
-        fragColor = drawImageTexture(texFloofy);
+        fragColor = drawBaseImage();
         return;
     }
 
@@ -378,11 +386,5 @@ void main() {
                 : texture(texPrevious, st);
             applyVignette(fragColor.rgb, st);
             return;
-        /*
-        /// lieber: fail early
-        default:
-            fragColor = texture(texPrevious, st);
-            return;
-        */
     }
 }

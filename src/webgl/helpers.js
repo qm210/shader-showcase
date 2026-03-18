@@ -157,22 +157,18 @@ export function createFramebufferWithTexture(gl, options, fbIndex = undefined) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, opt.wrapS);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, opt.wrapT);
 
-    // Speicher wird jetzt alloziert, aber - siehe letztes Argument - leergelassen.
+    // Speicher wird alloziert, aber nicht weiter initialisiert
+    const textureData = null;
     gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        opt.internalFormat,
-        opt.width,
-        opt.height, 0,
-        opt.dataFormat,
-        opt.dataType,
-        null
+        gl.TEXTURE_2D, 0, opt.internalFormat, opt.width, opt.height,
+        0, opt.dataFormat, opt.dataType, textureData
     );
 
     const fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, opt.attachment, gl.TEXTURE_2D, texture, 0 );
+    gl.framebufferTexture2D(
+        gl.FRAMEBUFFER, opt.attachment, gl.TEXTURE_2D, texture, 0
+    );
 
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     warnAboutBadFramebufferStatus(gl, status);

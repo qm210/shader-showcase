@@ -1,7 +1,6 @@
 import {startRenderLoop} from "../../webgl/render.js";
 import {
     createFramebufferWithTexture,
-    createPingPongFramebuffersWithTexture,
     updateResolution
 } from "../../webgl/helpers.js";
 

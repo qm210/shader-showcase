@@ -5,8 +5,9 @@ import showcase2c from "./showcases/specific/2c_Geometry_InvestigateSDBox.js";
 import showcase3a from "./showcases/3a_TexturesAndColor.js";
 import showcase3b from "./showcases/3b_TexturesAndColorModels.js";
 import showcase4 from "./showcases/4_TextureBlending.js";
-import showcase5a from "./showcases/5a_MultipassProcessing.js";
-import showcase5b from "./showcases/5b_FramebufferPingPong.js";
+import showcase5a from "./showcases/5a_MultipassProcessing_Starter.js";
+import showcase5b from "./showcases/5b_MultipassProcessing.js";
+import showcase5c from "./showcases/5c_FramebufferFeedback.js";
 import previousShowcase5 from "./showcases/6a_Noise.js";
 import previousShowcase5b from "./showcases/6b_NoiseExtended.js";
 import previousShowcase6 from "./showcases/7_RayMarching.js";
@@ -36,7 +37,8 @@ const MAP_PATH = {
     // Einführung von Framebuffern
     "5": showcase5a,
     "5a": showcase5a,
-    "5b": showcase5b, // Der wurde nicht fertig. Könnt ihr anschauen, ist aber wenig tiefgängig.
+    "5b": showcase5b,
+    "5c": showcase5c,
     // Prozedurales Rauschen (Perlin Noise, FBM) -- nachgereicht, weil wir Ähnliches besprochen haben (z.B. Voronoi)
     "6": previousShowcase5,
     "6a": previousShowcase5,

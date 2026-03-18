@@ -1,17 +1,13 @@
-import {
-    createFramebufferWithTexture,
-    createTextureFromImage,
-    updateResolution
-} from "../webgl/helpers.js";
 import {initBasicState} from "./common.js";
+import {createFramebufferWithTexture, createTextureFromImage, updateResolution} from "../webgl/helpers.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/5a_multipassProcessing.glsl";
+import fragmentShaderSource from "../shaders/5b_multipassProcessing.glsl";
 import imageFloofy from "../textures/goofy_floofy.png";
 import imageWindow from "../textures/stained_glass_window.png";
 
 export default {
-    title: "Multipass",
+    title: "Multipass Processing",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -71,6 +67,11 @@ export default {
             defaultValue: false,
             description: "Originalbild(-textur) auf linker Seite",
         }, {
+            type: "boolean",
+            name: "alternativeImage",
+            defaultValue: false,
+            description: "Anderes Bild wählen (Bananenfenster statt Floof-im-Wald)",
+        }, {
             separator: "Gauss Blur / Bloom Filter"
         }, {
             type: "int",
@@ -110,7 +111,7 @@ export default {
             type: "boolean",
             name: "useBloomFilterInsteadOfBlur",
             defaultValue: false,
-            description: "uses the blur loop for another effect",
+            description: "uses the blur loop for the \"Bloom\" filter only",
         }, {
             type: "boolean",
             name: "showOnlyBloom",
@@ -121,7 +122,7 @@ export default {
             name: "iBloomIntensity",
             defaultValue: 0.0,
             min: 0,
-            max: 3,
+            max: 5,
         }, {
             type: "float",
             name: "iBloomThreshold",
@@ -135,7 +136,7 @@ export default {
             name: "useReinhardMapping",
             group: "tonemapping",
             defaultValue: false,
-            description: "apply the most simple Tone Mapping after Bloom",
+            description: "apply the (most simple) \"Reinhard\" Tone Mapping",
         }, {
             type: "boolean",
             name: "useACESMapping",
@@ -334,6 +335,7 @@ function render(gl, state) {
     gl.uniform2fv(loc.texelSize, state.texelSize);
     gl.uniform1i(loc.iFrame, state.iFrame);
     gl.uniform1i(loc.compareOriginal, state.compareOriginal);
+    gl.uniform1i(loc.alternativeImage, state.alternativeImage);
     gl.uniform1i(loc.iBlurSamples, state.iBlurSamples);
     gl.uniform1f(loc.iBlurPixels, state.iBlurPixels);
     gl.uniform1f(loc.iBlurGaussWidth, state.iBlurGaussWidth);
@@ -376,6 +378,8 @@ function render(gl, state) {
     gl.uniform3fv(loc.vecFree1, state.vecFree1);
     gl.uniform3fv(loc.vecFree2, state.vecFree2);
 
+    ////////
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, state.texFloofy);
     gl.uniform1i(state.location.texFloofy, 0);
@@ -395,7 +399,7 @@ function render(gl, state) {
     gl.uniform1i(state.location.texPrevious, 2);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // <-- ist allgemeine Form, die Textur Unit können wir jetzt lassen:
+    // <-- ist allgemeine Form, die Texture Unit können wir jetzt lassen:
 
     gl.uniform1i(loc.iPass, 2);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass2.fbo);
