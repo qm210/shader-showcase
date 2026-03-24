@@ -58,7 +58,7 @@ export default {
     },
     generateControls: () => ({
         renderLoop: render,
-        uniforms: uniformControls(),
+        uniforms: uniformControls()
     })
 };
 

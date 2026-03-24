@@ -2,7 +2,7 @@ import {createFramebufferWithTexture, updateResolution} from "../webgl/helpers.j
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/5c_framebufferFeedback.glsl";
+import fragmentShaderSource from "../shaders/6_framebufferFeedback.glsl";
 
 export default {
     title: "Framebuffer Feedback",
@@ -25,8 +25,10 @@ export default {
             attachment: gl.COLOR_ATTACHMENT0,
             dataFormat: gl.RGBA,
             // UNSIGNED_BYTE ist Standard -> 8-bit RGB, im Shader als float 0..1
-            dataType: gl.UNSIGNED_BYTE,
-            internalFormat: gl.RGBA8,
+//            dataType: gl.UNSIGNED_BYTE,
+//            internalFormat: gl.RGBA8,
+            dataType: gl.FLOAT,
+            internalFormat: gl.RGBA32F,
         };
         state.framebuffer = [
             createFramebufferWithTexture(gl, fbOptions),

@@ -1,6 +1,5 @@
-import {startRenderLoop} from "../webgl/render.js";
-import {initBasicState} from "./common.js";
-import fragmentShaderSource from "../shaders/specific/raymarchingPrimitivesIq.glsl";
+import {initBasicState} from "../common.js";
+import fragmentShaderSource from "../../shaders/specific/raymarchingPrimitivesIq.glsl";
 
 export default {
     title: "Ray Marching: iq's Primitives",

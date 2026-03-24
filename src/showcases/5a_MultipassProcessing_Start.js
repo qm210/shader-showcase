@@ -2,7 +2,7 @@ import {initBasicState} from "./common.js";
 import {createFramebufferWithTexture, createTextureFromImage, updateResolution} from "../webgl/helpers.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/5a_multipassProcessingStarter.glsl";
+import fragmentShaderSource from "../shaders/5a_multipassProcessingStart.glsl";
 import imageFloofy from "../textures/goofy_floofy.png";
 import imageWindow from "../textures/stained_glass_window.png";
 
@@ -50,8 +50,6 @@ export default {
             pass0: createFramebufferWithTexture(gl, fbOptions),
             pass1: createFramebufferWithTexture(gl, fbOptions),
             pass2: createFramebufferWithTexture(gl, fbOptions),
-            pass3: createFramebufferWithTexture(gl, fbOptions),
-            pass4: createFramebufferWithTexture(gl, fbOptions),
         };
 
         return state;
@@ -391,12 +389,6 @@ function render(gl, state) {
     gl.uniform1i(loc.iPass, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass0.fbo);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    /*
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-    return;
-    */
 
     gl.uniform1i(loc.iPass, 1);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass1.fbo);

@@ -8,8 +8,9 @@ uniform float iTime;
 uniform float iDeltaTime;
 uniform int iFrame;
 uniform int iPassIndex;
-uniform sampler2D iPrevious;
-uniform bool onlyFresh;
+uniform sampler2D texInit;
+uniform sampler2D texPrevious;
+uniform bool initialState;
 uniform float iHashSeed;
 uniform float iFadeFactor;
 uniform float iCircleSize;
@@ -27,6 +28,8 @@ uniform vec3 vecFree2;
 const vec4 c = vec4(1,0,-1,.5);
 const float pi = 3.14159;
 const float twoPi = 2. * pi;
+
+vec2 gridStep;
 
 vec3 rgb2hsv(vec3 c)
 {
@@ -109,6 +112,20 @@ float perlin1D(float x) {
     return mix(d0, d1, u);
 }
 
+vec2 hash22(vec2 p, float seed)
+{
+    p = p*mat2(127.1,311.7,269.5,183.3);
+    p = -1.0 + 2.0 * fract(sin(p + seed)*43758.5453123);
+    return sin(p*6.283);
+}
+
+float hash12(vec2 p)
+{
+    vec3 p3  = fract(vec3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 vec4 freshDrawing(vec2 uv) {
     float t = 0.4 * iTime;
     vec2 wirreBewegung = vec2(
@@ -126,34 +143,89 @@ vec4 freshDrawing(vec2 uv) {
     return mix(c.yyyy, col, smoothstep(0.1, 0., d));
 }
 
+vec4 initializeFrame(in vec2 st) {
+    // Initialisieren von der statischen Textur
+    st.y = 1. - st.y;
+    return texture(texInit, st);
+}
+
+bool isAlive(vec2 st) {
+    // derive clear cell state from RGBA input... for starters:
+    vec4 color = texture(texPrevious, st);
+    return color.r < 0.1;
+}
+
+struct CellInfo {
+    bool alive;
+    int neighbors;
+};
+
+CellInfo checkCell(ivec2 cell) {
+    // Obacht: ivec2 coord hat Auflösung des Gitters,
+    //         Framebuffer-Textur aber Auflösung des Bilds!
+    // -> Berechne Zellmitte als "st" normiert auf [0..1]
+    vec2 stCell = (vec2(cell) + 0.5) * gridStep;
+
+    CellInfo info;
+    info.alive = isAlive(stCell);
+    info.neighbors = 0;
+    for (int ix = -1; ix < 2; ix++) {
+        for (int iy = -1; iy < 2; iy++) {
+            if (ix == 0 && iy == 0) {
+                continue;
+            }
+            vec2 stNeighbor = stCell + gridStep * vec2(ix, iy);
+            if (isAlive(stNeighbor)) {
+                info.neighbors++;
+            }
+        }
+    }
+    return info;
+}
+
 #define FEEDBACK_PASS 0
 #define SCREEN_RENDER_PASS 1
+
+#define UPDATE_EACH_NTH_FRAME 10
 
 void main() {
     vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     vec2 st = gl_FragCoord.xy / iResolution.xy;
 
-    vec4 previous = texture(iPrevious, st);
+    // Gitter gegeben durch Bild, das wir zu Beginn reingeben
+    vec2 gridSize = vec2(textureSize(texInit, 0));
+    ivec2 cell = ivec2(st * gridSize);
+    gridStep = 1. / gridSize;
 
-    if (iPassIndex == FEEDBACK_PASS && (
-        iFrame == 0 || onlyFresh
-    )) {
-        // Allererstes Rendern: initialer Hintergrund
-        fragColor = c.yyyx;
-    } else {
-        fragColor = previous;
-    }
-
-    if (iPassIndex == SCREEN_RENDER_PASS) {
-        fragColor.a = 1.;
+    bool init = initialState || iFrame == 0;
+    if (iPassIndex == FEEDBACK_PASS && init) {
+        fragColor = initializeFrame(st);
         return;
     }
 
-    fragColor.rgb *= iFadeFactor;
+    fragColor = texture(texPrevious, st);
+    fragColor.a = 1.;
 
-    vec4 drawing = freshDrawing(uv);
+    if (iPassIndex == SCREEN_RENDER_PASS) {
+        return;
+    }
 
-    // Front-to-Back (Mischung anhand Alpha)
-    fragColor.rgb = mix(fragColor.rgb, drawing.rgb, drawing.a);
-    fragColor.a = mix(fragColor.a, 1., drawing.a);
+    // slow down updates
+    if (iFrame % UPDATE_EACH_NTH_FRAME > 0) {
+        return;
+    }
+
+    CellInfo previous = checkCell(cell);
+
+    bool lives = false;
+    if (previous.alive) {
+        // rules 1-3
+        lives = previous.neighbors == 2
+            || previous.neighbors == 3;
+    } else {
+        // rule 4
+        lives = previous.neighbors == 3;
+    }
+
+    fragColor = lives ? c.yyyx : c.xxxx;
 }

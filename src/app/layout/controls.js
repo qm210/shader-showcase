@@ -163,7 +163,10 @@ const createInputControlElements = (control) => {
     elements.max.style.fontSize = "small";
     elements.max.style.textAlign = "left";
 
-    if (!control.boolean) {
+    if (control.boolean) {
+        control.onToggle &&= () => undefined;
+    }
+    else {
         elements.value.addEventListener("dblclick", () => {
             if (!elements.updateValue) {
                 return;
@@ -520,6 +523,7 @@ export const asBoolInput = (elements, state, control) => {
         if (manuallyChanged) {
             state[control.name] = value;
             sessionStoreControlState(state, control);
+            control.onToggle(value);
         } else {
             value = !!state[control.name];
         }

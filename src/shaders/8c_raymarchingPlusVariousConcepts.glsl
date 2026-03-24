@@ -1,7 +1,7 @@
 #version 300 es
 
 // based on: https://www.shadertoy.com/view/Xds3zN
-// simplified for our lecture (cf. raymarchingFirstSteps.glsl)
+// simplified for our lecture (cf. 8b_raymarching.glsl)
 // then put some more basic concepts for 3D in here.
 
 precision highp float;

@@ -25,6 +25,7 @@ precision highp float;
 out vec4 fragColor;
 uniform vec2 iResolution;
 uniform float iTime;
+uniform int iFrame;
 uniform vec4 iMouse;
 // for you to play around with, put 'em wherever you want.
 uniform float iFree0;

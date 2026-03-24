@@ -1,10 +1,8 @@
-import {startRenderLoop} from "../webgl/render.js";
-
-import fragmentShaderSource from "../shaders/noisePlaygroundExtended.glsl";
 import {initBasicState, readPixelsAndEvaluate} from "./common.js";
+import fragmentShaderSource from "../shaders/noisePlayground.glsl";
 
 export default {
-    title: "Noise Playground Extended",
+    title: "Noise Playground",
     init: (gl, sources = {}) => {
         sources.fragment ??= fragmentShaderSource;
         const state = initBasicState(gl, sources);
@@ -24,7 +22,7 @@ export default {
     },
     generateControls: (state) => ({
         renderLoop: render,
-        uniforms: defineUniformControls(state)
+        uniforms: uniformsFor(state)
     })
 };
 
@@ -35,27 +33,16 @@ function render(gl, state, elements) {
     gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
     gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
     gl.uniform1f(state.location.iOverallHashOffset, state.iOverallHashOffset);
+    gl.uniform1f(state.location.iOverallHashMorphing, state.iOverallHashMorphing);
     gl.uniform1f(state.location.iNoiseLevelA, state.iNoiseLevelA);
     gl.uniform1f(state.location.iNoiseLevelB, state.iNoiseLevelB);
-    gl.uniform1f(state.location.iNoiseLevelC, state.iNoiseLevelC);
-    gl.uniform1f(state.location.iNoiseScaleA, state.iNoiseScaleA);
-    gl.uniform1f(state.location.iNoiseScaleB, state.iNoiseScaleB);
-    gl.uniform1f(state.location.iNoiseScaleC, state.iNoiseScaleC);
-    gl.uniform1f(state.location.iNoiseMorphingA, state.iNoiseMorphingA);
-    gl.uniform1f(state.location.iNoiseMorphingB, state.iNoiseMorphingB);
-    gl.uniform1f(state.location.iNoiseMorphingC, state.iNoiseMorphingC);
-    gl.uniform1i(state.location.iFractionalOctaves, state.iFractionalOctaves);
+    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.iFractionalOctaves));
     gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
     gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iTurbulenceNormFactor, state.iTurbulenceNormFactor);
-    gl.uniform1f(state.location.iTurbulenceMeanOffset, state.iTurbulenceMeanOffset);
-    gl.uniform2fv(state.location.iMarbleSqueeze, state.iMarbleSqueeze);
-    gl.uniform1f(state.location.iMarbleGranularity, state.iMarbleGranularity);
-    gl.uniform1f(state.location.iMarbleGradingExponent, state.iMarbleGradingExponent);
-    gl.uniform1f(state.location.iMarbleRange, state.iMarbleRange);
-    gl.uniform1f(state.location.iColorStrength, state.iColorStrength);
-    gl.uniform3fv(state.location.iColorCosineFreq, state.iColorCosineFreq);
-    gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
+    gl.uniform1f(state.location.iNormFactorForNoiseA, state.iNormFactorForNoiseA);
+    gl.uniform1f(state.location.iMeanOffsetForNoiseA, state.iMeanOffsetForNoiseA);
+    gl.uniform1f(state.location.iNormFactorForNoiseB, state.iNormFactorForNoiseB);
+    gl.uniform1f(state.location.iMeanOffsetForNoiseB, state.iMeanOffsetForNoiseB);
     gl.uniform3fv(state.location.vecFree, state.vecFree);
     gl.uniform1f(state.location.iFree0, state.iFree0);
     gl.uniform1f(state.location.iFree1, state.iFree1);
@@ -74,49 +61,25 @@ function render(gl, state, elements) {
     }
 }
 
-function defineUniformControls(state) {
+function uniformsFor(state) {
     return [{
         type: "float",
         name: "iGridOpacity",
-        defaultValue: 0.0,
+        defaultValue: 0.1,
         min: 0,
         max: 1,
     }, {
         type: "float",
         name: "iNoiseLevelA",
-        defaultValue: 0.6,
-        min: -1,
-        max: 1,
-    }, {
-        type: "float",
-        name: "iNoiseLevelB",
-        defaultValue: 0.6,
-        min: -1,
-        max: 1,
-    }, {
-        type: "float",
-        name: "iNoiseLevelC",
         defaultValue: 0,
         min: -1,
         max: 1,
     }, {
         type: "float",
-        name: "iNoiseScaleA",
-        defaultValue: 1,
-        min: 0.01,
-        max: 10,
-    }, {
-        type: "float",
-        name: "iNoiseScaleB",
-        defaultValue: 1,
-        min: 0.01,
-        max: 10,
-    }, {
-        type: "float",
-        name: "iNoiseScaleC",
-        defaultValue: 1,
-        min: 0.01,
-        max: 10,
+        name: "iNoiseLevelB",
+        defaultValue: 0.,
+        min: -1,
+        max: 1,
     }, {
         type: "vec2",
         name: "iOverallNoiseShift",
@@ -131,33 +94,21 @@ function defineUniformControls(state) {
         max: 10.,
     }, {
         type: "float",
-        name: "iNoiseMorphingA",
-        defaultValue: 0,
-        min: 0,
-        max: 6.28,
-    }, {
-        type: "float",
-        name: "iNoiseMorphingB",
-        defaultValue: 1.,
-        min: 0,
-        max: 6.28,
-    }, {
-        type: "float",
-        name: "iNoiseMorphingC",
-        defaultValue: 2.,
-        min: 0,
-        max: 6.28,
-    }, {
-        type: "float",
         name: "iOverallHashOffset",
         defaultValue: 0,
         min: -1,
         max: 1,
         step: 0.01
     }, {
+        type: "float",
+        name: "iOverallHashMorphing",
+        defaultValue: 0.,
+        min: 0,
+        max: 6.28,
+    }, {
         type: "int",
         name: "iFractionalOctaves",
-        defaultValue: 5,
+        defaultValue: 1,
         min: 1,
         max: 20.,
     }, {
@@ -174,61 +125,30 @@ function defineUniformControls(state) {
         max: 0.99,
     }, {
         type: "float",
-        name: "iTurbulenceNormFactor",
-        defaultValue: 0.33,
-        min: 0.001,
-        max: 1.,
-    }, {
-        type: "float",
-        name: "iTurbulenceMeanOffset",
-        defaultValue: 0.18,
-        min: 0.,
-        max: 0.5,
-    }, {
-        type: "vec2",
-        name: "iMarbleSqueeze",
-        defaultValue: [0, 0],
-        min: 0.0,
-        max: 20.,
-        step: 0.01
-    }, {
-        type: "float",
-        name: "iMarbleGranularity",
-        defaultValue: 7.5,
+        name: "iNormFactorForNoiseA",
+        defaultValue: 0.75,
         min: 0.01,
-        max: 50,
+        max: 10.,
     }, {
         type: "float",
-        name: "iMarbleGradingExponent",
-        defaultValue: 1,
-        min: 0.01,
-        max: 5.,
-    }, {
-        type: "float",
-        name: "iMarbleRange",
-        defaultValue: 0.5,
-        min: 0.01,
-        max: 1.,
-    }, {
-        type: "float",
-        name: "iColorStrength",
-        defaultValue: 0.,
-        min: 0,
+        name: "iMeanOffsetForNoiseA",
+        defaultValue: 0.667,
+        min: -1,
         max: 1,
+        step: 0.001,
     }, {
-        type: "vec3",
-        name: "iColorCosineFreq",
-        defaultValue: [11, 20, 30],
-        min: 0,
-        max: 31.42,
-        step: 0.01,
+        type: "float",
+        name: "iNormFactorForNoiseB",
+        defaultValue: 3.0,
+        min: 0.01,
+        max: 10,
     }, {
-        type: "vec3",
-        name: "iColorCosinePhase",
-        defaultValue: [0, 1, 0.5],
-        min: 0,
-        max: 6.283,
-        step: 0.01,
+        type: "float",
+        name: "iMeanOffsetForNoiseB",
+        defaultValue: -0.18,
+        min: -1,
+        max: 1,
+        step: 0.001,
     }, {
         type: "vec3",
         name: "vecFree",

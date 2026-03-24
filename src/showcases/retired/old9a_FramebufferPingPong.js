@@ -2,7 +2,7 @@ import standardSetup from "./retired/old3_SimpleGeometry.js";
 import {startRenderLoop} from "../webgl/render.js";
 import {createFramebufferWithTexture, createTextureFromImage, takePingPongFramebuffers} from "../webgl/helpers.js";
 
-import fragmentShaderSource from "../shaders/5c_framebufferFeedback.glsl";
+import fragmentShaderSource from "../shaders/6_framebufferFeedback.glsl";
 import someSampleImage from "../textures/mysterious_capybara.png";
 
 export default {

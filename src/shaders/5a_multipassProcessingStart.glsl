@@ -241,98 +241,38 @@ vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
     float halfSamples = float(iBlurSamples) * 0.5;
     float blurOffset = iBlurPixels * texelSize.y;
     float gaussExponent = 2. / (blurOffset * blurOffset * iBlurGaussWidth * iBlurGaussWidth);
-    vec2 dithering = iBlurDithering * iBlurPixels * texelSize;
-
-    if (showOnlyDithered) {
-        vec2 delta = dithering * hash22(st, 0.);
-        return texture(sampler, st + delta);
-    }
 
     float weightSum  = 0.0;
     vec4 colSum = c.yyyy;
-    vec3 bloom = c.yyy;
     vec4 col;
     for (float dx = -halfSamples; dx <= halfSamples; dx += 1.) {
         for (float dy = -halfSamples; dy <= halfSamples; dy += 1.) {
 
             vec2 delta = vec2(dx, dy) * blurOffset / halfSamples;
 
-            if (enableBlurDithering) {
-                delta += dithering * hash22(st + delta, 0.);
-            }
-
             float weight = exp(-gaussExponent * dot(delta, delta));
             weightSum += weight;
+
             col = texture(sampler, st + delta);
             colSum += col * weight;
-
-            bloom += bloomColor(col.rgb) * weight;
         }
     }
-    col = colSum / weightSum;
-
-    if (!useBloomFilterInsteadOfBlur)
-        return col;
-
-    bloom /= weightSum;
-
-    if (showOnlyBloom)
-        return vec4(bloom, 1.);
-
-    col = texture(sampler, st);
-    col.rgb += iBloomIntensity * bloom;
-
-    return col;
+    return colSum / weightSum;
 }
 
-
-vec4 drawWithBlur1D(sampler2D sampler, in vec2 st, bool vertical) {
-    if (iBlurSamples < 1) {
-        return texture(sampler, st);
-    }
-    float halfSamples = float(iBlurSamples) * 0.5;
-    float blurOffset = iBlurPixels * texelSize.y;
-    float gaussExponent = 2. / (blurOffset * blurOffset * iBlurGaussWidth * iBlurGaussWidth);
-    vec2 dithering = iBlurDithering * iBlurPixels * texelSize;
-
-    if (showOnlyDithered) {
-        vec2 delta = dithering * hash22(st, 0.);
-        return texture(sampler, st + delta);
-    }
-
-    float weightSum  = 0.0;
-    vec4 colSum = c.yyyy;
-    vec3 bloom = c.yyy;
-    vec4 col;
-    for (float dx = -halfSamples; dx <= halfSamples; dx += 1.) {
-        vec2 d = vertical ? vec2(0., dx) : vec2(dx, 0.);
-        vec2 delta = d * blurOffset / halfSamples;
-
-        if (enableBlurDithering) {
-            delta += dithering * hash22(st + delta, 0.);
-        }
-
-        float weight = exp(-gaussExponent * dot(delta, delta));
+vec4 drawBoxBlur(sampler2D sampler, in vec2 st) {
+    vec4 col = c.yyyy;
+    float weightSum = 0.;
+    /// uniform int iBlurSamples;
+    /// uniform float iBlurPixels;
+    /// iBlurGaussWidth
+    for (int s = -iBlurSamples/2; s <= iBlurSamples/2; s++) {
+        float delta = float(s) * texelSize.x * iBlurPixels;
+        float weight = exp(-delta*delta/iBlurGaussWidth/iBlurGaussWidth);
+        col += weight * texture(sampler, st + vec2(delta, 0.));
         weightSum += weight;
-        col = texture(sampler, st + delta);
-        colSum += col * weight;
-
-        bloom += bloomColor(col.rgb) * weight;
     }
-    col = colSum / weightSum;
-
-    if (!useBloomFilterInsteadOfBlur)
-    return col;
-
-    bloom /= weightSum;
-
-    if (showOnlyBloom)
-    return vec4(bloom, 1.);
-
-    col = texture(sampler, st);
-    col.rgb += iBloomIntensity * bloom;
-
-    return col;
+    return col / weightSum;
 }
 
 vec4 drawImageTexture(sampler2D sampler) {
@@ -373,11 +313,10 @@ void applySomeHSVTransformations(inout vec4 col, in vec2 st) {
 void applyRetroNoise(inout vec4 col, in vec2 st, in vec2 uv) {
     float flicker = animateNoise ? iTime : 0.;
     float noise = 1.;
-    // noise = hash12(iNoiseScale * uv, flicker);
-    // noise = perlin2D(iNoiseScale * uv, flicker);
+//    noise = hash12(iNoiseScale * uv, flicker);
+//    noise = perlin2D(iNoiseScale * uv, flicker);
     noise = stackedPerlin2D(iNoiseScale * uv, flicker);
     col.rgb += iNoise * (noise - 0.5);
-
     float scanlines = 0.8 + 0.2 * cos(iScanLineScale * iResolution.y * uv.y);
     scanlines = pow(scanlines, iScanLineGrading);
     col.rgb *= scanlines;
@@ -415,29 +354,23 @@ void main() {
 
     switch (iPass) {
         case 1:
-//            fragColor = drawWithBlur(texPrevious, st, true);
-//            applyToneMappingAndGamma(fragColor.rgb);
-            fragColor = drawWithBlur1D(texPrevious, st, false);
-            return;
-        case 2:
-            fragColor = drawWithBlur1D(texPrevious, st, true);
-            applyToneMappingAndGamma(fragColor.rgb);
-            // fragColor = texture(texPrevious, st);
+            fragColor = texture(texPrevious, st);
             applySomeHSVTransformations(fragColor, st);
             return;
+        case 2:
+            vec2 shift = iBlurPixels * texelSize;
+            fragColor = drawBoxBlur(texPrevious, st);
+            /*
+            fragColor.rgb = 0.5 * texture(texPrevious, st).rgb;
+            fragColor.rgb += 0.25 * texture(texPrevious, st + shift).rgb;
+            fragColor.rgb += 0.25 * texture(texPrevious, st - shift).rgb;
+            */
+            // fragColor = drawWithRadialBlur(texPrevious, st);
+            return;
         case 3:
-            fragColor = drawWithChromaticAberration(texPrevious, st);
-            return;
-        case 4:
             fragColor = texture(texPrevious, st);
-            applyRetroNoise(fragColor, st, uv);
-            applyPhosphorGlow(fragColor.rgb);
-            return;
-        case 5:
-            fragColor = showBarrelDistortion
-                ? drawTextureBarrelDistorted(texPrevious, st)
-                : texture(texPrevious, st);
-            applyVignette(fragColor.rgb, st);
+            fragColor.a = 1.;
+            // ...?
             return;
     }
 }

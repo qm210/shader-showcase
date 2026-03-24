@@ -17,6 +17,7 @@ uniform bool compareOriginal;
 uniform int iBlurSamples;
 uniform float iBlurPixels;
 uniform float iBlurGaussWidth;
+uniform bool useTwo1DBlursInsteadOfOne2D;
 uniform bool enableBlurDithering;
 uniform float iBlurDithering;
 uniform bool showOnlyDithered;
@@ -234,7 +235,7 @@ vec3 bloomColor(vec3 col) {
     return col * weight;
 }
 
-vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
+vec4 drawWithBlur2D(sampler2D sampler, in vec2 st) {
     if (iBlurSamples < 1) {
         return texture(sampler, st);
     }
@@ -285,6 +286,57 @@ vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
     return col;
 }
 
+
+vec4 drawWithBlur1D(sampler2D sampler, in vec2 st, bool vertical) {
+    if (iBlurSamples < 1) {
+        return texture(sampler, st);
+    }
+    float halfSamples = float(iBlurSamples) * 0.5;
+    float blurOffset = iBlurPixels * texelSize.y;
+    vec2 blurStep = blurOffset / halfSamples
+        * (vertical ? c.yx : c.xy);
+
+    float gaussExponent = 2. / (blurOffset * blurOffset * iBlurGaussWidth * iBlurGaussWidth);
+
+    vec2 dithering = iBlurDithering * iBlurPixels * texelSize;
+    if (showOnlyDithered) {
+        vec2 delta = dithering * hash22(st, 0.);
+        return texture(sampler, st + delta);
+    }
+
+    float weightSum  = 0.0;
+    vec4 colSum = c.yyyy;
+    vec3 bloom = c.yyy;
+    vec4 col;
+    for (float s = -halfSamples; s <= halfSamples; s += 1.) {
+        vec2 delta = s * blurStep;
+
+        if (enableBlurDithering) {
+            delta += dithering * hash22(st + delta, 0.);
+        }
+
+        float weight = exp(-gaussExponent * dot(delta, delta));
+        weightSum += weight;
+        col = texture(sampler, st + delta);
+        colSum += col * weight;
+
+        bloom += bloomColor(col.rgb) * weight;
+    }
+    col = colSum / weightSum;
+
+    if (!useBloomFilterInsteadOfBlur) {
+        return col;
+    }
+    bloom /= weightSum;
+    if (showOnlyBloom) {
+        return vec4(bloom, 1.);
+    }
+    col = texture(sampler, st);
+    col.rgb += iBloomIntensity * bloom;
+
+    return col;
+}
+
 vec4 drawImageTexture(sampler2D sampler) {
     vec2 st = gl_FragCoord.xy / iResolution.y;
     vec2 texSize = vec2(textureSize(sampler, 0));
@@ -323,10 +375,11 @@ void applySomeHSVTransformations(inout vec4 col, in vec2 st) {
 void applyRetroNoise(inout vec4 col, in vec2 st, in vec2 uv) {
     float flicker = animateNoise ? iTime : 0.;
     float noise = 1.;
-//    noise = hash12(iNoiseScale * uv, flicker);
-//    noise = perlin2D(iNoiseScale * uv, flicker);
+    // noise = hash12(iNoiseScale * uv, flicker);
+    // noise = perlin2D(iNoiseScale * uv, flicker);
     noise = stackedPerlin2D(iNoiseScale * uv, flicker);
     col.rgb += iNoise * (noise - 0.5);
+
     float scanlines = 0.8 + 0.2 * cos(iScanLineScale * iResolution.y * uv.y);
     scanlines = pow(scanlines, iScanLineGrading);
     col.rgb *= scanlines;
@@ -362,21 +415,31 @@ void main() {
         }
     }
 
-    switch (iPass) {
-        case 1:
+    if (useTwo1DBlursInsteadOfOne2D) {
+        // this is a huge advantage gain: O(n^2) -> O(2*n)
+        if (iPass == 1) {
+            fragColor = drawWithBlur1D(texPrevious, st, false);
+            return;
+        }
+        if (iPass == 2) {
+            fragColor = drawWithBlur1D(texPrevious, st, true);
+            return;
+        }
+    } else {
+        if (iPass == 1) {
+            fragColor = drawWithBlur2D(texPrevious, st);
+            return;
+        }
+        if (iPass == 2) {
+            // leerer Pass -- ist natürlich verschwenderisch
             fragColor = texture(texPrevious, st);
-            applySomeHSVTransformations(fragColor, st);
             return;
-        case 2:
-            vec2 shift = iBlurPixels * texelSize;
-            fragColor.rgb = 0.5 * texture(texPrevious, st).rgb;
-            fragColor.rgb += 0.25 * texture(texPrevious, st + shift).rgb;
-            fragColor.rgb += 0.25 * texture(texPrevious, st - shift).rgb;
-            return;
-        case 3:
-            fragColor = texture(texPrevious, st);
-            fragColor.a = 1.;
-            // ...?
-            return;
+        }
+    }
+
+    if (iPass == 3) {
+        fragColor = texture(texPrevious, st);
+        applyVignette(fragColor.rgb, st);
+        return;
     }
 }
