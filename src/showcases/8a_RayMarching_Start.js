@@ -1,6 +1,7 @@
 import {initBasicState} from "./common.js";
 import fragmentShaderSource from "../shaders/8a_raymarchingStart.glsl";
 import image0 from "../textures/goofy_floofy.png";
+import image1 from "../textures/hubble_extreme_deep_field.jpg"
 import {createTextureFromImage} from "../webgl/helpers.js";
 
 export default {
@@ -13,13 +14,18 @@ export default {
             return state;
         }
 
-        state.texture0 = createTextureFromImage(gl, image0, {
+        state.texFloof = createTextureFromImage(gl, image0, {
             wrapS: gl.REPEAT,
             wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.LINEAR,
             magFilter: gl.LINEAR,
         });
-        state.location.iTexture0 = gl.getUniformLocation(state.program, "iTexture0");
+        state.texSpace = createTextureFromImage(gl, image1, {
+            wrapS: gl.REPEAT,
+            wrapT: gl.REPEAT,
+            minFilter: gl.LINEAR,
+            magFilter: gl.LINEAR,
+        });
 
         return state;
     },
@@ -43,7 +49,7 @@ function render(gl, state) {
     gl.uniform1i(state.location.makeSphereTextured, state.makeSphereTextured);
     gl.uniform1f(state.location.iFocalLength, state.iFocalLength);
     gl.uniform3fv(state.location.iCameraOffset, state.iCameraOffset);
-    gl.uniform3fv(state.location.iCameraAngle, state.iCameraAngle);
+    gl.uniform3fv(state.location.iCameraRotate, state.iCameraRotate);
     gl.uniform3fv(state.location.vecDirectionalLight, state.vecDirectionalLight);
     gl.uniform1f(state.location.iDiffuseAmount, state.iDiffuseAmount);
     gl.uniform1f(state.location.iSpecularAmount, state.iSpecularAmount);
@@ -65,13 +71,19 @@ function render(gl, state) {
     gl.uniform1f(state.location.iFree9, state.iFree9);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, state.texture0);
-    gl.uniform1i(state.location.iTexture0, 0);
+    gl.bindTexture(gl.TEXTURE_2D, state.texFloof);
+    gl.uniform1i(state.location.texFloof, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, state.texSpace);
+    gl.uniform1i(state.location.texSpace, 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 const uniforms = [{
+    separator: "Our first model: Some Sphere"
+}, {
     type: "float",
     name: "iSphereSize",
     defaultValue: 0.25,
@@ -87,6 +99,28 @@ const uniforms = [{
     name: "makeSphereTextured",
     description: "Wie wird eine Textur kugelförmig?",
     defaultValue: false,
+}, {
+    separator: "Camera Setup (Ray Origin & Direction)"
+}, {
+    type: "vec3",
+    name: "iCameraOffset",
+    defaultValue: [0, 1, -2],
+    min: -9.99,
+    max: +9.99,
+}, {
+    type: "float",
+    name: "iFocalLength",
+    defaultValue: 2.5,
+    min: 0.001,
+    max: 20,
+}, {
+    type: "vec3",
+    name: "iCameraRotate",
+    defaultValue: [0, 0, 0],
+    min: -6.28,
+    max: 6.28,
+}, {
+    separator: "Ray Marching Parameters"
 }, {
     type: "int",
     name: "iMarchingSteps",
@@ -110,26 +144,10 @@ const uniforms = [{
     name: "iMarchingPrecision",
     defaultValue: 0.001,
     min: 1e-5,
-    max: 0.2,
+    max: 0.3,
     log: true,
 }, {
-    type: "float",
-    name: "iFocalLength",
-    defaultValue: 2.5,
-    min: 0.001,
-    max: 20,
-}, {
-    type: "vec3",
-    name: "iCameraOffset",
-    defaultValue: [0, 1, -2],
-    min: -9.99,
-    max: +9.99,
-}, {
-    type: "vec3",
-    name: "iCameraAngle",
-    defaultValue: [0, 0, 0],
-    min: -6.28,
-    max: 6.28,
+    separator: "Beleuchtung: \"Phong\"-Modell"
 }, {
     type: "vec3",
     name: "vecDirectionalLight",
@@ -156,17 +174,13 @@ const uniforms = [{
     min: 0.1,
     max: 40,
 }, {
-    type: "bool",
-    name: "useBlinnPhongSpecular",
-    defaultValue: false,
-    description: "specular ~ \"dot(normal, halfway)\" statt \"dot(rayDir, reflected)\"\n" +
-        "Skaliert außerdem noch den Exponenten * 3, dass es vergleichbar bleibt.",
-}, {
     type: "float",
     name: "iFloorSpecularCoefficient",
     defaultValue: 0.4,
     min: 0.,
     max: 2.,
+}, {
+    separator: "Shadow Cast / Marching"
 }, {
     type: "float",
     name: "iShadowHardness",

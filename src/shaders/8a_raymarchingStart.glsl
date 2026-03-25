@@ -8,10 +8,11 @@ out vec4 fragColor;
 uniform vec2 iResolution;
 uniform float iTime;
 uniform vec4 iMouse;
-uniform sampler2D iTexture0;
+uniform sampler2D texFloof;
+uniform sampler2D texSpace;
 uniform float iFocalLength;
 uniform vec3 iCameraOffset;
-uniform vec3 iCameraAngle;
+uniform vec3 iCameraRotate;
 uniform vec3 vecDirectionalLight;
 uniform float iDiffuseAmount;
 uniform float iSpecularAmount;
@@ -26,7 +27,6 @@ uniform float iMarchingMax;
 uniform float iSphereSize;
 uniform bool makeSphereTextured;
 uniform bool makeSphereColorful;
-uniform bool useBlinnPhongSpecular;
 
 // Die iFree* sind wieder definiert, für euch, schnell mal einen Effekt per Slider live zu regeln.
 // -> So lassen sich recht schnell einfache Vermutungen bestätigen / überprüfen.
@@ -122,11 +122,6 @@ float dot2( in vec2 v ) { return dot(v,v); }
 float dot2( in vec3 v ) { return dot(v,v); }
 float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
 
-float sdPlane( vec3 p )
-{
-    return p.y;
-}
-
 float sdSphere( vec3 p, float s )
 {
     return length(p)-s;
@@ -217,32 +212,6 @@ float sdPyramid( in vec3 p, in float h )
     return sqrt( (d2+q.z*q.z)/m2 ) * sign(max(q.z,-p.y));;
 }
 
-float opSmoothUnion( float d1, float d2, float k )
-{
-    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
-    return mix( d2, d1, h ) - k*h*(1.0-h);
-}
-
-//------------------------------------------------------------------
-// Eigene structs -- beste Idee ever für cleane Shader
-
-struct Ray {
-    vec3 origin;
-    vec3 dir;
-};
-
-struct Hit {
-    float distance; // <-- heißt oft nur "t". Wir machen es _hier_mal_explizit_.
-    int material;
-};
-
-#define NOTHING_HIT -1
-#define FLOOR_MATERIAL 1
-#define SPHERE_MATERIAL 2
-#define ARROW_MATERIAL_X 100
-#define ARROW_MATERIAL_Y 101
-#define ARROW_MATERIAL_Z 102
-
 float sdVectorArrow(vec3 p, vec3 target, vec3 vec, float offset, float scale) {
     if (vec == c.yyy) {
         return sdSphere(p - target, 0.2 * scale);
@@ -260,6 +229,34 @@ float sdVectorArrow(vec3 p, vec3 target, vec3 vec, float offset, float scale) {
     float dLine = sdCapsule(p, start, target - hHead * vec, rLine);
     return min(dLine, dHead);
 }
+
+float opSmoothUnion(float d1, float d2, float k)
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);
+}
+
+//------------------------------------------------------------------
+// Eigene structs -- beste Idee ever für cleane Shader
+
+    struct Ray {
+        vec3 origin;
+        vec3 dir;
+    };
+
+    struct Hit {
+        float distance; // <-- heißt oft nur "t". Wir machen es _hier_mal_explizit_.
+        int material;
+    };
+
+#define NOTHING_HIT -1
+#define FLOOR_MATERIAL 1
+#define SPHERE_MATERIAL 2
+#define ARROW_MATERIAL_X 3
+#define ARROW_MATERIAL_Y 4
+#define ARROW_MATERIAL_Z 5
+#define ANOTHER_MATERIAL 6
+#define EVEN_ANOTHER_MATERIAL 7
 
 Hit sphere(vec3 pos, float radius) {
     // SDF von Kugel == Kreis in 3D
@@ -290,9 +287,19 @@ vec2 sphereSurface(vec3 pos) {
     return surfaceST;
 }
 
-void addCoordinateAxes(inout Hit hit, vec3 pos) {
+void addAnotherThing(inout Hit hit, in vec3 pos) {
+    float d = sdBoxFrame(pos - vec3(3., 0.5, 6.), vec3(0.5), 0.05);
+    float d2 = sdPyramid(rotY(iTime) * (pos - vec3(3., 1., 6.)), 1.2);
+    d = min(d, d2);
+    d2 = sdSphere(pos - vec3(3., 2.5, 6.), 0.35);
+    d = opSmoothUnion(d, d2, 0.25);
+    if (d < hit.distance) {
+        hit = Hit(d, ANOTHER_MATERIAL);
+    }
+}
+
+void addCoordinateAxes(inout Hit hit, vec3 pos, vec3 axesOrigin) {
     // Koordinatenachsen als 3D-Pfeile rendern
-    const vec3 axesOrigin = vec3(-2., 0.01, 2.);
     const vec3 axisX = c.xyy;
     const vec3 axisY = c.yxy;
     const vec3 axisZ = c.yyx;
@@ -314,7 +321,7 @@ void addCoordinateAxes(inout Hit hit, vec3 pos) {
 Hit scene(in vec3 pos)
 {
     Hit hit = Hit(pos.y, NOTHING_HIT);
-    addCoordinateAxes(hit, pos);
+    addCoordinateAxes(hit, pos, vec3(-2., 0.01, 2.));
 
     /* Remember: Die 2D-Szene bestand immer aus den Schritten
        - minimale SDF ausrechnen (nach Koordinatentransformation)
@@ -359,8 +366,7 @@ Hit raymarch(Ray ray)
         vec3 pos = ray.origin + ray.dir * t;
         Hit h = scene(pos);
 
-        float marchingPrecision = iMarchingPrecision * 0.1 * t;
-        if (abs(h.distance) < marchingPrecision)
+        if (abs(h.distance) < iMarchingPrecision)
         {
             hit = Hit(t, h.material);
             break;
@@ -385,7 +391,7 @@ float calcSoftshadow( in vec3 ro, in vec3 rd, in float mint, in float tmax )
     float t = mint;
     for( int i=0; i<iShadowMarchingSteps; i++ )
     {
-        float h = scene( ro + rd*t ).distance;
+        float h = scene(ro + rd*t).distance;
         float s = clamp(iShadowHardness * h/t, 0.0, 1.0);
         res = min( res, s );
         t += clamp( h, 0.01, 0.2 );
@@ -422,34 +428,48 @@ vec3 render(in Ray ray)
 
     float specularCoeff = 0.4;
 
-    if (hit.material == FLOOR_MATERIAL)
-    {
-        // Floor kann nicht per calcNormal() berechnet werden:
-        // ist nicht Teil der scene(), da analytisch bestimmt.
-        normal = vec3(0.0, 1.0, 0.0);
+    switch (hit.material) {
+        case FLOOR_MATERIAL: {
+            /// Normale kann nicht per calcNormal() berechnet werden:
+            /// Boden ist nicht Teil der scene(), da analytisch bestimmt.
+            /// Zum Glück haben wir ihn uns sehr einfach gelegt:
+            normal = vec3(0.0, 1.0, 0.0);
 
-        float f = 1. - abs(step(0.5, fract(1.5*rayPos.x)) - step(0.5, fract(1.5*rayPos.z)));
-        col = 0.15 + f * vec3(0.05);
-        specularCoeff = iFloorSpecularCoefficient;
-
-    } else if (hit.material == SPHERE_MATERIAL) {
-        /// Beispiel für irgendeine Farbberechnung für ein bestimmtes Material...
-        col = 0.2 + 0.2 * sin(2. * (c.ywx + 1.6 + 0.2 * iTime));
-
-        /// ...oder Textur mappen. Obacht: selten trivial!
-        if (makeSphereTextured) {
-            vec2 texCoord = sphereSurface(rayPos);
-            col = texture(iTexture0, texCoord).rgb;
+            // Schachbrettmuster -- warum?
+            float f = mod(floor(2. * rayPos.x) + floor(2. * rayPos.z), 2.);
+            col = 0.15 + f * vec3(0.05);
+            specularCoeff = iFloorSpecularCoefficient;
+            break;
         }
+        case SPHERE_MATERIAL: {
+            /// Beispiel für irgendeine Farbberechnung für ein bestimmtes Material...
+            col = 0.2 + 0.2 * sin(2. * (c.ywx + 1.6 + 0.2 * iTime));
 
-    } else if (hit.material == ARROW_MATERIAL_X) {
-        col = c.xyy;
-    } else if (hit.material == ARROW_MATERIAL_Y) {
-        col = c.yxy;
-    } else if (hit.material == ARROW_MATERIAL_Z) {
-        col = c.yyx;
-    } else {
-        col = c.xwx;
+            /// ...oder Textur mappen (selten trivial!)
+            if (makeSphereTextured) {
+                vec2 texCoord = sphereSurface(rayPos);
+                col = texture(texFloof, texCoord).rgb;
+            }
+            break;
+        }
+        case ANOTHER_MATERIAL: {
+            col = vec3(0.45, 0.15, 0.9);
+            specularCoeff = 3.;
+            break;
+        }
+        case EVEN_ANOTHER_MATERIAL: {
+//            vec2 texCoord = rayPos.xz;
+//            col = texture(texSpace, texCoord).rgb;
+        }
+        case ARROW_MATERIAL_X:
+            col = c.xyy;
+            break;
+        case ARROW_MATERIAL_Y:
+            col = c.yxy;
+            break;
+        case ARROW_MATERIAL_Z:
+            col = c.yyx;
+            break;
     }
 
     /// Beleuchtungsterme aufsummieren...
@@ -464,16 +484,9 @@ vec3 render(in Ray ray)
         diffuse *= calcSoftshadow(rayPos, lightDirection, 0.02, 2.5);// warum hier *= ...?
 
         float specular, shininess;
-        if (useBlinnPhongSpecular) {
-            vec3 halfway = normalize(lightDirection - ray.dir);// was ist das, geometrisch?
-            specular = dot(normal, halfway);
-            shininess = iSpecularExponent * 3.;
-        } else {
-            vec3 reflected = reflect(lightDirection, normal);
-            specular = dot(ray.dir, reflected);
-            shininess = iSpecularExponent;
-        }
-        // warum wird der Exponent hier wohl auch gerne als "Shininess" bezeichnet?
+        vec3 reflected = reflect(lightDirection, normal);
+        specular = dot(ray.dir, reflected);
+        shininess = iSpecularExponent;
         specular = pow(clamp(specular, 0.0, 1.0), shininess);
 
         const vec3 sourceCol = vec3(1.30, 1.00, 0.70);
@@ -499,9 +512,9 @@ void main()
     ray.origin = iCameraOffset;
     ray.dir = normalize(vec3(uv, iFocalLength));
 
-    ray.dir *= rotZ(iCameraAngle.z);
-    ray.dir *= rotY(iCameraAngle.y);
-    ray.dir *= rotX(iCameraAngle.x);
+    ray.dir *= rotZ(iCameraRotate.z);
+    ray.dir *= rotY(iCameraRotate.y);
+    ray.dir *= rotX(iCameraRotate.x);
 
     vec3 col = render(ray);
 
