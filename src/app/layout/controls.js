@@ -163,10 +163,7 @@ const createInputControlElements = (control) => {
     elements.max.style.fontSize = "small";
     elements.max.style.textAlign = "left";
 
-    if (control.boolean) {
-        control.onToggle &&= () => undefined;
-    }
-    else {
+    if (!control.boolean) {
         elements.value.addEventListener("dblclick", () => {
             if (!elements.updateValue) {
                 return;
@@ -494,10 +491,11 @@ export const asBoolInput = (elements, state, control) => {
     }
     elements.control.id = `check.${control.name}`;
     elements.description =
-        createElement("label", control.description ?? "", "bool-description");
+        createElement("label", control.description, "bool-description");
     elements.description.htmlFor = elements.control.id;
 
     control.defaultValue ??= false;
+    control.onToggle ??= () => undefined;
     elements.reset.textContent = `reset`;
     if (control.group && !control.defaultValue) {
         elements.description.classList.add("extra-column");

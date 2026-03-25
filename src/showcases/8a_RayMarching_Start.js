@@ -15,7 +15,7 @@ export default {
 
         state.texture0 = createTextureFromImage(gl, image0, {
             wrapS: gl.REPEAT,
-            wrapT: gl.REPEAT,
+            wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.LINEAR,
             magFilter: gl.LINEAR,
         });
@@ -36,14 +36,14 @@ function render(gl, state) {
 
     gl.uniform1f(state.location.iMarchingPrecision, state.iMarchingPrecision);
     gl.uniform1i(state.location.iMarchingSteps, state.iMarchingSteps);
-    gl.uniform1i(state.location.useAdaptiveMarchingPrecision, state.useAdaptiveMarchingPrecision);
-    gl.uniform1i(state.location.showJustASphere, state.showJustASphere);
+    gl.uniform1f(state.location.iMarchingMin, state.iMarchingMin);
+    gl.uniform1f(state.location.iMarchingMax, state.iMarchingMax);
     gl.uniform1f(state.location.iSphereSize, state.iSphereSize);
     gl.uniform1i(state.location.makeSphereColorful, state.makeSphereColorful);
     gl.uniform1i(state.location.makeSphereTextured, state.makeSphereTextured);
     gl.uniform1f(state.location.iFocalLength, state.iFocalLength);
     gl.uniform3fv(state.location.iCameraOffset, state.iCameraOffset);
-    gl.uniform1f(state.location.iCameraRotX, state.iCameraRotX);
+    gl.uniform3fv(state.location.iCameraAngle, state.iCameraAngle);
     gl.uniform3fv(state.location.vecDirectionalLight, state.vecDirectionalLight);
     gl.uniform1f(state.location.iDiffuseAmount, state.iDiffuseAmount);
     gl.uniform1f(state.location.iSpecularAmount, state.iSpecularAmount);
@@ -92,6 +92,18 @@ const uniforms = [{
     name: "iMarchingSteps",
     defaultValue: 70,
     min: 1,
+    max: 500,
+}, {
+    type: "float",
+    name: "iMarchingMin",
+    defaultValue: 0.1,
+    min: 0.001,
+    max: 5,
+}, {
+    type: "float",
+    name: "iMarchingMax",
+    defaultValue: 20,
+    min: 1,
     max: 200,
 }, {
     type: "float",
@@ -100,12 +112,6 @@ const uniforms = [{
     min: 1e-5,
     max: 0.2,
     log: true,
-}, {
-    type: "bool",
-    name: "useAdaptiveMarchingPrecision",
-    description: "Vergleicht beim Marching, ob wir auf längere Strecken die Treffergenauigkeit noch brauchen",
-    defaultValue: true,
-    hidden: true
 }, {
     type: "float",
     name: "iFocalLength",
@@ -119,9 +125,9 @@ const uniforms = [{
     min: -9.99,
     max: +9.99,
 }, {
-    type: "float",
-    name: "iCameraRotX",
-    defaultValue: 0,
+    type: "vec3",
+    name: "iCameraAngle",
+    defaultValue: [0, 0, 0],
     min: -6.28,
     max: 6.28,
 }, {
