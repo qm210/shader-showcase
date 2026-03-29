@@ -24,7 +24,7 @@
     height: calc(100vh - 2 * var(--page-pad));
     padding: var(--page-pad);
     gap: calc(0.5 * var(--page-pad));
-    overflow-x: hidden;
+    overflow: hidden;
 
     @media (max-width: 1300px) {
         flex-direction: column-reverse;
@@ -41,6 +41,7 @@
 
 #layout > #working-program {
     flex: 0;
+    height: 100%;
 }
 
 #console {
@@ -113,8 +114,7 @@
     padding-right: 8px;
     align-items: center;
     align-content: start;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: auto;
 }
 
 button.render-button {

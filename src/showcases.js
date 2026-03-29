@@ -9,7 +9,7 @@ import showcase5a from "./showcases/5a_MultipassProcessing_Start.js";
 import showcase5b from "./showcases/5b_MultipassProcessing.js";
 import showcase5c from "./showcases/5c_MultipassProcessing_Blur1D.js";
 import showcase6 from "./showcases/6_FramebufferFeedback.js";
-import showcase6b from "./showcases/6b_.js";
+import showcase6b from "./showcases/6b_GameOfLife.js";
 import showcase7a from "./showcases/7a_Noise.js";
 import showcase7b from "./showcases/7b_NoiseExtended.js";
 import showcase8a from "./showcases/8a_RayMarching_Start.js";

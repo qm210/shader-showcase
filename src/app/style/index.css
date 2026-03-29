@@ -107,3 +107,8 @@ kbd {
   padding: 0.2em 0.4em;
   border-radius: 0.5em;
 }
+
+input[type="range" i] {
+  min-width: 5vw;
+  width: 100% !important;
+}

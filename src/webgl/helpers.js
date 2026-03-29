@@ -101,8 +101,11 @@ export function createTextureFromImage(gl, imageSource, options) {
     // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
     opt.dataType ??= gl.UNSIGNED_BYTE;
     opt.dataFormat ??= gl.RGBA;
-    opt.internalFormat ??= gl.RGBA;
+    opt.internalFormat ??= gl.RGBA8;
     // Anmerkung: internalFormat = gl.SRGB8_ALPHA8 kann bei Bildern oft sinnvoll sein
+
+    // Eigenes Konstrukt: Convenience-Callback (um auf Bild warten zu können)
+    opt.onLoaded ??= () => {};
 
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -123,8 +126,8 @@ export function createTextureFromImage(gl, imageSource, options) {
             opt.dataType,
             img
         );
-        // Notiz: Weil das hier im Browser ist, ist die Auflösung des Bilds im HTMLImageElement "img"
-        //        bereits bekannt. Im Allgemeinen würde man die Auflösung hier auch noch spezifizieren.
+
+        opt.onLoaded(texture);
     });
 
     return texture;

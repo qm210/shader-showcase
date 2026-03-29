@@ -52,12 +52,18 @@ function render(gl, state) {
     gl.uniform3fv(state.location.iCameraRotate, state.iCameraRotate);
     gl.uniform3fv(state.location.vecDirectionalLight, state.vecDirectionalLight);
     gl.uniform1f(state.location.iDiffuseAmount, state.iDiffuseAmount);
+    gl.uniform1f(state.location.iAmbientAmount, state.iAmbientAmount);
     gl.uniform1f(state.location.iSpecularAmount, state.iSpecularAmount);
-    gl.uniform1f(state.location.iSpecularExponent, state.iSpecularExponent);
+    gl.uniform1f(state.location.iSpecularShininess, state.iSpecularShininess);
     gl.uniform1i(state.location.useBlinnPhongSpecular, state.useBlinnPhongSpecular);
     gl.uniform1f(state.location.iFloorSpecularCoefficient, state.iFloorSpecularCoefficient);
     gl.uniform1f(state.location.iShadowHardness, state.iShadowHardness);
     gl.uniform1i(state.location.iShadowMarchingSteps, state.iShadowMarchingSteps);
+    gl.uniform1f(state.location.iPyramidDisturbAmount, state.iPyramidDisturbAmount);
+    gl.uniform1f(state.location.iPyramidDisturbScale, state.iPyramidDisturbScale);
+    gl.uniform1f(state.location.iPostGamma, state.iPostGamma);
+    gl.uniform1i(state.location.useBackgroundTexture, state.useBackgroundTexture);
+    gl.uniform1f(state.location.iDistanceFogDensity, state.iDistanceFogDensity);
 
     gl.uniform1f(state.location.iFree0, state.iFree0);
     gl.uniform1f(state.location.iFree1, state.iFree1);
@@ -82,7 +88,7 @@ function render(gl, state) {
 }
 
 const uniforms = [{
-    separator: "Our first model: Some Sphere"
+    separator: "Parameter der Szene"
 }, {
     type: "float",
     name: "iSphereSize",
@@ -99,6 +105,18 @@ const uniforms = [{
     name: "makeSphereTextured",
     description: "Wie wird eine Textur kugelförmig?",
     defaultValue: false,
+}, {
+    type: "float",
+    name: "iPyramidDisturbAmount",
+    defaultValue: 0,
+    min: 0,
+    max: 0.1,
+}, {
+    type: "float",
+    name: "iPyramidDisturbScale",
+    defaultValue: 1,
+    min: 0.,
+    max: 5.,
 }, {
     separator: "Camera Setup (Ray Origin & Direction)"
 }, {
@@ -169,7 +187,7 @@ const uniforms = [{
     max: 20,
 }, {
     type: "float",
-    name: "iSpecularExponent",
+    name: "iSpecularShininess",
     defaultValue: 25,
     min: 0.1,
     max: 40,
@@ -179,6 +197,12 @@ const uniforms = [{
     defaultValue: 0.4,
     min: 0.,
     max: 2.,
+}, {
+    type: "float",
+    name: "iAmbientAmount",
+    defaultValue: 0.0,
+    min: 0.,
+    max: 1.,
 }, {
     separator: "Shadow Cast / Marching"
 }, {
@@ -193,6 +217,27 @@ const uniforms = [{
     defaultValue: 80,
     min: 0.,
     max: 200.,
+}, {
+    separator: "Sonstige"
+}, {
+    type: "float",
+    name: "iDistanceFogDensity",
+    defaultValue: 1e-4,
+    min: 1e-7,
+    max: 1e-2,
+    log: true,
+}, {
+    type: "float",
+    name: "iPostGamma",
+    defaultValue: 2.3,
+    min: 0.5,
+    max: 4.,
+    log: true,
+}, {
+    type: "bool",
+    name: "useBackgroundTexture",
+    description: "",
+    defaultValue: false,
 }, {
     type: "float",
     name: "iFree0",

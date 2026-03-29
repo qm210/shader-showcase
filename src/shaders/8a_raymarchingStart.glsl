@@ -16,8 +16,9 @@ uniform vec3 iCameraRotate;
 uniform vec3 vecDirectionalLight;
 uniform float iDiffuseAmount;
 uniform float iSpecularAmount;
-uniform float iSpecularExponent;
+uniform float iSpecularShininess;
 uniform float iFloorSpecularCoefficient;
+uniform float iAmbientAmount;
 uniform float iShadowHardness;
 uniform int iShadowMarchingSteps;
 uniform float iMarchingPrecision;
@@ -27,6 +28,12 @@ uniform float iMarchingMax;
 uniform float iSphereSize;
 uniform bool makeSphereTextured;
 uniform bool makeSphereColorful;
+// eingebaut während/nach VL:
+uniform float iPyramidDisturbAmount;
+uniform float iPyramidDisturbScale;
+uniform float iDistanceFogDensity;
+uniform bool useBackgroundTexture;
+uniform float iPostGamma;
 
 // Die iFree* sind wieder definiert, für euch, schnell mal einen Effekt per Slider live zu regeln.
 // -> So lassen sich recht schnell einfache Vermutungen bestätigen / überprüfen.
@@ -209,7 +216,7 @@ float sdPyramid( in vec3 p, in float h )
     float d2 = min(q.y,-q.x*m2-q.y*0.5) > 0.0 ? 0.0 : min(a,b);
 
     // recover 3D and scale, and add sign
-    return sqrt( (d2+q.z*q.z)/m2 ) * sign(max(q.z,-p.y));;
+    return sqrt( (d2+q.z*q.z)/m2 ) * sign(max(q.z,-p.y));
 }
 
 float sdVectorArrow(vec3 p, vec3 target, vec3 vec, float offset, float scale) {
@@ -257,6 +264,7 @@ float opSmoothUnion(float d1, float d2, float k)
 #define ARROW_MATERIAL_Z 5
 #define ANOTHER_MATERIAL 6
 #define EVEN_ANOTHER_MATERIAL 7
+#define PYRAMID_MATERIAL 8
 
 Hit sphere(vec3 pos, float radius) {
     // SDF von Kugel == Kreis in 3D
@@ -285,6 +293,78 @@ vec2 sphereSurface(vec3 pos) {
     surfaceST.t += textureFunnyBounce * sin(8. * iTime);
 
     return surfaceST;
+}
+
+float hash11(float n) {
+    return fract(sin(n) * 43758.5453123);
+}
+
+vec2 hash22(vec2 p, float seed)
+{
+    p = p*mat2(127.1,311.7,269.5,183.3);
+    p = -1.0 + 2.0 * fract(sin(p + seed)*43758.5453123);
+    return sin(p*6.283);
+}
+
+float hash12(vec2 p, float seed) {
+    p = vec2(dot(p, vec2(127.1, 311.7)) + seed * 17.3, seed * 23.7);
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float perlin1D(float x) {
+    float i = floor(x);
+    float f = fract(x);
+    float g0 = hash11(i) * 2.0 - 1.0;
+    float g1 = hash11(i + 1.0) * 2.0 - 1.0;
+    float d0 = g0 * f;
+    float d1 = g1 * (f - 1.0);
+    float u = smoothstep(0., 1., f);
+    return mix(d0, d1, u);
+}
+
+float perlin2D(vec2 p)
+{
+    vec2 pi = floor(p);
+    vec2 pf = p - pi;
+    vec2 w = pf * pf * (3. - 2. * pf);
+
+    float f00 = dot(hash22(pi+c.yy, 0.), pf-vec2(.0,.0));
+    float f01 = dot(hash22(pi+c.yx, 0.), pf-vec2(.0,1.));
+    float f10 = dot(hash22(pi+c.xy, 0.), pf-vec2(1.0,0.));
+    float f11 = dot(hash22(pi+c.xx, 0.), pf-vec2(1.0,1.));
+
+    float xm1 = mix(f00,f10,w.x);
+    float xm2 = mix(f01,f11,w.x);
+    float ym = mix(xm1,xm2,w.y);
+    return ym;
+}
+
+float perlin2D(vec2 p, float seed) {
+    vec2 pi = floor(p);
+    vec2 pf = p - pi;
+    vec2 w = smoothstep(0., 1., pf);
+
+    float f00 = hash12(pi + c.yy, seed);
+    float f01 = hash12(pi + c.yx, seed);
+    float f10 = hash12(pi + c.xy, seed);
+    float f11 = hash12(pi + c.xx, seed);
+
+    float xm1 = mix(f00, f10, w.x);
+    float xm2 = mix(f01, f11, w.x);
+    return mix(xm1, xm2, w.y);
+}
+
+float stackedPerlin2D(vec2 uv, float seed) {
+    float n = 0.0;
+    float scale = 1.;
+    n += perlin2D(uv * scale, seed) * 0.5;
+    scale *= 2.;
+    n += perlin2D(uv * scale, 2.0 + seed * 1.31) * 0.25;
+    scale *= 2.;
+    n += perlin2D(uv * scale, 4.0 + seed * 2.18) * 0.125;
+
+    n = 0.5 + 0.5 * n;
+    return n;
 }
 
 void addAnotherThing(inout Hit hit, in vec3 pos) {
@@ -338,6 +418,37 @@ Hit scene(in vec3 pos)
     }
 
     /// ... hier könnten weitere Objekte auftauchen... :)
+
+    vec3 pyramidCenter = vec3(2., 0., 6.);
+    float pyramidScale = 4.;
+    float angleY = 0.23 * iTime;
+    vec3 p = rotY(angleY) * (pos - pyramidCenter) / pyramidScale;
+    d = sdPyramid(p, 1.);
+    d += iPyramidDisturbAmount * perlin2D(iPyramidDisturbScale * p.xz);
+    if (d < hit.distance) {
+        hit = Hit(d, PYRAMID_MATERIAL);
+    }
+
+    /*
+    float range = 1. + 0.6 * sin(iTime);
+    float delta = range/2.;
+    for (float dx = -range; dx <= range; dx += delta) {
+        vec3 center = sphereCenter - dx * c.xyy;
+        float d1 = sdSphere(pos - center, iSphereSize);
+        float smoothing = 1. - abs(delta);
+        d = opSmoothUnion(d, d1, smoothing);
+        if (d < hit.distance) {
+            hit = Hit(d, SPHERE_MATERIAL);
+        }
+    }
+
+    vec3 pyramidPos = vec3(-2., 2. - cos(iTime), 8.);
+    pyramidPos = 0.25 * rotX(iTime) * (pos - pyramidPos);
+    d = sdPyramid(pyramidPos, 0.9);
+    if (d < hit.distance) {
+        hit = Hit(d, ANOTHER_MATERIAL);
+    }
+    */
 
     return hit;
 }
@@ -413,9 +524,18 @@ vec3 calcNormal( in vec3 pos )
     );
 }
 
+vec3 background(in Ray ray) {
+    vec3 col = c.yyy;
+    if (useBackgroundTexture) {
+        col = texture(texSpace, ray.dir.xy).rgb;
+        col = pow(col, vec3(2.8/1.));
+    }
+    return col;
+}
+
 vec3 render(in Ray ray)
 {
-    vec3 col = c.yyy;
+    vec3 col = background(ray);
 
     Hit hit = raymarch(ray);
 
@@ -426,7 +546,10 @@ vec3 render(in Ray ray)
     vec3 rayPos = ray.origin + hit.distance * ray.dir;
     vec3 normal = calcNormal(rayPos);
 
+    // Beleuchtungsanteile (s.u.) können vom Material abhängen:
+    float diffuseCoeff = 1.;
     float specularCoeff = 0.4;
+    float specularExponent = iSpecularShininess;
 
     switch (hit.material) {
         case FLOOR_MATERIAL: {
@@ -452,14 +575,22 @@ vec3 render(in Ray ray)
             }
             break;
         }
+        case PYRAMID_MATERIAL: {
+            col = vec3(0.05, 0.35, 0.78);
+            diffuseCoeff = 0.005;
+            specularCoeff = 0.5;
+            specularExponent = 1000.;
+            break;
+        }
         case ANOTHER_MATERIAL: {
             col = vec3(0.45, 0.15, 0.9);
             specularCoeff = 3.;
             break;
         }
         case EVEN_ANOTHER_MATERIAL: {
-//            vec2 texCoord = rayPos.xz;
-//            col = texture(texSpace, texCoord).rgb;
+            vec2 texCoord = rayPos.xz;
+            col = texture(texSpace, texCoord).rgb;
+            break;
         }
         case ARROW_MATERIAL_X:
             col = c.xyy;
@@ -472,33 +603,41 @@ vec3 render(in Ray ray)
             break;
     }
 
-    /// Beleuchtungsterme aufsummieren...
+    /// Beleuchtungsterme aufsummieren
     vec3 shade = vec3(0.0);
 
-    // Licht: reines Richtungslicht (passt zu einer Sonne, die weit weg ist, im Gegensatz zu Punktlicht)
+    // Licht: reines Richtungslicht (z.B. Sonne, die weit weg ist, im Gegensatz zu Punktlicht)
+    //        ... TODO Bonusfrage: Wie macht man diese Lichtquelle selbst sichtbar?
     {
-        // Vorsicht, Vorzeichenkonvention ist gerne Fehlerquelle.
-        // lightDirection geht ZUR Lichtquelle.
+        // Vorzeichenkonvention: lightDirection geht ZUR Lichtquelle.
         vec3  lightDirection = normalize(vecDirectionalLight);
-        float diffuse = clamp(dot(normal, lightDirection), 0.0, 1.0);// dot(normal, lightSource) <-- diffus (warum?)
-        diffuse *= calcSoftshadow(rayPos, lightDirection, 0.02, 2.5);// warum hier *= ...?
+        const vec3 lightColor = vec3(1.30, 1.00, 0.80);
 
-        float specular, shininess;
+        // Beitrag 1: "Diffuse" Lichtstreuung, unabhängig _Blickrichtung_
+        float diffuse = dot(normal, lightDirection);
+        diffuse = clamp(diffuse, 0.0, 1.0);
+        diffuse *= diffuseCoeff;
+        shade += iDiffuseAmount * col * lightColor * diffuse;
+
+        // Beitrag 2: "Specular" Lichtstreuung, abhängig von Reflektionswinkel
         vec3 reflected = reflect(lightDirection, normal);
-        specular = dot(ray.dir, reflected);
-        shininess = iSpecularExponent;
-        specular = pow(clamp(specular, 0.0, 1.0), shininess);
+        float specular = dot(ray.dir, reflected);
+        specular = pow(clamp(specular, 0.0, 1.0), specularExponent);
+        specular *= specularCoeff;
+        shade += iSpecularAmount * lightColor * specular;
 
-        const vec3 sourceCol = vec3(1.30, 1.00, 0.70);
-        shade += col * iDiffuseAmount * sourceCol * diffuse;
-        shade +=       iSpecularAmount * sourceCol * specular * specularCoeff;
+        // Beitrag 3: "Ambient" Light, ganz unabhängig von dieser einen Lichtquelle
+        shade += iAmbientAmount * col;
+
+        // Shadow Cast: Reduziert das Ganze wieder um Faktor [0..1]
+        shade *= calcSoftshadow(rayPos, lightDirection, 0.02, 2.5);
     }
 
     col = shade;
 
-    // "Distanznebel", inwiefern macht dieser Begriff Sinn?
-    const vec3 colFog = vec3(0.0, 0.0, 0.0);
-    float fogOpacity = 1.0 - exp(-0.0001 * pow(hit.distance, 3.0));
+    // "Distanznebel", was sagt uns allein dieser Begriff?
+    const vec3 colFog = c.yyy;
+    float fogOpacity = 1.0 - exp(-iDistanceFogDensity * pow(hit.distance, 3.0));
     col = mix(col, colFog, fogOpacity);
 
     return col;
@@ -512,17 +651,24 @@ void main()
     ray.origin = iCameraOffset;
     ray.dir = normalize(vec3(uv, iFocalLength));
 
-    ray.dir *= rotZ(iCameraRotate.z);
-    ray.dir *= rotY(iCameraRotate.y);
-    ray.dir *= rotX(iCameraRotate.x);
+    float angleZ = 0.00 * iTime + iCameraRotate.z;
+    float angleY = 0.00 * iTime + iCameraRotate.y;
+    float angleX = 0.00 * iTime + iCameraRotate.x;
+    ray.dir *= rotZ(angleZ);
+    ray.dir *= rotY(angleY);
+    ray.dir *= rotX(angleX);
+    /// Probleme verkettete 3D-Rotationen: Achsen drehen sich ja mit.
+    /// dieser Ansatz taugt also nur für einen Winkel ungleich null.
+    /// Test: Mehrere setzen, dann mal Reihenfolge der rot... ändern
+    ///       --> ist nicht mehr intuitiv kontrollierbar.
+    ///           Naiver Ansatz reicht aber fürs erste.
 
     vec3 col = render(ray);
 
     // Nachbearbeitung gefällig?
-    // z.B. Gamma Grading
-    const float gamma = 2.2;
+    // z.B. Gamma Grading:
     col = clamp(col, 0.0, 1.0);
-    col = pow( col, vec3(1./gamma) );
+    col = pow( col, vec3(1./iPostGamma) );
 
     fragColor = vec4(col, 1.0);
 }

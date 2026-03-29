@@ -91,7 +91,8 @@ export function shiftTime(state, seconds) {
     state.startTime -= 1000 * seconds;
 }
 
-export function resetLoop(state) {
+function resetLoop(state) {
+    // trigger via state.resetSignal in runLoop, not directly
     state.startTime = null;
     state.time = 0;
     state.iFrame = -1;
@@ -111,7 +112,7 @@ const fpsMeter = {
         lastFrame: null,
         fps: null,
     }
-}
+};
 
 function resetFpsMeasurement(state) {
     state.fps = null;
@@ -120,7 +121,6 @@ function resetFpsMeasurement(state) {
     fpsMeter.measuredFps = null;
     fpsMeter.direct.lastTime = null;
     fpsMeter.direct.lastFrame = null;
-    // fpsMeter.direct.fps = null;
 }
 
 function doFpsMeasurement(state) {

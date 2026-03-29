@@ -21,12 +21,14 @@ export default {
             wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.NEAREST,
             magFilter: gl.NEAREST,
+            onLoaded: () => {
+                state.resetSignal = true;
+            },
         });
         state.location.texInit = gl.getUniformLocation(state.program, "texInit");
 
         const {width, height} = updateResolution(state, gl);
 
-        console.log(state.texInit);
         const fbOptions = {
             width,
             height,
