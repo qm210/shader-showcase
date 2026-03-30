@@ -2,12 +2,12 @@ import {initBasicState} from "./common.js";
 import {createFramebufferWithTexture, createTextureFromImage, updateResolution} from "../webgl/helpers.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/5b_multipassProcessing.glsl";
+import fragmentShaderSource from "../shaders/12_video_TestLab.glsl";
 import imageFloofy from "../textures/goofy_floofy.png";
-import imageWindow from "../textures/stained_glass_window.png";
+import imagePlaceholder from "../textures/stained_glass_window.png";
 
 export default {
-    title: "Multipass Processing",
+    title: "Video Processing",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -19,21 +19,21 @@ export default {
 
         gl.useProgram(state.program);
 
-        state.texFloofy = createTextureFromImage(gl, imageFloofy, {
+        state.texInput = createTextureFromImage(gl, imagePlaceholder, {
             wrapS: gl.CLAMP_TO_EDGE,
-            wrapT: gl.CLAMP_TO_EDGE,
-            minFilter: gl.LINEAR,
-            magFilter: gl.NEAREST,
-        });
-        state.location.texInput = gl.getUniformLocation(state.program, "texFloofy");
-
-        state.texWindow = createTextureFromImage(gl, imageWindow, {
-            wrapS: gl.REPEAT,
             wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.LINEAR,
             magFilter: gl.LINEAR,
         });
-        state.location.texWindow = gl.getUniformLocation(state.program, "texWindow");
+        state.location.texInput = gl.getUniformLocation(state.program, "texInput");
+
+        state.texFloofy = createTextureFromImage(gl, imageFloofy, {
+            wrapS: gl.MIRRORED_REPEAT,
+            wrapT: gl.CLAMP_TO_EDGE,
+            minFilter: gl.LINEAR,
+            magFilter: gl.LINEAR,
+        });
+        state.location.texFloofy = gl.getUniformLocation(state.program, "texFloofy");
 
         const {width, height} = updateResolution(state, gl);
 
@@ -50,15 +50,24 @@ export default {
             pass0: createFramebufferWithTexture(gl, fbOptions),
             pass1: createFramebufferWithTexture(gl, fbOptions),
             pass2: createFramebufferWithTexture(gl, fbOptions),
-            pass3: createFramebufferWithTexture(gl, fbOptions),
-            pass4: createFramebufferWithTexture(gl, fbOptions),
         };
+
+        state.video = null;
 
         return state;
     },
-    generateControls: () => ({
+    generateControls: (gl, state, elements) => ({
         renderLoop: render,
-        uniforms: uniformControls(),
+        toggles: [{
+            label: () => "Try Loading Video",
+            onClick: async () => {
+                await elements.video.initialize();
+                state.video = elements.video;
+                state.video.shouldResize = true;
+            },
+            tryOnStartup: true,
+        }],
+        uniforms,
     })
 };
 
@@ -103,11 +112,21 @@ function render(gl, state) {
     gl.uniform1i(loc.showVignette, state.showVignette);
     gl.uniform1f(loc.iVignetteInner, state.iVignetteInner);
     gl.uniform1f(loc.iVignetteOuter, state.iVignetteOuter);
+    gl.uniform1f(loc.iEdgeMaskMix, state.iEdgeMaskMix);
+    gl.uniform1f(loc.iEdgeMaskMin, state.iEdgeMaskMin);
+    gl.uniform1f(loc.iEdgeMaskMax, state.iEdgeMaskMax);
+    gl.uniform1f(loc.iToonLevels, state.iToonLevels);
+    gl.uniform1f(loc.iToonEffect, state.iToonEffect);
+    gl.uniform1f(loc.iToonEdges, state.iToonEdges);
 
     gl.uniform1f(loc.iFree0, state.iFree0);
     gl.uniform1f(loc.iFree1, state.iFree1);
     gl.uniform1f(loc.iFree2, state.iFree2);
     gl.uniform1f(loc.iFree3, state.iFree3);
+    gl.uniform1f(loc.iFree4, state.iFree4);
+    gl.uniform1f(loc.iFree5, state.iFree5);
+    gl.uniform1f(loc.iFree6, state.iFree6);
+    gl.uniform1f(loc.iFree7, state.iFree7);
     gl.uniform3fv(loc.vecFree0, state.vecFree0);
     gl.uniform3fv(loc.vecFree1, state.vecFree1);
     gl.uniform3fv(loc.vecFree2, state.vecFree2);
@@ -115,12 +134,31 @@ function render(gl, state) {
     ////////
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, state.texInput);
     gl.uniform1i(state.location.texInput, 0);
+    gl.bindTexture(gl.TEXTURE_2D, state.texInput);
+    if (state.video) {
+        if (state.video.shouldResize) {
+            gl.texImage2D(
+                gl.TEXTURE_2D, 0, gl.RGBA,
+                state.video.videoWidth, state.video.videoHeight,
+                0, gl.RGBA, gl.UNSIGNED_BYTE, null
+            );
+        }
+        if (state.video.readyState >= state.video.HAVE_CURRENT_DATA) {
+            gl.texSubImage2D(
+                gl.TEXTURE_2D, 0, 0, 0,
+                gl.RGBA, gl.UNSIGNED_BYTE,
+                state.video
+            );
+        } else {
+            console.warn("[VIDEO] Ended.", state.video);
+            state.video = null;
+        }
+    }
 
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, state.texWindow);
-    gl.uniform1i(state.location.texWindow, 1);
+    gl.bindTexture(gl.TEXTURE_2D, state.texFloofy);
+    gl.uniform1i(state.location.texFloofy, 1);
 
     gl.uniform1i(loc.iPass, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass0.fbo);
@@ -133,34 +171,19 @@ function render(gl, state) {
     gl.uniform1i(state.location.texPrevious, 2);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // <-- ist allgemeine Form, die Texture Unit können wir jetzt lassen:
-
     gl.uniform1i(loc.iPass, 2);
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass2.fbo);
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass1.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     gl.uniform1i(loc.iPass, 3);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass3.fbo);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass2.texture);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    gl.uniform1i(loc.iPass, 4);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass4.fbo);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass3.texture);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    // Bildschirm == Backbuffer == Framebuffer Null
-
-    gl.uniform1i(loc.iPass, 5);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass4.texture);
-    gl.uniform1i(state.location.texPrevious, 2);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass2.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
-const uniformControls = () => [{
+
+const uniforms = [{
     type: "label",
     name: "iTime",
 }, {
@@ -386,6 +409,44 @@ const uniformControls = () => [{
     separator: "..."
 }, {
     type: "float",
+    name: "iToonEffect",
+    defaultValue: 0.,
+    min: -1.,
+    max: 2.,
+}, {
+    type: "float",
+    name: "iToonLevels",
+    defaultValue: 4,
+    min: 1,
+    max: 16.,
+}, {
+    type: "float",
+    name: "iToonEdges",
+    defaultValue: 0.,
+    min: -1.,
+    max: 2.,
+}, {
+    type: "float",
+    name: "iEdgeMaskMix",
+    defaultValue: 0.,
+    min: -1.,
+    max: 2.,
+}, {
+    type: "float",
+    name: "iEdgeMaskMin",
+    defaultValue: 0.2,
+    min: -1,
+    max: 1,
+}, {
+    type: "float",
+    name: "iEdgeMaskMax",
+    defaultValue: 0.5,
+    min: 0,
+    max: 2,
+}, {
+    separator: "..."
+}, {
+    type: "float",
     name: "iFree0",
     defaultValue: 0,
     min: -1,
@@ -405,6 +466,30 @@ const uniformControls = () => [{
 }, {
     type: "float",
     name: "iFree3",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
+}, {
+    type: "float",
+    name: "iFree4",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
+}, {
+    type: "float",
+    name: "iFree5",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
+}, {
+    type: "float",
+    name: "iFree6",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
+}, {
+    type: "float",
+    name: "iFree7",
     defaultValue: 0,
     min: -1,
     max: 1,

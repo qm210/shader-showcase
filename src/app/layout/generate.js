@@ -65,6 +65,7 @@ const generatePage = (glContext, elements, state, controls) => {
         .then(scrollToFirstInterestingLine);
 
     addCanvasMouseInteraction(elements, state);
+    addVideoElement(elements, state);
     addControlsToPage(elements, state, controls, glContext);
     addDisplayControls(elements, state, glContext);
 
@@ -76,11 +77,54 @@ const generatePage = (glContext, elements, state, controls) => {
             refreshPresets(elements, state);
         });
 
+    // TODO move that somewhere more aesthetic-ishy
+    void Promise.all(
+        controls.toggles
+            .filter(toggle => toggle.tryOnStartup)
+            .map(toggle =>
+                toggle.onClick().then(() =>
+                    console.log("[STARTUP] Toggled ", toggle)
+                )
+            )
+    ).catch((err) =>
+        console.warn("[STARTUP] Failed:", err)
+    );
+
     elements.pageLoadingMs = performance.now() - elements.initialMs;
 };
 
 export default generatePage;
 
+
+const addVideoElement = (elements, state) => {
+    // For WebCam input
+    elements.video = document.createElement("video");
+    elements.video.autoplay = true;
+    elements.video.muted = true;
+    elements.video.playsinline = true;
+    elements.video.hidden = true;
+    elements.canvasFrame.appendChild(elements.video);
+
+    state.videoInput = null;
+    elements.video.initialize = async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+        });
+        elements.video.srcObject = stream;
+        await new Promise((resolve) => {
+            elements.video.onloadedmetadata = resolve;
+        });
+        try {
+            await elements.video.play();
+            state.videoInput = elements.video;
+            console.log("[VIDEO]", stream, elements.video);
+        } catch (err) {
+            console.warn("[VIDEO] Failed", err);
+            state.videoInput = null;
+        }
+    };
+}
 
 export const addControlsToPage = (elements, state, controls, glContext) => {
     if (!state.program) {
@@ -117,8 +161,9 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
         ]
     });
 
+    controls.toggles ??= [];
     elements.toggles = [];
-    for (const control of controls.toggles ?? []) {
+    for (const control of controls.toggles) {
         const toggleIndex = elements.toggles.length;
         elements.toggles.push(
             addButton({

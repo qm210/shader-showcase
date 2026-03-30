@@ -23,6 +23,7 @@ import showcase9a from "./showcases/9_RayTracingFirstSteps.js"
 import showcase9b from "./showcases/9b_RayTracingPlusVolumetric.js"
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
+import showcase12 from "./showcases/12_Video_TestLab.js"
 
 const defaultShowcase = showcaseGOLlab;
 
@@ -65,6 +66,8 @@ const MAP_PATH = {
     "10": showcase10,
     // UNVOLLSTÄNDIG: Demonstration eines sehr ausgiebigen Multi Pass / Framebuffer-Setups
     "11": showcase11Unfinished,
+    // WIP: WebCam stuff
+    "_12": showcase12,
 
     // GOL
     "gol": showcaseGOL,

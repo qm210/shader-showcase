@@ -25,7 +25,7 @@ export default {
             minFilter: gl.LINEAR,
             magFilter: gl.NEAREST,
         });
-        state.location.texFloofy = gl.getUniformLocation(state.program, "texFloofy");
+        state.location.texInput = gl.getUniformLocation(state.program, "texFloofy");
 
         state.texWindow = createTextureFromImage(gl, imageWindow, {
             wrapS: gl.REPEAT,
@@ -115,8 +115,8 @@ function render(gl, state) {
     ////////
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, state.texFloofy);
-    gl.uniform1i(state.location.texFloofy, 0);
+    gl.bindTexture(gl.TEXTURE_2D, state.texInput);
+    gl.uniform1i(state.location.texInput, 0);
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, state.texWindow);

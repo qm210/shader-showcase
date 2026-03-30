@@ -258,28 +258,63 @@ float smoothMinimum(float d1, float d2, float k)
     return mix( d2, d1, h ) - k*h*(1.0-h);
 }
 
+vec3 cellColor(CellInfo info) {
+    return hsv2rgb(vec3(360. * info.hue, 1., 1.));
+}
+
 void render(out vec3 outColor, in ivec2 cell, in vec2 st) {
     const float nothingHere = 10000.;
     float dMin = nothingHere;
     vec2 center;
 
     CellInfo info = checkCell(cell);
+//
+//    float d = length(st - info.st) - iCellShape;
+//    d -= iCellBorder;
+//    float opacity = smoothstep(0.01 + iCellSmoothing, 0., d);
+//
+//    opacity = step(0.2, opacity);
+//
+    float d;
+    float opacity = 1.;
+    vec3 col = c.yyy;
 
-    float d = length(st - info.st) - iCellShape;
-    // float d = sdBox(st - here.st, 0.5 * gridStep);
-    d -= iCellBorder;
+//    if (info.transition > 0.) {
+//        opacity *= info.transition;
+//    } else if (info.transition < 0.) {
+//        opacity *= info.transition + 1.;
+//    } else {
 
-    float opacity = smoothstep(iCellSmoothing, 0., d);
-    if (info.transition > 0.) {
-        opacity *= info.transition;
-    } else if (info.transition < 0.) {
-        opacity *= info.transition + 1.;
-    } else if (!info.alive) {
         opacity = 0.;
-    }
-    opacity = pow(opacity, 1./2.7);
-    vec3 color = hsv2rgb(vec3(360. * info.hue, 1., 1.));
-    outColor = mix(c.yyy, color, opacity);
+        int range = 4;
+        for (int ix = -range; ix <= range; ix++) {
+            for (int iy = -range; iy <= range; iy++) {
+                ivec2 otherCell = cell + ivec2(ix, iy);
+                CellInfo other = checkCell(otherCell);
+                if (!other.alive) {
+                    continue;
+                }
+                d = sdBox(st - other.st, (0.5 + iFree3) * gridStep);
+                d += 0.1 * iFree4;
+
+                d *= 100. * (1. + iFree2);
+                d = exp(-d);
+                col += cellColor(other) * d;
+
+                // dMin = min(d, dMin);
+                dMin = smoothMinimum(dMin, d, 0.025 + 0.025 * iFree5);
+            }
+        }
+        opacity = smoothstep(0.001, 0., dMin);
+
+//    }
+    col = col / (col + 1.);
+    col = pow(col, vec3(2.7));
+    outColor = col;
+
+///    opacity = pow(opacity, 1./2.7);
+    // vec3 color = cellColor(info);
+    // outColor = mix(c.yyy, color, opacity);
 
     if (info.glitchedLength > 0.) {
         d = abs(d) - 0.005;
