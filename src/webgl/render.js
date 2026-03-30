@@ -14,12 +14,13 @@
  * @param elements
  */
 
-export function startRenderLoop(renderFunction, state, elements) {
+export function resetRenderLoop(renderFunction, state, elements) {
     cancelAnimationFrame(state.animationFrame);
+    state.animationFrame = null;
     state.startTime = null;
     state.timeRunning = true;
     state.deltaTime = 0;
-    state.iFrame = -1;
+    state.iFrame ??= -1;
     state.resetSignal = false;
     state.stopSignal = false;
     state.stopReached = false;
@@ -27,9 +28,14 @@ export function startRenderLoop(renderFunction, state, elements) {
     state.fps = null;
     state.animation = (timestamp) =>
         runLoop(renderFunction, state, elements, timestamp);
+}
+
+export function startRenderLoop(renderFunction, state, elements) {
+    resetRenderLoop(renderFunction, state, elements);
     state.animationFrame = requestAnimationFrame(state.animation);
 }
 
+// TODO: unused because framebuffers need care on resizing
 export function whilePausingRendering(state, callFunction) {
     state.stopSignal = true;
     let safetyIndex = 0;

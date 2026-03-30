@@ -9,7 +9,10 @@ import showcase5a from "./showcases/5a_MultipassProcessing_Start.js";
 import showcase5b from "./showcases/5b_MultipassProcessing.js";
 import showcase5c from "./showcases/5c_MultipassProcessing_Blur1D.js";
 import showcase6 from "./showcases/6_FramebufferFeedback.js";
-import showcase6b from "./showcases/6b_GameOfLife.js";
+import showcaseGOL from "./showcases/6b_GameOfLife.js";
+import showcaseGOL2 from "./showcases/6b_GameOfLife_NextLevel.js";
+import showcaseGOL3 from "./showcases/6b_GameOfLife_Over9000.js";
+import showcaseGOLlab from "./showcases/6b_GameOfLife_TestLab.js";
 import showcase7a from "./showcases/7a_Noise.js";
 import showcase7b from "./showcases/7b_NoiseExtended.js";
 import showcase8a from "./showcases/8a_RayMarching_Start.js";
@@ -21,7 +24,7 @@ import showcase9b from "./showcases/9b_RayTracingPlusVolumetric.js"
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 
-const defaultShowcase = showcase8a;
+const defaultShowcase = showcaseGOLlab;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
@@ -62,8 +65,12 @@ const MAP_PATH = {
     "10": showcase10,
     // UNVOLLSTÄNDIG: Demonstration eines sehr ausgiebigen Multi Pass / Framebuffer-Setups
     "11": showcase11Unfinished,
-    // auch unvollständig
-    "gol": showcase6b,
+
+    // GOL
+    "gol": showcaseGOL,
+    "gol2": showcaseGOL2,
+    "gol3": showcaseGOL3,
+    "gollab": showcaseGOLlab,
 };
 
 export function selectShowcase() {

@@ -87,8 +87,7 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
         elements.controls.innerHTML = `
             <div class="error" style="text-align: right;">
                 Nothing to render, because compilation failed.
-            </div>
-        `;
+            </div>`;
         return;
     }
 

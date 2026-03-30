@@ -12,34 +12,46 @@ export function addCanvasMouseInteraction(elements, state) {
     loadMouseTotals(state);
 
     elements.canvas.addEventListener("mousedown", event => {
+        state.iMouseDown = true;
         state.drag.pressed = true;
         const pressed = correctedCoordinates(event);
         state.iMouse = [pressed.x, pressed.y, pressed.x, pressed.y];
     });
     elements.canvas.addEventListener("mousemove", event => {
+        const cursor = correctedCoordinates(event);
+        state.iMouseHover[0] = cursor.x;
+        state.iMouseHover[1] = cursor.y;
         if (!state.drag.pressed) {
             return;
         }
-        const dragged = correctedCoordinates(event);
-        state.iMouse[0] = dragged.x;
-        state.iMouse[1] = dragged.y;
-        state.iMouse[2] = dragged.x;
-        state.iMouse[3] = dragged.y;
+        state.iMouse[0] = cursor.x;
+        state.iMouse[1] = cursor.y;
+        state.iMouse[2] = cursor.x;
+        state.iMouse[3] = cursor.y;
         state.iMouseDrag[0] = state.iMouse[0] - state.iMouse[2];
         state.iMouseDrag[1] = state.iMouse[1] - state.iMouse[3];
         state.iMouseDrag[2] = state.drag.total.dx + state.iMouseDrag[0];
         state.iMouseDrag[3] = state.drag.total.dy +  state.iMouseDrag[1];
     });
     document.addEventListener("mouseup", event => {
+        state.iMouseDown = false;
         if (!state.drag.pressed) {
             return;
         }
         state.drag.pressed = false;
+        state.iMouseDown = false;
         storeMouseTotals(state);
         state.iMouseDrag[0] = 0;
         state.iMouseDrag[1] = 0;
         state.iMouse[0] = 0;
         state.iMouse[1] = 0;
+    });
+    elements.canvas.addEventListener("mouseenter", event => {
+        state.iMouseHover[2] = true;
+    });
+    elements.canvas.addEventListener("mouseleave", event => {
+        state.iMouseHover[2] = false;
+        state.iMouseDown = false;
     });
     elements.canvas.addEventListener("wheel", event => {
         state.iMouseWheel -= event.deltaY / 100.
@@ -59,6 +71,8 @@ export function addCanvasMouseInteraction(elements, state) {
 export function initMouseState(state, resetStored = false) {
     state.iMouse = [0, 0, 0, 0];
     state.iMouseDrag = [0, 0, 0, 0];
+    state.iMouseDown = false;
+    state.iMouseHover = [-999, -999, false];
     state.iMouseWheel = 0;
     state.drag = {
         pressed: false,

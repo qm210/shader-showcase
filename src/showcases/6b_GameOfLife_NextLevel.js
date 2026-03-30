@@ -6,11 +6,11 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/6b_gol.glsl";
+import fragmentShaderSource from "../shaders/6b_gol_next.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life",
+    title: "Game Of Life ++",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -43,27 +43,21 @@ export default {
             height,
             attachment: gl.COLOR_ATTACHMENT0,
             dataFormat: gl.RGBA,
-            dataType: gl.UNSIGNED_BYTE,
-            internalFormat: gl.RGBA8,
+            dataType: gl.FLOAT,
+            internalFormat: gl.RGBA32F,
         });
 
         state.doInit = true;
         state.doEvolve = false;
         state.spawnRandomly = false;
-        state.drawByMouse = false;
+        state.drawByMouse = true;
         state.displayMode = 0;
         return state;
     },
     generateControls: (gl, state) => ({
         renderLoop: render,
-        uniforms: uniformsFor(state),
+        uniforms,
         toggles: [{
-            label: () =>
-                "Step Once",
-            onClick: () => {
-                state.doEvolve = true;
-            }
-        }, {
             label: () =>
                 "Init Fresh",
             onClick: () => {
@@ -81,14 +75,14 @@ export default {
             onClick: () => {
                 state.drawByMouse = !state.drawByMouse;
             }
-        // }, {
-        //     label: () =>
-        //         state.displayMode === 0
-        //             ? "Standard Mode"
-        //             : "... other mode.",
-        //     onClick: () => {
-        //         state.displayMode = (state.displayMode++) % 2;
-        //     }
+        }, {
+            label: () =>
+                state.displayMode === 0
+                    ? "Standard Mode"
+                    : "... other mode.",
+            onClick: () => {
+                state.displayMode = (state.displayMode++) % 2;
+            }
         }]
     })
 };
@@ -116,27 +110,25 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, state.texInit);
     gl.uniform1i(state.location.texInit, 1);
 
-    if (state.iFrame % 50 === 0) {
+    if (state.iFrame % state.evolveEveryNthFrame === 0) {
         state.doEvolve = true;
     }
 
     gl.uniform1i(loc.doInit, state.doInit);
+    gl.uniform1i(loc.doEvolve, state.doEvolve);
     gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
     gl.uniform1i(loc.drawByMouse, state.drawByMouse);
 
-    const needUpdate = state.doInit || state.doEvolve || state.spawnRandomly;
-    if (needUpdate) {
-        // Framebuffer Ping Pong - in eigene Struktur ausgelagert
-        [write, read] = state.gameBuffers.currentWriteReadOrder();
-        state.gameBuffers.doPingPong();
+    // Framebuffer Ping Pong - in eigene Struktur ausgelagert
+    [write, read] = state.gameBuffers.currentWriteReadOrder();
+    state.gameBuffers.doPingPong();
 
-        gl.uniform1i(state.location.iPassIndex, 0);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.uniform1i(state.location.texPrevious, 0);
-        gl.bindTexture(gl.TEXTURE_2D, read.texture);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
+    gl.uniform1i(state.location.iPassIndex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(state.location.texPrevious, 0);
+    gl.bindTexture(gl.TEXTURE_2D, read.texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     // Backbuffer: Read-Buffer ist jetzt der andere.
     // -> Müssen wir auch nicht mehr pingpongen, nur beim Feedback.
@@ -154,16 +146,16 @@ function render(gl, state) {
     state.doInit = false;
 }
 
-const uniformsFor = () => [{
+const uniforms = [{
     type: "label",
     name: "iTime",
 }, {
-    type: "float",
-    name: "iHashSeed",
-    defaultValue: 0,
-    min: 0,
+    type: "int",
+    name: "evolveEveryNthFrame",
+    defaultValue: 30,
+    min: 1,
     max: 100,
-    step: 0.1,
+    notAnUniform: true,
 }, {
     separator: "... zur freien Laune ..."
 }, {
