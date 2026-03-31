@@ -12,6 +12,7 @@ uniform sampler2D texFloofy;
 uniform sampler2D texInput;
 uniform bool alternativeImage;
 uniform sampler2D texPrevious;
+uniform sampler2D texBloom;
 uniform bool compareOriginal;
 
 uniform int iBlurSamples;
@@ -64,6 +65,7 @@ uniform float iFree4;
 uniform float iFree5;
 uniform float iFree6;
 uniform float iFree7;
+uniform float iFree8;
 uniform vec3 vecFree0;
 uniform vec3 vecFree1;
 uniform vec3 vecFree2;
@@ -238,19 +240,25 @@ void applyToneMappingAndGamma(inout vec3 col) {
     col.rgb = pow(col.rgb, vec3(1./iGamma));
 }
 
+float lumi(vec3 col) {
+    return dot(col, lumaBT709);
+}
+
 vec3 bloomColor(vec3 col) {
-    float luminosity = dot(col, lumaBT709);
+    float luminosity = lumi(col);
     float weight = smoothstep(iBloomThreshold, 1.0, luminosity);
     return col * weight;
 }
 
-vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
+vec4 drawWithBlur(sampler2D sampler, in vec2 st, int kernel, float distance, float gaussWidth) {
     if (iBlurSamples < 1) {
         return texture(sampler, st);
     }
-    float halfSamples = float(iBlurSamples) * 0.5;
-    float blurOffset = iBlurPixels * texelSize.y;
-    float gaussExponent = 2. / (blurOffset * blurOffset * iBlurGaussWidth * iBlurGaussWidth);
+    float halfSamples = float(kernel) * 0.5;
+    float blurOffset = distance * texelSize.y;
+    float gaussExponent = 2. / (blurOffset * blurOffset * gaussWidth * gaussWidth);
+
+    // THINK: Dithering? -> 5b_multipassProcessing.glsl
 
     float weightSum  = 0.0;
     vec4 colSum = c.yyyy;
@@ -260,6 +268,8 @@ vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
 
             vec2 delta = vec2(dx, dy) * blurOffset / halfSamples;
 
+            // THINK: Dithering? -> 5b_multipassProcessing.glsl
+
             float weight = exp(-gaussExponent * dot(delta, delta));
             weightSum += weight;
 
@@ -268,6 +278,10 @@ vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
         }
     }
     return colSum / weightSum;
+}
+
+vec4 drawWithBlur(sampler2D sampler, in vec2 st) {
+    return drawWithBlur(sampler, st, iBlurSamples, iBlurPixels, iBlurGaussWidth);
 }
 
 vec4 drawBoxBlur(sampler2D sampler, in vec2 st) {
@@ -354,23 +368,25 @@ void applyRetroNoise(inout vec4 col, in vec2 st, in vec2 uv) {
     col = clamp(col, 0., 1.);
 }
 
-float readPreviousLumi(vec2 st, vec2 pxOffset) {
-    vec2 texSize = vec2(textureSize(texPrevious, 0)); // might store globally
-    st += pxOffset / texSize;
-     vec3 color = texture(texPrevious, st).rgb;
-    return dot(color, lumaBT709);
+vec2 pxTexPrevious;
+
+vec3 readPrevious(vec2 st, vec2 pxOffset) {
+    // ! must be known globally !
+    // vec2 pxTexPrevious = 1. / vec2(textureSize(texPrevious, 0));
+    st += pxOffset * pxTexPrevious;
+    return texture(texPrevious, st).rgb;
 }
 
 void applyVideoProcessing(inout vec3 col, in vec2 st, in vec2 uv) {
     // SOBEL EDGE DETECTION
-    float lumTL = readPreviousLumi(st, c.zx);
-    float lumTC = readPreviousLumi(st, c.yx);
-    float lumTR = readPreviousLumi(st, c.xx);
-    float lumML = readPreviousLumi(st, c.zy);
-    float lumMR = readPreviousLumi(st, c.xy);
-    float lumBL = readPreviousLumi(st, c.zz);
-    float lumBC = readPreviousLumi(st, c.yz);
-    float lumBR = readPreviousLumi(st, c.xz);
+    float lumTL = lumi(readPrevious(st, c.zx));
+    float lumTC = lumi(readPrevious(st, c.yx));
+    float lumTR = lumi(readPrevious(st, c.xx));
+    float lumML = lumi(readPrevious(st, c.zy));
+    float lumMR = lumi(readPrevious(st, c.xy));
+    float lumBL = lumi(readPrevious(st, c.zz));
+    float lumBC = lumi(readPrevious(st, c.yz));
+    float lumBR = lumi(readPrevious(st, c.xz));
     float gX = -lumTL - 2. * lumML - lumBL + lumTR + 2. * lumMR + lumBR;
     float gY = -lumBL - 2. * lumBC - lumBR + lumTL + 2. * lumTC + lumTR;
     float gradient = length(vec2(gX, gY));
@@ -394,6 +410,22 @@ void applyVignette(inout vec3 col, in vec2 st) {
     col *= vignette;
 }
 
+vec3 filmicToneMap(vec3 col, float a, float b, float c, float d, float e) {
+    return (col * (a * col + b))
+    / (col * (c * col + d) + e);
+}
+
+void applyACESToneMap(inout vec3 col) {
+    float a = 2.51 * (1. + vecFree1.x);
+    float b = 0.03 * (1. + vecFree1.y);
+    float c = 2.43 * (1. + vecFree1.z);
+    float d = 0.59 * (1. + vecFree2.x);
+    float e = 0.14 * (1. + vecFree2.y);
+    float exposure = (1. + vecFree2.z);
+    col *= exposure;
+    col = filmicToneMap(col, a, b, c, d, e);
+}
+
 void main() {
     vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     vec2 st = gl_FragCoord.xy / iResolution.xy;
@@ -413,6 +445,8 @@ void main() {
         }
     }
 
+    pxTexPrevious = 1. / vec2(textureSize(texPrevious, 0));
+
     switch (iPass) {
         case 1: {
             fragColor = drawWithBlur(texPrevious, st);
@@ -421,6 +455,7 @@ void main() {
         } case 2:
             fragColor = texture(texPrevious, st);
             applyVideoProcessing(fragColor.rgb, st, uv);
+            // IDEE: Temporal stabilization -- blur?
             /*
             fragColor.rgb = 0.5 * texture(texPrevious, st).rgb;
             fragColor.rgb += 0.25 * texture(texPrevious, st + shift).rgb;
@@ -428,10 +463,69 @@ void main() {
             */
             // fragColor = drawWithRadialBlur(texPrevious, st);
             return;
-        case 3:
-            fragColor = texture(texPrevious, st);
-            fragColor.a = 1.;
-            // ...?
+        case 3: {
+            // Unscharf Maskieren
+            vec3 orig = readPrevious(st, c.yy);
+            vec3 L = readPrevious(st, c.zy);
+            vec3 R = readPrevious(st, c.xy);
+            vec3 T = readPrevious(st, c.yz);
+            vec3 B = readPrevious(st, c.yx);
+            vec3 blur = (L + R + T + B - orig) / 5.;
+            vec3 col = orig + iFree0 * (orig - blur);
+
+            // sample and crush darks/midtones
+            float luma = lumi(col);
+            float crush = iFree3; // 0.75 + 0.25 * sin(iTime * 0.1);
+            luma = pow(luma, 1.0 / crush);
+            luma = smoothstep(0.0, 0.15 + iFree4, luma);
+            vec3 crushed = col * luma;
+            col = mix(col, crushed, iFree2);
+
+            fragColor.rgb = col;
             return;
+        }
+        case 4: {
+            // Check Reference in 5b_ for Bloom, but this seems slightly different?
+            vec3 sum = vec3(0.0);
+            float wsum = 0.0;
+            float nBloom = 10. * (1. + iFree6);
+            // ALSO: might tune bright and weight
+            for (float y = -nBloom; y <= nBloom; y += 1.) {
+                for (float x = -nBloom; x <= nBloom; x += 1.) {
+                    vec2 off = vec2(x, y);
+                    vec3 col = readPrevious(st, off);
+                    float luma = lumi(col);
+                    float bright = smoothstep(0.65 + iFree5, 1.0, luma);
+                    float weight = 1.0 / (1.0 + dot(off, off));
+                    sum += col * bright * weight;
+                    wsum += weight;
+                }
+            }
+            vec3 bloom = sum / max(wsum, 1e-5);
+            fragColor = vec4(bloom, 1.);
+            return;
+        }
+        case 5: {
+            vec3 prev = readPrevious(st, c.yy);
+            vec3 bloom = texture(texBloom, st).rgb;
+
+            vec3 col = prev;
+            vec3 dark = col * 0.35;
+            dark = pow(dark, vec3(1.2 + iFree8));
+            col = dark + bloom * 1.8;
+            col *= (c.xxx + 0.5 * vecFree0);
+            col = mix(prev, col, iFree7);
+
+            // Tone Mapping & Gamma
+            applyACESToneMap(col);
+            col = clamp(col, 0., 1.);
+            col = pow(col, vec3(1. + iFree1));
+
+            applyVignette(col, st);
+
+            fragColor.rgb = col;
+            fragColor.a = 1.;
+            return;
+        }
     }
 }

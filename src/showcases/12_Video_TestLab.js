@@ -50,6 +50,8 @@ export default {
             pass0: createFramebufferWithTexture(gl, fbOptions),
             pass1: createFramebufferWithTexture(gl, fbOptions),
             pass2: createFramebufferWithTexture(gl, fbOptions),
+            pass3: createFramebufferWithTexture(gl, fbOptions),
+            pass4: createFramebufferWithTexture(gl, fbOptions),
         };
 
         state.video = null;
@@ -127,6 +129,7 @@ function render(gl, state) {
     gl.uniform1f(loc.iFree5, state.iFree5);
     gl.uniform1f(loc.iFree6, state.iFree6);
     gl.uniform1f(loc.iFree7, state.iFree7);
+    gl.uniform1f(loc.iFree8, state.iFree8);
     gl.uniform3fv(loc.vecFree0, state.vecFree0);
     gl.uniform3fv(loc.vecFree1, state.vecFree1);
     gl.uniform3fv(loc.vecFree2, state.vecFree2);
@@ -177,9 +180,25 @@ function render(gl, state) {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     gl.uniform1i(loc.iPass, 3);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass3.fbo);
     gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass2.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.uniform1i(loc.iPass, 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, state.framebuffer.pass4.fbo);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass3.texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.uniform1i(loc.iPass, 5);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass3.texture);
+    // <-- keep texPrevious there, so -- texBloom needs a new unit:
+    gl.activeTexture(gl.TEXTURE3);
+    gl.uniform1i(state.location.texBloom, 3);
+    gl.bindTexture(gl.TEXTURE_2D, state.framebuffer.pass4.texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
 
@@ -494,21 +513,27 @@ const uniforms = [{
     min: -1,
     max: 1,
 }, {
+    type: "float",
+    name: "iFree8",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
+}, {
     type: "vec3",
     name: "vecFree0",
     defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
+    min: -1,
+    max: +1,
 }, {
     type: "vec3",
     name: "vecFree1",
     defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
+    min: -1,
+    max: +1,
 }, {
     type: "vec3",
     name: "vecFree2",
     defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
+    min: -1,
+    max: +1,
 }];

@@ -321,8 +321,9 @@ vec4 drawWithBlur1D(sampler2D sampler, in vec2 st, bool vertical) {
     }
     col = colSum / weightSum;
 
-    if (!useBloomFilterInsteadOfBlur)
-    return col;
+    if (!useBloomFilterInsteadOfBlur) {
+        return col;
+    }
 
     bloom /= weightSum;
 
