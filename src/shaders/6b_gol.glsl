@@ -211,43 +211,15 @@ float sdRhombus( in vec2 p, in vec2 b )
     return length(p)*sign(p.x);
 }
 
-vec3 renderPass(ivec2 cell, vec2 st) {
+vec3 someRenderPass(ivec2 cell, vec2 st) {
     vec3 col = texture(texPrevious, st).rgb;
-    vec2 stCell = (vec2(cell) + 0.5) * gridStep;
+    // In der Textur steht zwar ein RGB-Vektor,
+    // aber als Farbe interpretieren wir den erst im Renderschritt.
 
-    // "black" is alive --> show this
-    const vec3 alive = c.yyy;
-//    if (col == alive) {
-//        return col;
-//    }
-    // "white" is not alive -> can draw extra stuff from neighbors
-    bool hasNeighbor = false;
-
-    vec3 thatCellColor = c.yyy;
-    float dMin = 1000.;
-    for (int ix = -1; ix < 2; ix++)
-    for (int iy = -1; iy < 2; iy++) {
-        vec2 stNeighbor = stCell + gridStep * vec2(ix, iy);
-
-        if (isAlive(stNeighbor)) {
-            hasNeighbor = true;
-
-//            float d = sdBox(st - stNeighbor, iFree0 * vec2(0.02, 0.025));
-            float d = sdRhombus(st - stNeighbor, vec2(0.01));
-            d += 0.01 * iFree1;
-            if (d < dMin) {
-                dMin = d;
-                thatCellColor = randomCellColor(cell + ivec2(ix, iy));
-            }
-        }
-    }
-//    const vec3 border = vec3(0.5);
-//    if (hasNeighbor) {
-//        col = border;
-//    }
-
-    col = c.xxx;
-    col = mix(col, thatCellColor, smoothstep(0.002, 0., dMin));
+    // Durchreichen wäre hier die einfachste Option.
+    // Oder wir rechnen daraus irgendwelche anderen Farben aus.
+//    col = 1. - 0.5 * col;
+//    col.g *= st.y;
 
     return col;
 }
@@ -267,7 +239,7 @@ void main() {
     ivec2 mouseCell = ivec2(iMouseHover.xy / iResolution.xy * gridSize);
 
     if (iPassIndex == PASS_RENDER_SCREEN) {
-        fragColor.rgb = renderPass(cell, st);
+        fragColor = texture(texPrevious, st);
         fragColor.a = 1.;
 
 //        float d = abs(length(gl_FragCoord.xy - iMouseHover.xy)) - 5.;
