@@ -38,7 +38,7 @@ export default {
         //   -> braucht Ping Pong, weil gleichzeitig lesen und schreiben
         // - Render-Pass zeichnet einfach aufs Bild
 
-        state.gameBuffer = createPingPongFramebuffersWithTexture(gl, {
+        state.gameBuffers = createPingPongFramebuffersWithTexture(gl, {
             width,
             height,
             attachment: gl.COLOR_ATTACHMENT0,
@@ -50,7 +50,6 @@ export default {
         state.doInit = true;
         state.doEvolve = false;
         state.spawnRandomly = false;
-        state.drawByMouse = false;
         state.displayMode = 0;
         return state;
     },
@@ -75,12 +74,6 @@ export default {
             onClick: () => {
                 state.spawnRandomly = true;
             },
-        }, {
-            label: () =>
-                "Draw by Mouse? " + state.drawByMouse,
-            onClick: () => {
-                state.drawByMouse = !state.drawByMouse;
-            }
         // }, {
         //     label: () =>
         //         state.displayMode === 0
@@ -122,7 +115,6 @@ function render(gl, state) {
 
     gl.uniform1i(loc.doInit, state.doInit);
     gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
-    gl.uniform1i(loc.drawByMouse, state.drawByMouse);
 
     const needUpdate = state.doInit || state.doEvolve || state.spawnRandomly;
     if (needUpdate) {

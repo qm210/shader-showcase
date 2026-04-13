@@ -10,7 +10,6 @@ uniform int iFrame;
 uniform int iPassIndex;
 uniform bool doInit;
 uniform bool spawnRandomly;
-uniform bool drawByMouse;
 uniform vec4 iMouse;
 uniform bool iMouseDown;
 uniform vec3 iMouseHover;
@@ -182,6 +181,77 @@ CellInfo checkCell(ivec2 cell) {
     return info;
 }
 
+float sdBox(in vec2 p, in vec2 b)
+{
+    vec2 d = abs(p)-b;
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+}
+
+vec3 randomCellColor(ivec2 cell) {
+    vec2 randomVec2 = hash22(vec2(cell) * 3423., 0.);
+    return vec3(
+        0.5 + 0.3 * randomVec2.x,
+        0.,
+        0.5 + 0.3 * randomVec2.y
+    );
+}
+
+float smoothMinimum(float d1, float d2, float k)
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float sdRhombus( in vec2 p, in vec2 b )
+{
+    b.y = -b.y;
+    p = abs(p);
+    float h = clamp( (dot(b,p)+b.y*b.y)/dot(b,b), 0.0, 1.0 );
+    p -= b*vec2(h,h-1.0);
+    return length(p)*sign(p.x);
+}
+
+vec3 renderPass(ivec2 cell, vec2 st) {
+    vec3 col = texture(texPrevious, st).rgb;
+    vec2 stCell = (vec2(cell) + 0.5) * gridStep;
+
+    // "black" is alive --> show this
+    const vec3 alive = c.yyy;
+//    if (col == alive) {
+//        return col;
+//    }
+    // "white" is not alive -> can draw extra stuff from neighbors
+    bool hasNeighbor = false;
+
+    vec3 thatCellColor = c.yyy;
+    float dMin = 1000.;
+    for (int ix = -1; ix < 2; ix++)
+    for (int iy = -1; iy < 2; iy++) {
+        vec2 stNeighbor = stCell + gridStep * vec2(ix, iy);
+
+        if (isAlive(stNeighbor)) {
+            hasNeighbor = true;
+
+//            float d = sdBox(st - stNeighbor, iFree0 * vec2(0.02, 0.025));
+            float d = sdRhombus(st - stNeighbor, vec2(0.01));
+            d += 0.01 * iFree1;
+            if (d < dMin) {
+                dMin = d;
+                thatCellColor = randomCellColor(cell + ivec2(ix, iy));
+            }
+        }
+    }
+//    const vec3 border = vec3(0.5);
+//    if (hasNeighbor) {
+//        col = border;
+//    }
+
+    col = c.xxx;
+    col = mix(col, thatCellColor, smoothstep(0.002, 0., dMin));
+
+    return col;
+}
+
 #define PASS_EVOLVE_GAME 0
 #define PASS_RENDER_SCREEN 1
 
@@ -197,17 +267,17 @@ void main() {
     ivec2 mouseCell = ivec2(iMouseHover.xy / iResolution.xy * gridSize);
 
     if (iPassIndex == PASS_RENDER_SCREEN) {
-        fragColor = texture(texPrevious, st);
+        fragColor.rgb = renderPass(cell, st);
         fragColor.a = 1.;
 
 //        float d = abs(length(gl_FragCoord.xy - iMouseHover.xy)) - 5.;
 //        fragColor.rgb = mix(fragColor.rgb, c.xyw, step(d, 0.2));
+        /*
         if (mouseCell == cell) {
-            fragColor.rgb = 0.3 + 0.7 * c.ywx;
-            if (iMouseDown) {
-                fragColor.rgb = c.xyy;
-            }
+            const vec3 someBlue = 0.3 + 0.7 * c.ywx;
+            fragColor.rgb = mix(fragColor.rgb, someBlue, 0.5);
         }
+        */
         return;
     }
 
@@ -232,12 +302,6 @@ void main() {
         float random = perlin2D(vec2(cell), iTime);
         alive = abs(random) < 0.1;
         // could also randomly kill
-    }
-
-    if (drawByMouse && iMouseDown) {
-        if (cell == mouseCell) {
-            alive = true;
-        }
     }
 
     fragColor = alive ? c.yyyx : c.xxxx;

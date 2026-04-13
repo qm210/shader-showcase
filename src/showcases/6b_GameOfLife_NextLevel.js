@@ -38,7 +38,7 @@ export default {
         //   -> braucht Ping Pong, weil gleichzeitig lesen und schreiben
         // - Render-Pass zeichnet einfach aufs Bild
 
-        state.gameBuffer = createPingPongFramebuffersWithTexture(gl, {
+        state.gameBuffers = createPingPongFramebuffersWithTexture(gl, {
             width,
             height,
             attachment: gl.COLOR_ATTACHMENT0,
