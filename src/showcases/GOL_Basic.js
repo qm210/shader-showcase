@@ -6,11 +6,11 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/6b_gol_next.glsl";
+import fragmentShaderSource from "../shaders/gol__basic.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life ++",
+    title: "Game Of Life - Basic",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -43,21 +43,27 @@ export default {
             height,
             attachment: gl.COLOR_ATTACHMENT0,
             dataFormat: gl.RGBA,
-            dataType: gl.FLOAT,
-            internalFormat: gl.RGBA32F,
+            dataType: gl.UNSIGNED_BYTE,
+            internalFormat: gl.RGBA8,
         });
 
+        state.isRunning = true;
         state.doInit = true;
         state.doEvolve = false;
         state.spawnRandomly = false;
         state.drawByMouse = true;
-        state.displayMode = 0;
         return state;
     },
     generateControls: (gl, state) => ({
         renderLoop: render,
-        uniforms,
+        uniforms: uniformsFor(state),
         toggles: [{
+            label: () =>
+                "Running: " + state.isRunning,
+            onClick: () => {
+                state.isRunning = !state.isRunning;
+            }
+        }, {
             label: () =>
                 "Init Fresh",
             onClick: () => {
@@ -65,7 +71,7 @@ export default {
             },
         }, {
             label: () =>
-                "Random Spawn (once)",
+                "Spawn randomly...",
             onClick: () => {
                 state.spawnRandomly = true;
             },
@@ -74,14 +80,6 @@ export default {
                 "Draw by Mouse? " + state.drawByMouse,
             onClick: () => {
                 state.drawByMouse = !state.drawByMouse;
-            }
-        }, {
-            label: () =>
-                state.displayMode === 0
-                    ? "Standard Mode"
-                    : "... other mode.",
-            onClick: () => {
-                state.displayMode = (state.displayMode++) % 2;
             }
         }]
     })
@@ -105,19 +103,21 @@ function render(gl, state) {
     gl.uniform1f(loc.iFree1, state.iFree1);
     gl.uniform1f(loc.iFree2, state.iFree2);
     gl.uniform1f(loc.iFree3, state.iFree3);
+    gl.uniform1f(loc.iFree4, state.iFree4);
+    gl.uniform1f(loc.iFree5, state.iFree5);
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, state.texInit);
     gl.uniform1i(state.location.texInit, 1);
 
-    if (state.iFrame % state.evolveEveryNthFrame === 0) {
+    if (state.isRunning && state.iFrame % 50 === 0) {
         state.doEvolve = true;
     }
 
     gl.uniform1i(loc.doInit, state.doInit);
     gl.uniform1i(loc.doEvolve, state.doEvolve);
-    gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
     gl.uniform1i(loc.drawByMouse, state.drawByMouse);
+    gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
 
     // Framebuffer Ping Pong - in eigene Struktur ausgelagert
     [write, read] = state.gameBuffers.currentWriteReadOrder();
@@ -146,16 +146,16 @@ function render(gl, state) {
     state.doInit = false;
 }
 
-const uniforms = [{
+const uniformsFor = () => [{
     type: "label",
     name: "iTime",
 }, {
-    type: "int",
-    name: "evolveEveryNthFrame",
-    defaultValue: 30,
-    min: 1,
+    type: "float",
+    name: "iHashSeed",
+    defaultValue: 0,
+    min: 0,
     max: 100,
-    notAnUniform: true,
+    step: 0.1,
 }, {
     separator: "... zur freien Laune ..."
 }, {
@@ -183,21 +183,15 @@ const uniforms = [{
     min: -1,
     max: 1,
 }, {
-    type: "vec3",
-    name: "vecFree0",
-    defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
+    type: "float",
+    name: "iFree4",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
 }, {
-    type: "vec3",
-    name: "vecFree1",
-    defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
-}, {
-    type: "vec3",
-    name: "vecFree2",
-    defaultValue: [0, 0, 0],
-    min: -9.99,
-    max: +9.99,
+    type: "float",
+    name: "iFree5",
+    defaultValue: 0,
+    min: -1,
+    max: 1,
 }];

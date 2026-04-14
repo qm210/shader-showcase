@@ -9,10 +9,16 @@ import showcase5a from "./showcases/5a_MultipassProcessing_Start.js";
 import showcase5b from "./showcases/5b_MultipassProcessing.js";
 import showcase5c from "./showcases/5c_MultipassProcessing_Blur1D.js";
 import showcase6 from "./showcases/6_FramebufferFeedback.js";
-import showcaseGOL from "./showcases/6b_GameOfLife.js";
-import showcaseGOL2 from "./showcases/6b_GameOfLife_NextLevel.js";
-import showcaseGOL3 from "./showcases/6b_GameOfLife_Over9000.js";
-import showcaseGOLlab from "./showcases/6b_GameOfLife_TestLab.js";
+import showcaseGOL0 from "./showcases/GOL_Stage0.js";
+import showcaseGOL1 from "./showcases/GOL_Stage1.js";
+import showcaseGOL2 from "./showcases/GOL_Stage2.js";
+import showcaseGOL3 from "./showcases/GOL_Stage3.js";
+import showcaseGOL4 from "./showcases/GOL_Stage4.js";
+import showcaseGOL5 from "./showcases/GOL_Stage5.js";
+import showcaseGOL from "./showcases/GOL_Basic.js";
+import showcaseGOL_Y from "./showcases/GOL_Extendedl.js";
+import showcaseGOL_Z from "./showcases/GOL_Advanced.js";
+import showcaseGOL_LAB from "./showcases/GOL_TestLab.js";
 import showcase7a from "./showcases/7a_Noise.js";
 import showcase7b from "./showcases/7b_NoiseExtended.js";
 import showcase8a from "./showcases/8a_RayMarching_Start.js";
@@ -25,7 +31,7 @@ import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 import showcase12 from "./showcases/12_Video_TestLab.js"
 
-const defaultShowcase = showcaseGOLlab;
+const defaultShowcase = showcaseGOL;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
@@ -69,11 +75,18 @@ const MAP_PATH = {
     // WIP: WebCam stuff
     "_12": showcase12,
 
-    // GOL
-    "gol": showcaseGOL,
+    // GOL...
+    "gol0": showcaseGOL0,
+    "gol1": showcaseGOL1,
     "gol2": showcaseGOL2,
     "gol3": showcaseGOL3,
-    "gollab": showcaseGOLlab,
+    "gol4": showcaseGOL4,
+    "gol5": showcaseGOL5,
+    // ... wohin die Reise gehen könnte:
+    "gol": showcaseGOL,
+    "gol999": showcaseGOL_Y,
+    "gol9999": showcaseGOL_Z,
+    "gollab": showcaseGOL_LAB,
 };
 
 export function selectShowcase() {
