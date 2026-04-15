@@ -7,11 +7,11 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol__testlab.glsl";
+import fragmentShaderSource from "../shaders/gol_extended2.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life ❤ TestLab ",
+    title: "Game Of Life ++ over 9000",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -111,12 +111,9 @@ function render(gl, state) {
     gl.uniform1f(loc.iHashSeed, state.iHashSeed);
     gl.uniform1f(loc.iBarrelDistortion, state.iBarrelDistortion);
     gl.uniform1f(loc.iBarrelDistortionExponent, state.iBarrelDistortionExponent);
-    gl.uniform1f(loc.iGlitchMaxOffset, state.iGlitchMaxOffset);
-    gl.uniform1f(loc.iGlitchChance, state.iGlitchChance);
-    gl.uniform1f(loc.iGlitchVisibility, state.iGlitchVisibility);
-    gl.uniform1f(loc.iCellBorder, state.iCellBorder);
-    gl.uniform1f(loc.iCellShape, state.iCellShape);
-    gl.uniform1f(loc.iCellSmoothing, state.iCellSmoothing);
+    gl.uniform1f(loc.iShapeSize, state.iShapeSize);
+    gl.uniform1f(loc.iShapeSmooth, state.iShapeSmooth);
+    gl.uniform1f(loc.iHighLifeProbability, state.iHighLifeProbability);
 
     gl.uniform1f(loc.iFree0, state.iFree0);
     gl.uniform1f(loc.iFree1, state.iFree1);
@@ -183,7 +180,7 @@ const uniforms = [{
     name: "evolveEveryNthFrame",
     defaultValue: 30,
     min: 1,
-    max: 100,
+    max: 200,
     notAnUniform: true,
 }, {
     type: "int",
@@ -193,26 +190,22 @@ const uniforms = [{
     max: 100,
 }, {
     type: "float",
-    name: "iCellShape",
-    defaultValue: 0.005,
-    min: -0.05,
-    max: 0.05,
-    step: 0.001,
+    name: "iShapeSize",
+    defaultValue: -0.78,
+    min: -1,
+    max: 1,
 }, {
     type: "float",
-    name: "iCellBorder",
-    defaultValue: 0.0,
-    min: -0.02,
-    max: 0.02,
-    step: 0.001,
+    name: "iShapeSmooth",
+    defaultValue: -0.12,
+    min: -1,
+    max: 1,
 }, {
     type: "float",
-    name: "iCellSmoothing",
-    defaultValue: 0.005,
-    min: 0.001,
-    max: 0.1,
-    step: 0.001,
-    log: true,
+    name: "iHighLifeProbability",
+    defaultValue: 0,
+    min: 0,
+    max: 1,
 }, {
     type: "float",
     name: "iBarrelDistortion",
@@ -225,24 +218,6 @@ const uniforms = [{
     defaultValue: 1,
     min: -2,
     max: 20,
-}, {
-    type: "float",
-    name: "iGlitchChance",
-    defaultValue: 0,
-    min: 0,
-    max: 1,
-}, {
-    type: "float",
-    name: "iGlitchVisibility",
-    defaultValue: 0.1,
-    min: 0,
-    max: 1,
-}, {
-    type: "float",
-    name: "iGlitchMaxOffset",
-    defaultValue: 0,
-    min: 0,
-    max: 2,
 }, {
     separator: "... zur freien Laune ..."
 }, {

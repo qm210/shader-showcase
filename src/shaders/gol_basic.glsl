@@ -12,7 +12,7 @@ uniform vec4 iMouse;
 uniform bool iMouseDown;
 uniform vec3 iMouseHover;
 uniform float iHashSeed;
-
+uniform bool showGrid;
 uniform sampler2D texInit;
 uniform sampler2D texPrevious;
 uniform bool doInit;
@@ -79,8 +79,27 @@ float perlin2D(vec2 p, float seed) {
     return mix(xm1, xm2, w.y);
 }
 
-vec4 initializeFrame(in vec2 st) {
-    // Initialisieren von der statischen Textur
+void addGrid(inout vec3 col, vec2 st) {
+    const vec3 gridColor = c.yyy;
+    vec2 d = mod(st, gridStep);
+    d = min(d, gridStep - d);
+    d *= iResolution;
+    float dRect = min(d.x, d.y);
+    float opacity = 1.0 - step(0.5, dRect);
+    opacity *= 0.25;
+    col.rgb = mix(col.rgb, gridColor, opacity);
+}
+
+void addMouseCursor(inout vec3 col, bool hovered) {
+    if (!hovered) {
+        return;
+    }
+    float opacity = iMouseDown ? 0.7 : 0.5;
+    const vec3 mouseColor = 0.3 + 0.7 * c.ywx;
+    col = mix(col, mouseColor, opacity);
+}
+
+vec4 initialImage(in vec2 st) {
     st.y = 1. - st.y;
     return texture(texInit, st);
 }
@@ -125,7 +144,7 @@ void main() {
     vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     vec2 st = gl_FragCoord.xy / iResolution.xy;
 
-    // Gitter gegeben durch Bild, das wir zu Beginn reingeben
+    // Gitter gegeben durch initiale Bildtextur
     vec2 gridSize = vec2(textureSize(texInit, 0));
     ivec2 cell = ivec2(st * gridSize);
     gridStep = 1. / gridSize;
@@ -136,19 +155,17 @@ void main() {
     bool clicked = hovered && iMouseDown;
 
     if (iPassIndex == PASS_RENDER_SCREEN) {
-        fragColor = texture(texPrevious, st);
-        fragColor.a = 1.;
+        fragColor = isAlive(st) ? c.yyyx : c.xxxx;
 
-        if (hovered) {
-            const vec3 mouseColor = 0.3 + 0.7 * c.ywx;
-            float opacity = iMouseDown ? 0.7 : 0.4;
-            fragColor.rgb = mix(fragColor.rgb, mouseColor, opacity);
+        if (showGrid) {
+            addGrid(fragColor.rgb, st);
         }
+        addMouseCursor(fragColor.rgb, hovered);
         return;
     }
 
-    if (doInit || iFrame == 0) {
-        fragColor = initializeFrame(st);
+    if (doInit) {
+        fragColor = initialImage(st);
         return;
     }
 

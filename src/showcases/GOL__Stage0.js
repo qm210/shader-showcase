@@ -4,11 +4,11 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol_stage2.glsl";
+import fragmentShaderSource from "../shaders/gol__stage0.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life - 2",
+    title: "Game Of Life - 0",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;

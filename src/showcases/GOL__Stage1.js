@@ -4,11 +4,11 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol_stage0.glsl";
+import fragmentShaderSource from "../shaders/gol__stage1.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life - 0",
+    title: "Game Of Life - 1",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -45,6 +45,8 @@ function render(gl, state) {
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
     gl.uniform1i(loc.showGrid, state.showGrid);
+    gl.uniform1i(loc.showNeighborCountAsHue, state.showNeighborCountAsHue);
+    gl.uniform1i(loc.showAliveState, state.showAliveState);
 
     gl.uniform1f(loc.iFree0, state.iFree0);
     gl.uniform1f(loc.iFree1, state.iFree1);
@@ -65,6 +67,16 @@ const uniformsFor = () => [{
     name: "showGrid",
     defaultValue: true,
     description: "Vergleich mit Auflösung der gol_init.png",
+}, {
+    type: "boolean",
+    name: "showAliveState",
+    defaultValue: true,
+    description: "Binäre Farbwahl, je nach \"lebt\" oder \"tot\"",
+}, {
+    type: "boolean",
+    name: "showNeighborCountAsHue",
+    defaultValue: false,
+    description: "Vier Farben, je nach Nachbarn n<2 / n==2 / n==3 / n>3",
 }, {
     separator: "... zur freien Laune ..."
 }, {

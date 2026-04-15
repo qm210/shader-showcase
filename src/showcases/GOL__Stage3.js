@@ -1,17 +1,16 @@
 import {
     createFramebufferWithTexture,
     createPingPongFramebuffersWithTexture,
-    createTextureFromImage,
-    updateResolution
+    createTextureFromImage, updateResolution,
 } from "../webgl/helpers.js";
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol__advanced.glsl";
+import fragmentShaderSource from "../shaders/gol__stage3.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life > 9000",
+    title: "Game Of Life - 3",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -24,9 +23,10 @@ export default {
         state.texInit = createTextureFromImage(gl, initial, {
             wrapS: gl.CLAMP_TO_EDGE,
             wrapT: gl.CLAMP_TO_EDGE,
-            minFilter: gl.NEAREST,
+            minFilter: gl.LINEAR,
             magFilter: gl.NEAREST,
             onLoaded: () => {
+                state.doInit = true;
                 state.resetSignal = true;
             },
         });
@@ -34,69 +34,35 @@ export default {
 
         const {width, height} = updateResolution(state, gl);
 
-        // Struktur fürs erste:
-        // - Game-Of-Life-Textur wird evolviert
-        //   -> braucht Ping Pong, weil gleichzeitig lesen und schreiben
-        // - Render-Pass zeichnet einfach aufs Bild
-
-        state.gameBuffers = createPingPongFramebuffersWithTexture(gl, {
+        const fbOptions = {
             width,
             height,
             attachment: gl.COLOR_ATTACHMENT0,
             dataFormat: gl.RGBA,
-            dataType: gl.FLOAT,
-            internalFormat: gl.RGBA32F,
-        });
-        state.postBuffer = createFramebufferWithTexture(gl, {
-            width,
-            height,
-            attachment: gl.COLOR_ATTACHMENT0,
-            dataFormat: gl.RGBA,
-            dataType: gl.FLOAT,
-            internalFormat: gl.RGBA32F,
-        });
+            dataType: gl.UNSIGNED_BYTE,
+            internalFormat: gl.RGBA8,
+        };
+        state.gameBuffers = [
+            createFramebufferWithTexture(gl, fbOptions),
+            createFramebufferWithTexture(gl, fbOptions)
+        ];
+        state.ping = 0;
 
         state.doInit = true;
-        state.doEvolve = false;
-        state.spawnRandomly = false;
-        state.drawByMouse = true;
-        state.displayMode = 0;
         return state;
     },
     generateControls: (gl, state) => ({
         renderLoop: render,
-        uniforms,
+        uniforms: uniformsFor(state),
         toggles: [{
             label: () =>
                 "Init Fresh",
             onClick: () => {
                 state.doInit = true;
             },
-        }, {
-            label: () =>
-                "Spawn randomly...",
-            onClick: () => {
-                state.spawnRandomly = true;
-            },
-        }, {
-            label: () =>
-                "Draw by Mouse? " + state.drawByMouse,
-            onClick: () => {
-                state.drawByMouse = !state.drawByMouse;
-            }
-        }, {
-            label: () =>
-                state.displayMode === 0
-                    ? "Standard Mode"
-                    : "... other mode.",
-            onClick: () => {
-                state.displayMode = (state.displayMode++) % 2;
-            }
         }]
     })
 };
-
-let write, read;
 
 function render(gl, state) {
     const loc = state.location;
@@ -107,10 +73,7 @@ function render(gl, state) {
     gl.uniform1i(loc.iFrame, state.iFrame);
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
-    gl.uniform1i(loc.debugMode, state.debugMode);
-    gl.uniform1f(loc.iHashSeed, state.iHashSeed);
-    gl.uniform1f(loc.iBarrelDistortion, state.iBarrelDistortion);
-    gl.uniform1f(loc.iBarrelDistortionExponent, state.iBarrelDistortionExponent);
+    gl.uniform1i(loc.showGrid, state.showGrid);
 
     gl.uniform1f(loc.iFree0, state.iFree0);
     gl.uniform1f(loc.iFree1, state.iFree1);
@@ -123,19 +86,14 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, state.texInit);
     gl.uniform1i(state.location.texInit, 1);
 
-    if (state.iFrame % state.evolveEveryNthFrame === 0) {
-        state.doEvolve = true;
-    }
-
+    // Initialisiere per Flag (weil Bild async lädt...)
     gl.uniform1i(loc.doInit, state.doInit);
-    gl.uniform1i(loc.doEvolve, state.doEvolve);
-    gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
-    gl.uniform1i(loc.drawByMouse, state.drawByMouse);
-    gl.uniform1i(loc.transitionFrames, state.transitionFrames);
+    state.doInit = false;
 
-    // Framebuffer Ping Pong - in eigene Struktur ausgelagert
-    [write, read] = state.gameBuffers.currentWriteReadOrder();
-    state.gameBuffers.doPingPong();
+    // Framebuffer Ping Pong
+    let write = state.gameBuffers[state.ping];
+    let read = state.gameBuffers[1 - state.ping];
+    state.ping = 1. - state.ping;
 
     gl.uniform1i(state.location.iPassIndex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
@@ -144,59 +102,21 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, read.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Zwischen-Framebuffer:
+    // Zuletzt nur one-way zum Backbuffer
     read = write;
-    write = state.postBuffer;
-
     gl.uniform1i(state.location.iPassIndex, 1);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.uniform1i(state.location.texRendered, 2);
-    gl.bindTexture(gl.TEXTURE_2D, read.texture);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    read = write;
-
-    gl.uniform1i(state.location.iPassIndex, 2);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
-    gl.uniform1i(state.location.texRendered, 0);
+    gl.uniform1i(state.location.texPrevious, 0);
     gl.bindTexture(gl.TEXTURE_2D, read.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    state.doEvolve = false;
-    state.spawnRandomly = false;
-    state.doInit = false;
 }
 
-const uniforms = [{
-    type: "label",
-    name: "iTime",
-}, {
-    type: "int",
-    name: "evolveEveryNthFrame",
-    defaultValue: 30,
-    min: 1,
-    max: 100,
-    notAnUniform: true,
-}, {
-    type: "int",
-    name: "transitionFrames",
-    defaultValue: 30,
-    min: 1,
-    max: 100,
-}, {
-    type: "float",
-    name: "iBarrelDistortion",
-    defaultValue: 0.,
-    min: -1,
-    max: 1,
-}, {
-    type: "float",
-    name: "iBarrelDistortionExponent",
-    defaultValue: 1,
-    min: -2,
-    max: 20,
+const uniformsFor = () => [{
+    type: "boolean",
+    name: "showGrid",
+    defaultValue: true,
+    description: "Vergleich mit Auflösung der gol_init.png",
 }, {
     separator: "... zur freien Laune ..."
 }, {

@@ -6,7 +6,7 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol__basic.glsl";
+import fragmentShaderSource from "../shaders/gol_basic.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
@@ -26,6 +26,7 @@ export default {
             minFilter: gl.NEAREST,
             magFilter: gl.NEAREST,
             onLoaded: () => {
+                state.doInit = true;
                 state.resetSignal = true;
             },
         });
@@ -96,7 +97,7 @@ function render(gl, state) {
     gl.uniform1i(loc.iFrame, state.iFrame);
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
-    gl.uniform1i(loc.debugMode, state.debugMode);
+    gl.uniform1i(loc.showGrid, state.showGrid);
     gl.uniform1f(loc.iHashSeed, state.iHashSeed);
 
     gl.uniform1f(loc.iFree0, state.iFree0);

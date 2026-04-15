@@ -20,15 +20,12 @@ uniform sampler2D texInit;
 uniform sampler2D texPrevious;
 uniform int transitionFrames;
 uniform float iHashSeed;
-uniform float iCellBorder;
-uniform float iCellShape;
-uniform float iCellSmoothing;
 uniform sampler2D texRendered;
 uniform float iBarrelDistortion;
 uniform float iBarrelDistortionExponent;
-uniform float iGlitchMaxOffset;
-uniform float iGlitchChance;
-uniform float iGlitchVisibility;
+uniform float iShapeSize;
+uniform float iShapeSmooth;
+uniform float iHighLifeProbability;
 
 // falls ihr die brauchen könnt...
 uniform float iFree0;
@@ -190,14 +187,10 @@ struct CellInfo {
     vec2 st;
     bool alive;
     int neighbors;
-    // trying slight neighbor geometries :D
-    vec2 neighborCenter;
     // extra state!
     float hue;
     float transition;
     float spawnHue; // could just use the hue field, actually. anyway.
-    // LAB
-    float glitchedLength;
 };
 
 CellInfo checkCell(ivec2 cell) {
@@ -212,17 +205,9 @@ CellInfo checkCell(ivec2 cell) {
     info.alive = bool(prevState.r);
     info.hue = prevState.g;
     info.transition = prevState.b;
-    info.glitchedLength = prevState.w;
 
     info.spawnHue = 0.;
     info.neighbors = 0;
-    info.neighborCenter = c.yy;
-
-    // with the "float neighbors", we make it slightly more probably
-    // to get spawn towards towards the center. good idea? let's find out.
-    const float assymWeight = 0.3;
-    const vec2 assymCenter = c.ww;
-
     for (int ix = -1; ix < 2; ix++) {
         for (int iy = -1; iy < 2; iy++) {
             if (ix == 0 && iy == 0) {
@@ -235,7 +220,6 @@ CellInfo checkCell(ivec2 cell) {
                 info.neighbors++;
 
                 // for averaging
-                info.neighborCenter += stNeighbor;
                 info.spawnHue += neighborState.g;
             }
         }
@@ -243,10 +227,8 @@ CellInfo checkCell(ivec2 cell) {
     if (!info.alive) {
         if (info.neighbors == 0) {
             info.spawnHue = randomHue(info.st);
-            info.neighborCenter = info.st;
         } else {
             info.spawnHue /= float(info.neighbors);
-            info.neighborCenter /= float(info.neighbors);
         }
     }
     return info;
@@ -258,76 +240,60 @@ float smoothMinimum(float d1, float d2, float k)
     return mix( d2, d1, h ) - k*h*(1.0-h);
 }
 
-vec3 cellColor(CellInfo info) {
-    return hsv2rgb(vec3(360. * info.hue, 1., 1.));
-}
-
 void render(out vec3 outColor, in ivec2 cell, in vec2 st) {
     const float nothingHere = 10000.;
     float dMin = nothingHere;
     vec2 center;
 
     CellInfo info = checkCell(cell);
-//
-//    float d = length(st - info.st) - iCellShape;
-//    d -= iCellBorder;
-//    float opacity = smoothstep(0.01 + iCellSmoothing, 0., d);
-//
-//    opacity = step(0.2, opacity);
-//
-    float d;
-    float opacity = 1.;
-    vec3 col = c.yyy;
 
-//    if (info.transition > 0.) {
-//        opacity *= info.transition;
-//    } else if (info.transition < 0.) {
-//        opacity *= info.transition + 1.;
-//    } else {
+    float d = length(st - info.st) - 0.005 * (iShapeSize + 1.);
 
+    float opacity = smoothstep(0.01 * (1. + iShapeSmooth), 0., d);
+    if (info.transition > 0.) {
+        opacity *= info.transition;
+    } else if (info.transition < 0.) {
+        opacity *= info.transition + 1.;
+    } else if (!info.alive) {
         opacity = 0.;
-        int range = 4;
-        for (int ix = -range; ix <= range; ix++) {
-            for (int iy = -range; iy <= range; iy++) {
-                ivec2 otherCell = cell + ivec2(ix, iy);
-                CellInfo other = checkCell(otherCell);
-                if (!other.alive) {
-                    continue;
-                }
-                d = sdBox(st - other.st, (0.5 + iFree3) * gridStep);
-                d += 0.1 * iFree4;
-
-                d *= 100. * (1. + iFree2);
-                d = exp(-d);
-                col += cellColor(other) * d;
-
-                // dMin = min(d, dMin);
-                dMin = smoothMinimum(dMin, d, 0.025 + 0.025 * iFree5);
-            }
-        }
-        opacity = smoothstep(0.001, 0., dMin);
-
-//    }
-    col = col / (col + 1.);
-    col = pow(col, vec3(2.7));
-    outColor = col;
-
-///    opacity = pow(opacity, 1./2.7);
-    // vec3 color = cellColor(info);
-    // outColor = mix(c.yyy, color, opacity);
-
-    if (info.glitchedLength > 0.) {
-        d = abs(d) - 0.005;
-        opacity = 100. * iGlitchVisibility * info.glitchedLength;
-        outColor = mix(outColor, c.xxx, opacity * step(d, 0.));
     }
+    opacity = pow(opacity, 1./2.7);
+    vec3 color = hsv2rgb(vec3(360. * info.hue, 1., 1.));
+
+    outColor = mix(c.yyy, color, opacity);
+}
+
+vec2 barrelDistort(in vec2 st) {
+    vec2 p = st * 2. - 1.;
+    float r = length(p);
+    p *= 1. + iBarrelDistortion * pow(r, iBarrelDistortionExponent);
+    return p * 0.5 + 0.5;
 }
 
 #define DO_SOME_MIRRORING 0
 
 void postprocess(out vec3 col, in vec2 st) {
+    // Idea: some Mirroring?
+
+    #if DO_SOME_MIRRORING
+        bvec2 flip = bvec2(st.s > 0.5, st.t > 0.5);
+        st *= 2.;
+        st = fract(st);
+        if (flip.s) {
+            st.s = 1. - st.s;
+        }
+        if (flip.t) {
+            st.t = 1. - st.t;
+        }
+    #endif
+
+    // Idea: Barrel Distortion?
+    st = barrelDistort(st);
     vec4 image = texture(texRendered, st);
     col = image.rgb;
+    if (min(st.x, st.y) < 0. || max(st.x, st.y) > 1.) {
+        col = c.xxx;
+    }
 }
 
 #define PASS_EVOLVE_GAME 0
@@ -371,31 +337,26 @@ void main() {
         return;
     }
 
-    // Idea: Access Glitch?
-    vec2 glitch = hash22(16. * st, iTime);
-    float glitchLength = 0.;
-    if (length(glitch) < iGlitchChance) {
-        vec2 offset = gridStep * normalize(glitch) * iGlitchMaxOffset;
-        glitchLength = length(offset);
-        st += offset;
-        // determine again:
-        cell = ivec2(st * gridSize);
-    }
-
     CellInfo previous = checkCell(cell);
     bool alive = previous.alive;
 
     if (doEvolve) {
-
+        // normales B3/S23
         if (previous.alive) {
-            // rules 1-3
-            alive = previous.neighbors >= 2
-                && previous.neighbors <= 3;
+            alive = previous.neighbors == 2
+                 || previous.neighbors == 3;
         } else {
-            // rule 4
             alive = previous.neighbors == 3;
         }
 
+        // "High Life" B36/S23 je nach Wahrscheinlichkeit erlauben
+        float rnd = abs(hash(83. * iTime));
+        bool useHighLife = rnd < iHighLifeProbability;
+        if (useHighLife) {
+            if (previous.alive) {
+                alive = alive || previous.neighbors == 6;
+            }
+        }
     }
 
     if (spawnRandomly) {
@@ -440,5 +401,4 @@ void main() {
     fragColor.r = float(alive);
     fragColor.g = hue;
     fragColor.b = transition;
-    fragColor.a = glitchLength;
 }

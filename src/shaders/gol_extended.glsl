@@ -19,6 +19,8 @@ uniform int displayMode;
 uniform sampler2D texInit;
 uniform sampler2D texPrevious;
 uniform float iHashSeed;
+uniform float iBoxExtend;
+uniform float iBoxEnvelope;
 
 // falls ihr die brauchen könnt...
 uniform float iFree0;
@@ -54,50 +56,6 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-// OKLab / OKLCh Conversions
-const mat3 Msrgb = mat3(
-        0.4124564, 0.2126729, 0.0193339,
-        0.3575761, 0.7151522, 0.1191920,
-        0.1804375, 0.0721750, 0.9503041
-    ), M1 = mat3(
-        0.8189330101, 0.0329845436, 0.0482003018,
-        0.3618667424, 0.9293118715, 0.2643662691,
-        -0.1288597137, 0.0361456387, 0.6338517070
-    ), M2 = mat3(
-        0.2104542553, 1.9779984951, 0.0259040371,
-        0.7936177850, -2.4285922050, 0.7827717662,
-        -0.0040720468, 0.4505937099, -0.8086757660
-    );
-vec3 rgb2xyz_srgb(vec3 rgb) {
-    return Msrgb * rgb;
-}
-vec3 xyz2rgb_srgb(vec3 xyz) {
-    return inverse(Msrgb) * xyz;
-}
-vec3 xyz2oklab(vec3 xyz) {
-    return M2 * pow(M1 * xyz, c.xxx/3.);
-}
-vec3 oklab2xyz(vec3 lab) {
-    return inverse(M1) * pow(inverse(M2) * lab, 3.*c.xxx);
-}
-vec3 oklab2oklch(vec3 lab) {
-    return vec3(lab.x, length(lab.yz), atan(lab.z, lab.y));
-}
-vec3 oklch2oklab(vec3 lch) {
-    return vec3(lch.x, lch.y * vec2(cos(lch.z), sin(lch.z)));
-}
-vec3 rgb2oklab(vec3 rgb) {
-    return xyz2oklab(rgb2xyz_srgb(rgb));
-}
-vec3 oklab2rgb(vec3 oklab) {
-    return xyz2rgb_srgb(oklab2xyz(oklab));
-}
-vec3 rgb2oklch(vec3 rgb) {
-    return oklab2oklch(xyz2oklab(rgb2xyz_srgb(rgb)));
-}
-vec3 oklch2rgb(vec3 lch) {
-    return xyz2rgb_srgb(oklab2xyz(oklch2oklab(lch)));
-}
 
 float hash(float n) {
     // Pseudozufall = reicht dem menschlichen Auge als "zufällig genug"
@@ -252,21 +210,16 @@ void render(out vec3 col, in ivec2 cell, in vec2 st) {
             if (!here.alive) {
                 continue;
             }
-            // float d = length(st - here.st) - (iFree0 + 0.001);
+            // float d = length(st - here.st) - (iBoxExtend + 0.001);
             float d = sdBox(st - here.st, 0.5 * gridStep);
-            d -= 0.01 * iFree0;
+            d -= 0.01 * iBoxExtend;
 
-            dMin = smoothMinimum(d, dMin, iFree1);
-//            if (d < dMin) {
-//                dMin = d;
-//                center = here.st;
-//            } else {
-//                d = smoothMinimum(d, dMin, iFree1);
-//            }
+            /// dMin = min(d, dMin);
+            dMin = smoothMinimum(d, dMin, iBoxEnvelope);
         }
     }
 
-    float aliveMix = smoothstep(0.001 + iFree2, 0., dMin);
+    float aliveMix = smoothstep(0.001, 0., dMin);
     // aliveMix *= clamp(1. - 10. * info.age, 0., 1.);
     aliveMix *= exp(-info.age / MAX_CELL_AGE);
     // vec3 aliveCol = c.xxx;
