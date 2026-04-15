@@ -3,15 +3,11 @@ precision highp float;
 
 out vec4 fragColor;
 uniform vec2 iResolution;
-uniform vec2 texelSize;
 uniform float iTime;
-uniform float iDeltaTime;
 uniform int iFrame;
 uniform int iPassIndex;
-uniform vec4 iMouse;
-uniform bool iMouseDown;
 uniform vec3 iMouseHover;
-uniform float iHashSeed;
+uniform bool iMouseDown;
 uniform bool showGrid;
 uniform sampler2D texInit;
 uniform sampler2D texPrevious;
@@ -33,31 +29,6 @@ const float pi = 3.14159;
 const float twoPi = 2. * pi;
 
 vec2 gridStep;
-
-float hash(float n) {
-    // Pseudozufall = reicht dem menschlichen Auge als "zufällig genug"
-    // -> GLSL ist aber bei jedem Aufruf streng deterministisch.
-    return fract(sin(n + iHashSeed) * 43758.5453123);
-}
-
-float perlin1D(float x) {
-    // Perlin Noise = ein "ausgewaschenes" Rauschen
-    float i = floor(x);
-    float f = fract(x);
-    float g0 = hash(i) * 2.0 - 1.0;
-    float g1 = hash(i + 1.0) * 2.0 - 1.0;
-    float d0 = g0 * f;
-    float d1 = g1 * (f - 1.0);
-    float u = smoothstep(0., 1., f);
-    return mix(d0, d1, u);
-}
-
-vec2 hash22(vec2 p, float seed)
-{
-    p = p*mat2(127.1,311.7,269.5,183.3);
-    p = -1.0 + 2.0 * fract(sin(p + seed)*43758.5453123);
-    return sin(p*6.283);
-}
 
 float hash12(vec2 p, float seed) {
     p = vec2(dot(p, vec2(127.1, 311.7)) + seed * 17.3, seed * 23.7);
