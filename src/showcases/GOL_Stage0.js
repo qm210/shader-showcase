@@ -45,7 +45,6 @@ function render(gl, state) {
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
     gl.uniform1i(loc.showGrid, state.showGrid);
-    gl.uniform1f(loc.iHashSeed, state.iHashSeed);
 
     gl.uniform1f(loc.iFree0, state.iFree0);
     gl.uniform1f(loc.iFree1, state.iFree1);
@@ -62,9 +61,6 @@ function render(gl, state) {
 }
 
 const uniformsFor = () => [{
-    type: "label",
-    name: "iTime",
-}, {
     type: "boolean",
     name: "showGrid",
     defaultValue: true,

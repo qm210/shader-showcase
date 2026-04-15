@@ -11,9 +11,8 @@ uniform int iPassIndex;
 uniform vec4 iMouse;
 uniform bool iMouseDown;
 uniform vec3 iMouseHover;
+uniform float iHashSeed;
 uniform bool showGrid;
-uniform bool showAliveState;
-uniform bool showNeighborCountAsHue;
 
 uniform sampler2D texInit;
 
@@ -37,7 +36,9 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-void addGrid(inout vec3 col, vec2 st, vec2 gridStep) {
+vec2 gridStep;
+
+void addGrid(inout vec3 col, vec2 st) {
     const vec3 gridColor = c.yyy;
 
     vec2 d = mod(st, gridStep);
@@ -59,27 +60,11 @@ struct CellInfo {
     int neighbors;
 };
 
-void main() {
-    vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
-    vec2 st = gl_FragCoord.xy / iResolution.xy;
-
-    fragColor = initialImage(st);
-
-    // pro Zelle ist nur die mittlere Koordinate relevant
-    vec2 gridSize = vec2(textureSize(texInit, 0));
-    ivec2 cell = ivec2(st * gridSize);
-    vec2 gridStep = 1. / gridSize;
+CellInfo checkCell(ivec2 cell) {
     vec2 stCell = (vec2(cell) + 0.5) * gridStep;
 
     CellInfo info;
     info.alive = initialImage(stCell).r < 0.1;
-
-    if (showAliveState) {
-        const vec3 DEAD = c.yyy;
-        const vec3 LIVES = c.yxy;
-        fragColor.rgb = info.alive ? LIVES : DEAD;
-    }
-
     info.neighbors = 0;
     for (int ix = -1; ix < 2; ix++) {
         for (int iy = -1; iy < 2; iy++) {
@@ -92,22 +77,37 @@ void main() {
             }
         }
     }
+    return info;
+}
 
-    if (showNeighborCountAsHue) {
-        float hue;
-        if (info.neighbors < 2) {
-            hue = 0.;
-        } else if (info.neighbors == 2) {
-            hue = 60.;
-        } else if (info.neighbors == 3) {
-            hue = 90.;
-        } else if (info.neighbors > 3){
-            hue = -60.;
-        }
-        fragColor.rgb = hsv2rgb(vec3(hue, 1., 1.));
+void main() {
+    vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
+    vec2 st = gl_FragCoord.xy / iResolution.xy;
+
+    fragColor = initialImage(st);
+
+    // pro Zelle ist nur die mittlere Koordinate relevant
+    vec2 gridSize = vec2(textureSize(texInit, 0));
+    ivec2 cell = ivec2(st * gridSize);
+    // gridStep jetzt global (nur für weniger Tipparbeit):
+    gridStep = 1. / gridSize;
+
+    CellInfo previous = checkCell(cell);
+
+    bool alive = previous.alive;
+
+    /// https://de.wikipedia.org/wiki/Conways_Spiel_des_Lebens#Die_Spielregeln
+    if (previous.alive) {
+        alive = previous.neighbors == 2 || previous.neighbors == 3;
+    } else {
+        alive = previous.neighbors == 3;
     }
 
+    const vec3 DEAD = c.yyy;
+    const vec3 LIVES = c.yxy;
+    fragColor.rgb = alive ? LIVES : DEAD;
+
     if (showGrid) {
-        addGrid(fragColor.rgb, st, gridStep);
+        addGrid(fragColor.rgb, st);
     }
 }

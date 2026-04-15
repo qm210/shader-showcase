@@ -86,9 +86,8 @@ vec4 initializeFrame(in vec2 st) {
 }
 
 bool isAlive(vec2 st) {
-    vec4 color = texture(texPrevious, st);
-    // Textur (RGBA = 4x float) irgendwie auf 1x bool reduzieren:
-    return color.r < 1.;
+    // Textur (RGBA-vec4) irgendwie auf bool reduzieren:
+    return texture(texPrevious, st).r < 1.;
 }
 
 struct CellInfo {

@@ -11,7 +11,6 @@ uniform int iPassIndex;
 uniform vec4 iMouse;
 uniform bool iMouseDown;
 uniform vec3 iMouseHover;
-uniform float iHashSeed;
 uniform bool showGrid;
 
 uniform sampler2D texInit;
@@ -55,9 +54,6 @@ struct CellInfo {
     bool alive;
     int neighbors;
 };
-
-#define PASS_EVOLVE_GAME 0
-#define PASS_RENDER_SCREEN 1
 
 void main() {
     vec2 uv = (2.0 * gl_FragCoord.xy - iResolution.xy) / iResolution.y;

@@ -13,8 +13,6 @@ import showcaseGOL0 from "./showcases/GOL_Stage0.js";
 import showcaseGOL1 from "./showcases/GOL_Stage1.js";
 import showcaseGOL2 from "./showcases/GOL_Stage2.js";
 import showcaseGOL3 from "./showcases/GOL_Stage3.js";
-import showcaseGOL4 from "./showcases/GOL_Stage4.js";
-import showcaseGOL5 from "./showcases/GOL_Stage5.js";
 import showcaseGOL from "./showcases/GOL_Basic.js";
 import showcaseGOL_Y from "./showcases/GOL_Extendedl.js";
 import showcaseGOL_Z from "./showcases/GOL_Advanced.js";
@@ -80,8 +78,6 @@ const MAP_PATH = {
     "gol1": showcaseGOL1,
     "gol2": showcaseGOL2,
     "gol3": showcaseGOL3,
-    "gol4": showcaseGOL4,
-    "gol5": showcaseGOL5,
     // ... wohin die Reise gehen könnte:
     "gol": showcaseGOL,
     "gol999": showcaseGOL_Y,
