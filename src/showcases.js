@@ -17,6 +17,7 @@ import golBasic from "./showcases/GOL_Basic.js";
 import golExtended from "./showcases/GOL_Extended.js";
 import golExtended2 from "./showcases/GOL_Extended2.js";
 import golPlayground from "./showcases/GOL_Playground.js";
+import golTorus3D from "./showcases/GOL_Torus3D.js";
 import showcase7a from "./showcases/7a_Noise.js";
 import showcase7b from "./showcases/7b_NoiseExtended.js";
 import showcase8a from "./showcases/8a_RayMarching_Start.js";
@@ -83,6 +84,7 @@ const MAP_PATH = {
     "golX": golExtended,
     "golY": golExtended2,
     "golZ": golPlayground,
+    "gol3d": golTorus3D,
 };
 
 export function selectShowcase() {

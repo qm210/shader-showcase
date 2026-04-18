@@ -72,7 +72,8 @@ void main() {
     vec2 stCell = (vec2(cell) + 0.5) * gridStep;
 
     CellInfo info;
-    info.alive = initialImage(stCell).r < 0.1;
+    // Die Bedingung ist eine von vielen möglichen, sie muss nur sinnvoll sein
+    info.alive = initialImage(stCell).r == 0.0;
 
     if (showAliveState) {
         const vec3 DEAD = c.yyy;
@@ -87,7 +88,7 @@ void main() {
                 continue;
             }
             vec2 stNeighbor = stCell + gridStep * vec2(ix, iy);
-            if (initialImage(stNeighbor).r < 0.1) {
+            if (initialImage(stNeighbor).r == 0.0) {
                 info.neighbors++;
             }
         }

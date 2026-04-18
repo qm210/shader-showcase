@@ -22,7 +22,7 @@ export default {
             wrapS: gl.CLAMP_TO_EDGE,
             wrapT: gl.CLAMP_TO_EDGE,
             minFilter: gl.LINEAR,
-            magFilter: gl.LINEAR,
+            magFilter: gl.NEAREST,
         });
         state.location.texInit = gl.getUniformLocation(state.program, "texInit");
 
