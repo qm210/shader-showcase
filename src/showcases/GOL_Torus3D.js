@@ -49,6 +49,7 @@ export default {
         state.doInit = true;
         state.doEvolve = false;
         state.spawnRandomly = false;
+        state.debugFlag = false;
         state.drawByMouse = false;
         return state;
     },
@@ -74,7 +75,7 @@ function render(gl, state) {
     gl.uniform2fv(loc.iTorusRadii, state.iTorusRadii);
     gl.uniform1f(loc.iTorusRotate, state.iTorusRotate);
     gl.uniform2fv(loc.iTorusSpin, state.iTorusSpin);
-    gl.uniform1i(loc.iTorusRepeat, state.iTorusRepeat);
+    gl.uniform2fv(loc.iTorusRepeat, state.iTorusRepeat);
     gl.uniform1f(loc.iSphereSize, state.iSphereSize);
     gl.uniform1i(loc.makeSphereColorful, state.makeSphereColorful);
     gl.uniform1i(loc.makeSphereTextured, state.makeSphereTextured);
@@ -118,7 +119,7 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, state.texSpace);
     gl.uniform1i(loc.texSpace, 2);
 
-    if (state.isRunning && state.iFrame % 30 === 0) {
+    if (state.iFrame % state.evolveEveryNthFrame === 0) {
         state.doEvolve = true;
     }
 
@@ -152,35 +153,43 @@ function render(gl, state) {
 }
 
 const uniforms = [{
+    type: "int",
+    name: "evolveEveryNthFrame",
+    defaultValue: 30,
+    min: 1,
+    max: 200,
+    notAnUniform: true,
+}, {
     separator: "Parameter der Szene"
 }, {
     type: "vec2",
     name: "iTorusRadii",
-    defaultValue: [0.5,  0.25],
+    defaultValue: [0.54,  0.33],
     min: 0,
     max: 1.,
 }, {
     type: "float",
     name: "iTorusRotate",
-    defaultValue: 50,
+    defaultValue: -80,
     min: -180,
     max: 180,
 }, {
     type: "vec2",
     name: "iTorusSpin",
-    defaultValue: [0, 0],
+    defaultValue: [-42, 49],
     min: -90,
     max: 90,
 }, {
-    type: "int",
+    type: "vec2",
     name: "iTorusRepeat",
-    defaultValue: 1,
+    defaultValue: [2, 2],
     min: 1,
     max: 16,
+    step: 1
 }, {
     type: "bool",
     name: "debugFlag",
-    description: "",
+    description: "Für die Entwicklung -- in Ermangelung echter Breakpoints...",
     defaultValue: false,
 }, {
     separator: "Camera Setup (Ray Origin & Direction)"
@@ -228,38 +237,32 @@ const uniforms = [{
 }, {
     type: "vec3",
     name: "vecDirectionalLight",
-    defaultValue: [-0.4, 0.8, -0.4],
+    defaultValue: [0.54, 0.22, 0.81],
     min: -1,
     max: 1,
     normalize: true
 }, {
     type: "float",
     name: "iDiffuseAmount",
-    defaultValue: 2.2,
+    defaultValue: 3.2,
     min: 0,
     max: 20,
 }, {
     type: "float",
     name: "iSpecularAmount",
-    defaultValue: 1.0,
+    defaultValue: 2.0,
     min: 0,
     max: 20,
 }, {
     type: "float",
     name: "iSpecularShininess",
-    defaultValue: 25,
+    defaultValue: 7,
     min: 0.1,
     max: 40,
 }, {
     type: "float",
-    name: "iFloorSpecularCoefficient",
-    defaultValue: 0.4,
-    min: 0.,
-    max: 2.,
-}, {
-    type: "float",
     name: "iAmbientAmount",
-    defaultValue: 0.0,
+    defaultValue: 0.05,
     min: 0.,
     max: 1.,
 }, {
@@ -361,12 +364,6 @@ const uniforms = [{
 
 const toggles = (state) => [{
     label: () =>
-        "Running: " + state.isRunning,
-    onClick: () => {
-        state.isRunning = !state.isRunning;
-    }
-}, {
-    label: () =>
         "Init Fresh",
     onClick: () => {
         state.doInit = true;
@@ -378,6 +375,12 @@ const toggles = (state) => [{
         state.spawnRandomly = true;
         console.log("[RANDOM?]", state.spawnRandomly, state);
     },
+}, {
+    label: () =>
+        "Debug Mode: " + state.debugFlag,
+    onClick: () => {
+        state.debugFlag = !state.debugFlag;
+    }
 }, {
     label: () =>
         "Draw by Mouse? " + state.drawByMouse,

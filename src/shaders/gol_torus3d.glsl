@@ -21,7 +21,7 @@ uniform bool debugFlag;
 uniform vec2 iTorusRadii;
 uniform float iTorusRotate;
 uniform vec2 iTorusSpin;
-uniform int iTorusRepeat;
+uniform vec2 iTorusRepeat;
 
 uniform sampler2D texFloof;
 uniform sampler2D texSpace;
@@ -31,7 +31,6 @@ uniform vec3 vecDirectionalLight;
 uniform float iDiffuseAmount;
 uniform float iSpecularAmount;
 uniform float iSpecularShininess;
-uniform float iFloorSpecularCoefficient;
 uniform float iAmbientAmount;
 uniform float iShadowHardness;
 uniform int iShadowMarchingSteps;
@@ -268,9 +267,6 @@ struct Hit {
 #define NOTHING_HIT -1
 #define FLOOR_MATERIAL 1
 #define SPHERE_MATERIAL 2
-#define ARROW_MATERIAL_X 3
-#define ARROW_MATERIAL_Y 4
-#define ARROW_MATERIAL_Z 5
 #define GOL_MATERIAL 9
 
 Hit sphere(vec3 pos, float radius) {
@@ -374,42 +370,12 @@ float stackedPerlin2D(vec2 uv, float seed) {
     return n;
 }
 
-void addCoordinateAxes(inout Hit hit, vec3 pos, vec3 axesOrigin) {
-    // Koordinatenachsen als 3D-Pfeile rendern
-    const vec3 axisX = c.xyy;
-    const vec3 axisY = c.yxy;
-    const vec3 axisZ = c.yyx;
-    const float axesSize = 1.;
-    float d = sdVectorArrow(pos, axesOrigin, axisX, 1., axesSize);
-    if (d < hit.distance) {
-        hit = Hit(d, ARROW_MATERIAL_X);
-    }
-    d = sdVectorArrow(pos, axesOrigin, axisY, 1., axesSize);
-    if (d < hit.distance) {
-        hit = Hit(d, ARROW_MATERIAL_Y);
-    }
-    d = sdVectorArrow(pos, axesOrigin, axisZ, 1., axesSize);
-    if (d < hit.distance) {
-        hit = Hit(d, ARROW_MATERIAL_Z);
-    }
-}
-
 const vec3 torusCenter = vec3(0., 1., 1.);
 mat3 torusRotate;
 
 Hit scene(in vec3 pos)
 {
     Hit hit = Hit(pos.y, NOTHING_HIT);
-    addCoordinateAxes(hit, pos, vec3(-2., 0.01, 2.));
-
-    /* Remember: Die 2D-Szene bestand immer aus den Schritten
-       - minimale SDF ausrechnen (nach Koordinatentransformation)
-       - mix(farbe1, farbe2, ...irgendwie vom Abstand...)
-       in 3D, mit Beleuchtung, Verdeckung, ... sparen wir Aufwand:
-       - minimale SDF ausrechnen (nach Koordinatentransformation)
-       - dabei erstmal nur merken, was getroffen wurde ("material")
-       - Shading (Farbfindung) passiert im Nachgang ("deferred")
-    */
 
     float yAngle = radians(iTorusSpin.x) * iTime;
     float yTilt = radians(iTorusSpin.y) * iTime;
@@ -429,16 +395,6 @@ Hit raymarch(Ray ray)
     float tmax = iMarchingMax;
 
     Hit hit = Hit(-1.0, NOTHING_HIT);
-
-    /// Was analytisch berechnet werden kann, sollte auch.
-    /// -> Boden ist in XZ-Ebene -> Dreisatz reicht :)
-    const float floorY = 0.;
-    float floorDistance = (floorY - ray.origin.y) / ray.dir.y;
-    if (floorDistance > 0.)
-    {
-        tmax = min(tmax, floorDistance);
-        hit = Hit(floorDistance, FLOOR_MATERIAL);
-    }
     Hit beforeMarching = hit;
 
     float t = tmin;
@@ -499,8 +455,7 @@ const vec3 lightColor = vec3(1.30, 1.00, 0.80);
 vec3 background(in Ray ray) {
     vec3 col = c.yyy;
     col = texture(texSpace, ray.dir.xy).rgb;
-    // Gammakorrektur (je nach Bilddatenformat nötig)
-    col = pow(col, vec3(2.8 / 1.));
+    col = pow(col, vec3(3.24 / 1.));
     return col;
 }
 
@@ -529,9 +484,7 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
             /// Zum Glück haben wir ihn uns sehr einfach gelegt:
             normal = vec3(0.0, 1.0, 0.0);
 
-            specularCoeff = iFloorSpecularCoefficient;
-
-            // Schachbrettmuster -- warum?
+            // Schachbrettmuster
             float f = mod(floor(2. * rayPos.x) + floor(2. * rayPos.z), 2.);
             col = 0.15 + f * vec3(0.05);
             break;
@@ -548,24 +501,22 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
             break;
         }
         case GOL_MATERIAL: {
-            col = c.yww;
             // Vorgehen ähnlich wie bei sdf-Minimum auswerten selbst:
             // 1. Welt-Koordinaten in die transformieren, in der der Torus zentral liegt
             vec3 posTorus = torusRotate * (rayPos - torusCenter);
+            // 2. Form auswerten, dieses Mal also die ST-Koordinaten an der Oberfläche
             vec2 texCoord = texCoordTorus(posTorus, iTorusRadii);
-            texCoord *= float(iTorusRepeat);
-            col = isAlive(texCoord) ? c.ywx : vec3(0., 0., 0.2);
+            // ... wiederholen -- nur für die Veranschaulichung.
+            //     Hängt von Texturparametern WRAP_S & WRAP_T ab! (-> REPEAT/MIRRORED_REPEAT)
+            texCoord *= iTorusRepeat;
+
+            if (isAlive(texCoord)) {
+                col = vec3(2., 4., 9.);
+            } else {
+                col = vec3(0., 0., 0.2);
+            }
             break;
         }
-        case ARROW_MATERIAL_X:
-            col = c.xyy;
-            break;
-        case ARROW_MATERIAL_Y:
-            col = c.yxy;
-            break;
-        case ARROW_MATERIAL_Z:
-            col = c.yyx;
-            break;
     }
 
     /// Beleuchtungsterme aufsummieren
@@ -608,112 +559,6 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
     col = mix(col, c.yyy, fog);
 }
 
-float blob(vec2 uv, vec2 p, float r)
-{
-    float d = length(uv - p);
-    return 1.0 - smoothstep(r * 0.5, r, d);
-}
-
-float sat(float x) { return clamp(x, 0.0, 1.0); }
-
-float disc(vec2 p, vec2 c, float r, float blur)
-{
-    float d = length(p - c);
-    return 1.0 - smoothstep(r - blur, r + blur, d);
-}
-
-float ring(vec2 p, vec2 c, float r, float w, float blur)
-{
-    float d = abs(length(p - c) - r);
-    return 1.0 - smoothstep(w - blur, w + blur, d);
-}
-
-float ellipseGlow(vec2 p, vec2 c, vec2 scale, float k)
-{
-    vec2 q = (p - c) / scale;
-    float d = dot(q, q);
-    return pow(sat(1.0 - d), k);
-}
-
-float streakH(vec2 uv, vec2 c, float width, float len, float sharp)
-{
-    float a = pow(sat(1.0 - abs(uv.y - c.y) / width), sharp);
-    float b = pow(sat(1.0 - abs(uv.x - c.x) / len), 1.5);
-    return a * b;
-}
-
-vec3 spectral(float t)
-{
-    vec3 a = vec3(1.0, 0.45, 0.15);
-    vec3 b = vec3(0.15, 0.65, 1.0);
-    return mix(a, b, t);
-}
-
-vec3 ghost(vec2 uv, vec2 p, float size, vec3 col, float stretch, float powerV)
-{
-    float g1 = ellipseGlow(uv, p, vec2(size * stretch, size), powerV);
-    float g2 = ring(uv, p, size * 0.55, size * 0.08, size * 0.06);
-    float g3 = disc(uv, p, size * 0.18, size * 0.12);
-    return col * (0.75 * g1 + 0.35 * g2 + 1.20 * g3);
-}
-
-vec3 lensFlare(vec2 uv, vec2 sunPos, vec3 lightColor)
-{
-    vec2 center = c.yy;
-    vec2 axis = center - sunPos;
-    float distC = length(sunPos);
-
-    vec3 flare = c.yyy;
-
-    // fade a bit near edges, strongest near center
-    float centerBoost = 1.0 - smoothstep(0.2, 1.2, distC);
-
-    // source bloom
-    float aura  = disc(uv, sunPos, 0.180, 0.140);
-    flare += vec3(0.8, 0.9, 1.0) * 0.45 * aura;
-
-    // chromatic fringe around source
-    flare += vec3(1.0, 0.35, 0.15) * ring(uv, sunPos + vec2( 0.004, 0.0), 0.040, 0.006, 0.010) * 0.60;
-    flare += vec3(0.2, 0.7, 1.0) * ring(uv, sunPos + vec2(-0.004, 0.0), 0.048, 0.006, 0.012) * 0.55;
-
-    // hero anamorphic streak
-    float st1 = streakH(uv, sunPos, 0.010, 1.20, 7.0);
-    float st2 = streakH(uv, sunPos, 0.030, 0.55, 4.0);
-    flare += vec3(0.55, 0.75, 1.0) * 0.90 * st1;
-    flare += vec3(1.00, 0.85, 0.60) * 0.35 * st2;
-
-    // big halo between sun and center
-    vec2 haloPos = mix(sunPos, center, 0.35);
-    flare += lightColor * 0.30 * ring(uv, haloPos, 0.24, 0.020, 0.035);
-    flare += vec3(0.3, 0.7, 1.0) * 0.18 * ring(uv, haloPos, 0.31, 0.015, 0.040);
-
-    // ghost chain with varied shapes/tints
-    vec2 g1 = sunPos + axis * 0.28;
-    vec2 g2 = sunPos + axis * 0.55;
-    vec2 g3 = sunPos + axis * 0.92;
-    vec2 g4 = sunPos + axis * 1.28;
-
-//    flare += ghost(uv, g1, 0.060, vec3(1.00, 0.55, 0.25), 1.8, 1.6) * 0.55;
-    flare += ghost(uv, g2, 0.090, vec3(0.30, 0.75, 1.00), 0.8, 1.4) * 0.45;
-//    flare += ghost(uv, g3, 0.050, vec3(1.00, 0.25, 0.55), 2.4, 2.0) * 0.35;
-    flare += ghost(uv, g4, 0.120, vec3(0.90, 0.85, 0.55), 1.0, 1.2) * 0.22;
-
-    // subtle tiny glints along the axis
-    for (int i = 0; i < 3; ++i)
-    {
-        float fi = float(i) / 4.0;
-        vec2 gp = mix(sunPos, center - axis * 0.35, fi);
-        float sz = mix(0.008, 0.025, fract(fi * 13.7));
-        vec3  gc = spectral(fi) * 0.18;
-        flare += gc * disc(uv, gp, sz, sz * 1.8);
-    }
-
-    // overall shaping
-    flare *= mix(0.35, 1.0, centerBoost);
-
-    return flare;
-}
-
 vec3 renderPass(vec2 uv) {
     Ray ray;
     ray.origin = iCameraOffset;
@@ -725,25 +570,14 @@ vec3 renderPass(vec2 uv) {
 
     if (isBackground) {
         col = background(ray);
-    }
 
-    vec3 sunDir = vecDirectionalLight;
-    float sunOverlap = max(dot(ray.dir, sunDir), 0.);
-
-    ray.dir = sunDir;
-    Hit sunHit = raymarch(ray);
-
-    if (isBackground) {
         // Sonne hinzufügen
+        vec3 sunDir = vecDirectionalLight;
+        float sunOverlap = max(dot(ray.dir, sunDir), 0.);
         float sunCore = pow(sunOverlap, 1800.);
         float sunAura = pow(sunOverlap, 20.);
         vec3 colSun = lightColor * (sunCore + 0.05 * sunAura);
         col += colSun;
-    }
-
-    if (sunHit.material == NOTHING_HIT) {
-        vec2 uvSun = iFocalLength * sunDir.xy / max(sunDir.z, 1.e-4);
-        col += 0.66 * lensFlare(uv, uvSun, lightColor);
     }
 
     // Gamma Grading:
