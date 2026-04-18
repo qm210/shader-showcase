@@ -255,15 +255,15 @@ float opSmoothUnion(float d1, float d2, float k)
 //------------------------------------------------------------------
 // Eigene structs -- beste Idee ever für cleane Shader
 
-    struct Ray {
-        vec3 origin;
-        vec3 dir;
-    };
+struct Ray {
+    vec3 origin;
+    vec3 dir;
+};
 
-    struct Hit {
-        float distance; // <-- heißt oft nur "t". Wir machen es _hier_mal_explizit_.
-        int material;
-    };
+struct Hit {
+    float distance; // <-- heißt oft nur "t". Wir machen es _hier_mal_explizit_.
+    int material;
+};
 
 #define NOTHING_HIT -1
 #define FLOOR_MATERIAL 1
@@ -494,23 +494,24 @@ vec3 calcNormal( in vec3 pos )
     );
 }
 
+const vec3 lightColor = vec3(1.30, 1.00, 0.80);
+
 vec3 background(in Ray ray) {
     vec3 col = c.yyy;
-    vec3 dir = rotZ(-0.13 * iTime) * ray.dir;
-    col = texture(texSpace, dir.xy).rgb;
-    col = pow(col, vec3(2.8/1.));
+    col = texture(texSpace, ray.dir.xy).rgb;
+    // Gammakorrektur (je nach Bilddatenformat nötig)
+    col = pow(col, vec3(2.8 / 1.));
     return col;
 }
 
 bool isAlive(vec2 st);
 
-vec3 renderViaRayMarching(in Ray ray) {
-    vec3 col = background(ray);
-
+void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
     Hit hit = raymarch(ray);
 
     if (hit.material == NOTHING_HIT) {
-        return col;
+        isBackground = true;
+        return;
     }
 
     vec3 rayPos = ray.origin + hit.distance * ray.dir;
@@ -528,10 +529,11 @@ vec3 renderViaRayMarching(in Ray ray) {
             /// Zum Glück haben wir ihn uns sehr einfach gelegt:
             normal = vec3(0.0, 1.0, 0.0);
 
+            specularCoeff = iFloorSpecularCoefficient;
+
             // Schachbrettmuster -- warum?
             float f = mod(floor(2. * rayPos.x) + floor(2. * rayPos.z), 2.);
             col = 0.15 + f * vec3(0.05);
-            specularCoeff = iFloorSpecularCoefficient;
             break;
         }
         case SPHERE_MATERIAL: {
@@ -573,8 +575,7 @@ vec3 renderViaRayMarching(in Ray ray) {
     //        ... TODO Bonusfrage: Wie macht man diese Lichtquelle selbst sichtbar?
     {
         // Vorzeichenkonvention: lightDirection geht ZUR Lichtquelle.
-        vec3  lightDirection = normalize(vecDirectionalLight);
-        const vec3 lightColor = vec3(1.30, 1.00, 0.80);
+        vec3 lightDirection = normalize(vecDirectionalLight);
 
         // Beitrag 1: "Diffuse" Lichtstreuung, unabhängig _Blickrichtung_
         float diffuse = dot(normal, lightDirection);
@@ -598,12 +599,119 @@ vec3 renderViaRayMarching(in Ray ray) {
 
     col = shade;
 
-    // "Distanznebel", was sagt uns allein dieser Begriff?
-    const vec3 colFog = c.yyy;
-    float fogOpacity = 1.0 - exp(-iDistanceFogDensity * pow(hit.distance, 3.0));
-    col = mix(col, colFog, fogOpacity);
+    // Distanznebel mit "Hintergrund, wenn zu dicht" (wegen Übergang)
+    float fog = 1.0 - exp(-iDistanceFogDensity * pow(hit.distance, 3.0));
+    isBackground = fog > 0.99;
+    if (isBackground) {
+        return;
+    }
+    col = mix(col, c.yyy, fog);
+}
 
-    return col;
+float blob(vec2 uv, vec2 p, float r)
+{
+    float d = length(uv - p);
+    return 1.0 - smoothstep(r * 0.5, r, d);
+}
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+
+float disc(vec2 p, vec2 c, float r, float blur)
+{
+    float d = length(p - c);
+    return 1.0 - smoothstep(r - blur, r + blur, d);
+}
+
+float ring(vec2 p, vec2 c, float r, float w, float blur)
+{
+    float d = abs(length(p - c) - r);
+    return 1.0 - smoothstep(w - blur, w + blur, d);
+}
+
+float ellipseGlow(vec2 p, vec2 c, vec2 scale, float k)
+{
+    vec2 q = (p - c) / scale;
+    float d = dot(q, q);
+    return pow(sat(1.0 - d), k);
+}
+
+float streakH(vec2 uv, vec2 c, float width, float len, float sharp)
+{
+    float a = pow(sat(1.0 - abs(uv.y - c.y) / width), sharp);
+    float b = pow(sat(1.0 - abs(uv.x - c.x) / len), 1.5);
+    return a * b;
+}
+
+vec3 spectral(float t)
+{
+    vec3 a = vec3(1.0, 0.45, 0.15);
+    vec3 b = vec3(0.15, 0.65, 1.0);
+    return mix(a, b, t);
+}
+
+vec3 ghost(vec2 uv, vec2 p, float size, vec3 col, float stretch, float powerV)
+{
+    float g1 = ellipseGlow(uv, p, vec2(size * stretch, size), powerV);
+    float g2 = ring(uv, p, size * 0.55, size * 0.08, size * 0.06);
+    float g3 = disc(uv, p, size * 0.18, size * 0.12);
+    return col * (0.75 * g1 + 0.35 * g2 + 1.20 * g3);
+}
+
+vec3 lensFlare(vec2 uv, vec2 sunPos, vec3 lightColor)
+{
+    vec2 center = c.yy;
+    vec2 axis = center - sunPos;
+    float distC = length(sunPos);
+
+    vec3 flare = c.yyy;
+
+    // fade a bit near edges, strongest near center
+    float centerBoost = 1.0 - smoothstep(0.2, 1.2, distC);
+
+    // source bloom
+    float aura  = disc(uv, sunPos, 0.180, 0.140);
+    flare += vec3(0.8, 0.9, 1.0) * 0.45 * aura;
+
+    // chromatic fringe around source
+    flare += vec3(1.0, 0.35, 0.15) * ring(uv, sunPos + vec2( 0.004, 0.0), 0.040, 0.006, 0.010) * 0.60;
+    flare += vec3(0.2, 0.7, 1.0) * ring(uv, sunPos + vec2(-0.004, 0.0), 0.048, 0.006, 0.012) * 0.55;
+
+    // hero anamorphic streak
+    float st1 = streakH(uv, sunPos, 0.010, 1.20, 7.0);
+    float st2 = streakH(uv, sunPos, 0.030, 0.55, 4.0);
+    flare += vec3(0.55, 0.75, 1.0) * 0.90 * st1;
+    flare += vec3(1.00, 0.85, 0.60) * 0.35 * st2;
+
+    // big halo between sun and center
+    vec2 haloPos = mix(sunPos, center, 0.35);
+    flare += lightColor * 0.30 * ring(uv, haloPos, 0.24, 0.020, 0.035);
+    flare += vec3(0.3, 0.7, 1.0) * 0.18 * ring(uv, haloPos, 0.31, 0.015, 0.040);
+
+    // ghost chain with varied shapes/tints
+    vec2 g1 = sunPos + axis * 0.28;
+    vec2 g2 = sunPos + axis * 0.55;
+    vec2 g3 = sunPos + axis * 0.92;
+    vec2 g4 = sunPos + axis * 1.28;
+
+//    flare += ghost(uv, g1, 0.060, vec3(1.00, 0.55, 0.25), 1.8, 1.6) * 0.55;
+    flare += ghost(uv, g2, 0.090, vec3(0.30, 0.75, 1.00), 0.8, 1.4) * 0.45;
+//    flare += ghost(uv, g3, 0.050, vec3(1.00, 0.25, 0.55), 2.4, 2.0) * 0.35;
+    flare += ghost(uv, g4, 0.120, vec3(0.90, 0.85, 0.55), 1.0, 1.2) * 0.22;
+
+    // subtle tiny glints along the axis
+    for (int i = 0; i < 3; ++i)
+    {
+        float fi = float(i) / 4.0;
+        vec2 gp = mix(sunPos, center - axis * 0.35, fi);
+        float sz = mix(0.008, 0.025, fract(fi * 13.7));
+        vec3  gc = spectral(fi) * 0.18;
+        flare += gc * disc(uv, gp, sz, sz * 1.8);
+    }
+
+    // overall shaping
+    flare *= mix(0.35, 1.0, centerBoost);
+
+    return flare;
 }
 
 vec3 renderPass(vec2 uv) {
@@ -611,7 +719,32 @@ vec3 renderPass(vec2 uv) {
     ray.origin = iCameraOffset;
     ray.dir = normalize(vec3(uv, iFocalLength));
 
-    vec3 col = renderViaRayMarching(ray);
+    vec3 col;
+    bool isBackground;
+    doTheRayMarching(ray, col, isBackground);
+
+    if (isBackground) {
+        col = background(ray);
+    }
+
+    vec3 sunDir = vecDirectionalLight;
+    float sunOverlap = max(dot(ray.dir, sunDir), 0.);
+
+    ray.dir = sunDir;
+    Hit sunHit = raymarch(ray);
+
+    if (isBackground) {
+        // Sonne hinzufügen
+        float sunCore = pow(sunOverlap, 1800.);
+        float sunAura = pow(sunOverlap, 20.);
+        vec3 colSun = lightColor * (sunCore + 0.05 * sunAura);
+        col += colSun;
+    }
+
+    if (sunHit.material == NOTHING_HIT) {
+        vec2 uvSun = iFocalLength * sunDir.xy / max(sunDir.z, 1.e-4);
+        col += 0.66 * lensFlare(uv, uvSun, lightColor);
+    }
 
     // Gamma Grading:
     col = clamp(col, 0.0, 1.0);

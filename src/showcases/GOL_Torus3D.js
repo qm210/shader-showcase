@@ -281,7 +281,7 @@ const uniforms = [{
 }, {
     type: "float",
     name: "iDistanceFogDensity",
-    defaultValue: 1e-4,
+    defaultValue: 1e-5,
     min: 1e-7,
     max: 1e-2,
     log: true,
