@@ -187,11 +187,6 @@ const uniforms = [{
     max: 16,
     step: 1
 }, {
-    type: "bool",
-    name: "debugFlag",
-    description: "Für die Entwicklung -- in Ermangelung echter Breakpoints...",
-    defaultValue: false,
-}, {
     separator: "Camera Setup (Ray Origin & Direction)"
 }, {
     type: "vec3",
@@ -373,7 +368,6 @@ const toggles = (state) => [{
         "Spawn randomly...",
     onClick: () => {
         state.spawnRandomly = true;
-        console.log("[RANDOM?]", state.spawnRandomly, state);
     },
 }, {
     label: () =>

@@ -647,6 +647,7 @@ void main()
     bool clicked = hovered && iMouseDown;
 
     if (iPassIndex == PASS_RENDER_SCREEN) {
+        // in Ermangelung echter Breakpoints -- uniform-bools helfen uns.
         if (debugFlag || drawByMouse) {
             fragColor.rgb = isAlive(stCell) ? c.yyy : c.xxx;
         } else {
