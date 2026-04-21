@@ -1,6 +1,7 @@
 import {initBasicState} from "./common.js";
 import {createPingPongFramebuffersWithTexture, createTextureFromImage, updateResolution} from "../webgl/helpers.js";
 import fragmentShaderSource from "../shaders/gol_torus3D.glsl";
+import imageFloof from "../textures/goofy_floofy.png"
 import imageBG from "../textures/hubble_extreme_deep_field.jpg"
 import initial from "../textures/gol_init.png";
 
@@ -14,6 +15,12 @@ export default {
             return state;
         }
 
+        state.texFloof = createTextureFromImage(gl, imageFloof, {
+            wrapS: gl.REPEAT,
+            wrapT: gl.REPEAT,
+            minFilter: gl.LINEAR,
+            magFilter: gl.LINEAR,
+        });
         state.texSpace = createTextureFromImage(gl, imageBG, {
             wrapS: gl.REPEAT,
             wrapT: gl.REPEAT,
@@ -111,13 +118,17 @@ function render(gl, state) {
     gl.uniform1f(loc.iFree8, state.iFree8);
     gl.uniform1f(loc.iFree9, state.iFree9);
 
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, state.texInit);
-    gl.uniform1i(loc.texInit, 1);
-
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, state.texSpace);
     gl.uniform1i(loc.texSpace, 2);
+
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, state.texFloof);
+    gl.uniform1i(loc.texFloof, 3);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, state.texInit);
+    gl.uniform1i(loc.texInit, 1);
 
     if (state.iFrame % state.evolveEveryNthFrame === 0) {
         state.doEvolve = true;

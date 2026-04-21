@@ -46,6 +46,16 @@ export default {
             0, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState
         );
 
+        state.measure = {
+            millisec: {
+                total: null,
+                prepare: null,
+                drawArrays: null,
+                readPixels: null,
+                texImage2D: null,
+            },
+        };
+
         state.isRunning = true;
         state.doInit = true;
         state.doEvolve = false;
@@ -53,38 +63,16 @@ export default {
         state.drawByMouse = true;
         return state;
     },
-    generateControls: (gl, state) => ({
+    generateControls: (gl, state, elements) => ({
         renderLoop: render,
-        uniforms: uniformsFor(state),
-        toggles: [{
-            label: () =>
-                "Running: " + state.isRunning,
-            onClick: () => {
-                state.isRunning = !state.isRunning;
-            }
-        }, {
-            label: () =>
-                "Init Fresh",
-            onClick: () => {
-                state.doInit = true;
-            },
-        }, {
-            label: () =>
-                "Spawn randomly...",
-            onClick: () => {
-                state.spawnRandomly = true;
-            },
-        }, {
-            label: () =>
-                "Draw by Mouse? " + state.drawByMouse,
-            onClick: () => {
-                state.drawByMouse = !state.drawByMouse;
-            }
-        }]
+        uniforms: uniforms,
+        toggles: toggles(state, elements),
     })
 };
 
 function render(gl, state) {
+    const timeStart = performance.now();
+
     const loc = state.location;
     gl.uniform1f(loc.iTime, state.time);
     gl.uniform1f(state.location.iDeltaTime, state.deltaTime);
@@ -118,23 +106,41 @@ function render(gl, state) {
     state.spawnRandomly = false;
     state.doInit = false;
 
+    const timePrepared = performance.now();
+
     // Single Pass - schreibt direkt aufs Bild (Back Buffer)
     gl.activeTexture(gl.TEXTURE0);
     gl.uniform1i(loc.texPrevious, 0);
     gl.bindTexture(gl.TEXTURE_2D, state.texPrevious);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    const timeDrawn = performance.now();
+
     // jetzt die Daten lesen... (ineffizient, weil Umweg über die CPU)
     const [width, height] = state.resolution;
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState);
+
+    const timeReadPixels = performance.now();
+
     // ... und wieder zur GPU reichen:
     gl.texImage2D(
         gl.TEXTURE_2D, 0, gl.RGBA8, width, height,
         0, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState
     );
+
+    const timeEnd = performance.now();
+    state.measure = {
+        millisec: {
+            total: timeEnd - timeStart,
+            prepare: timePrepared - timeStart,
+            drawArrays: timeDrawn - timePrepared,
+            readPixels: timeReadPixels - timeDrawn,
+            texImage2D: timeEnd - timeReadPixels,
+        }
+    };
 }
 
-const uniformsFor = () => [{
+const uniforms = [{
     separator: "... zur freien Laune ..."
 }, {
     type: "float",
@@ -173,3 +179,51 @@ const uniformsFor = () => [{
     min: -1,
     max: 1,
 }];
+
+const toggles = (state, elements) => [{
+    label: () =>
+        "Measure Rendering?",
+    onClick: () => {
+        writeValues(elements.customData.container, [
+            ["Prepare     ", state.measure.millisec.prepare],
+            ["drawArrays()", state.measure.millisec.drawArrays],
+            ["readPixels()", state.measure.millisec.readPixels],
+            ["texImage2D()", state.measure.millisec.texImage2D],
+            ["TOTAL:      ", state.measure.millisec.total],
+        ], "ms");
+        console.table("[MEASURE]", state.measure);
+        console.log("[CELLS] - Linearized 8-Bit RGBA:", state.cellState);
+    }
+}, {
+    label: () =>
+        "Init Fresh",
+    onClick: () => {
+        state.doInit = true;
+    },
+}, {
+    label: () =>
+        "Spawn randomly...",
+    onClick: () => {
+        state.spawnRandomly = true;
+    },
+}, {
+    label: () =>
+        "Draw by Mouse? " + state.drawByMouse,
+    onClick: () => {
+        state.drawByMouse = !state.drawByMouse;
+    }
+}];
+
+function writeValues(container, labelValuePairs, unit = "") {
+    let result = "";
+    for (const [label, milliseconds] of labelValuePairs) {
+        result += `<div><span>${label}  </span><span>`;
+        result += (milliseconds).toFixed(1) + " " + unit;
+        result += "</span></div>";
+    }
+    container.innerHTML = result;
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.alignItems = "flex-start";
+    container.style.whiteSpace = "pre";
+}

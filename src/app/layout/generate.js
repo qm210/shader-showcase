@@ -184,6 +184,9 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
             content: elements.toggles,
         });
     }
+    elements.customData = addFreeRow({
+        parent: elements.controls,
+    });
 
     controls.uniforms ??= [];
     const groups = collectGroups(controls);

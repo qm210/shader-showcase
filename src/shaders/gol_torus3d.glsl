@@ -35,9 +35,6 @@ uniform float iMarchingPrecision;
 uniform int iMarchingSteps;
 uniform float iMarchingMin;
 uniform float iMarchingMax;
-uniform float iSphereSize;
-uniform bool makeSphereTextured;
-uniform bool makeSphereColorful;
 // eingebaut während/nach VL:
 uniform float iPyramidDisturbAmount;
 uniform float iPyramidDisturbScale;
@@ -63,6 +60,8 @@ const float twoPi = 2. * pi;
 const vec4 c = vec4(1., 0. , -1., .5);
 
 vec2 gridStep;
+
+/// ------------------- TRANSFORMATIONS ---------------------------
 
 mat3 rotX(float angle) {
     float c = cos(angle);
@@ -136,7 +135,30 @@ mat3 rotTowards(vec3 original, vec3 target) {
     return rotAround(axis, -theta);
 }
 
-//------------------------------------------------------------------
+/// ------------------- PSEUDORANDOM ---------------------------
+
+float hash12(vec2 p, float seed) {
+    p = vec2(dot(p, vec2(127.1, 311.7)) + seed * 17.3, seed * 23.7);
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float perlin2D(vec2 p, float seed) {
+    vec2 pi = floor(p);
+    vec2 pf = p - pi;
+    vec2 w = smoothstep(0., 1., pf);
+
+    float f00 = hash12(pi + c.yy, seed);
+    float f01 = hash12(pi + c.yx, seed);
+    float f10 = hash12(pi + c.xy, seed);
+    float f11 = hash12(pi + c.xx, seed);
+
+    float xm1 = mix(f00, f10, w.x);
+    float xm2 = mix(f01, f11, w.x);
+    return mix(xm1, xm2, w.y);
+}
+
+/// ------------------- SDF ---------------------------
+
 float dot2( in vec2 v ) { return dot(v,v); }
 float dot2( in vec3 v ) { return dot(v,v); }
 float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
@@ -174,76 +196,8 @@ vec2 texCoordTorus(vec3 p, vec2 t)
     return st;
 }
 
-// vertical
-float sdCylinder( vec3 p, vec2 h )
-{
-    vec2 d = abs(vec2(length(p.xz),p.y)) - h;
-    return min(max(d.x,d.y),0.0) + length(max(d,0.0));
-}
-
-// arbitrary orientation
-float sdCylinder(vec3 p, vec3 a, vec3 b, float r)
-{
-    vec3 pa = p - a;
-    vec3 ba = b - a;
-    float baba = dot(ba,ba);
-    float paba = dot(pa,ba);
-
-    float x = length(pa*baba-ba*paba) - r*baba;
-    float y = abs(paba-baba*0.5)-baba*0.5;
-    float x2 = x*x;
-    float y2 = y*y*baba;
-    float d = (max(x,y)<0.0)?-min(x2,y2):(((x>0.0)?x2:0.0)+((y>0.0)?y2:0.0));
-    return sign(d)*sqrt(abs(d))/baba;
-}
-
-// Vertikaler Kegel
-float sdCone(in vec3 p, in vec2 c, float h)
-{
-    vec2 q = h*vec2(c.x,-c.y)/c.y;
-    vec2 w = vec2( length(p.xz), p.y );
-
-    vec2 a = w - q*clamp( dot(w,q)/dot(q,q), 0.0, 1.0 );
-    vec2 b = w - q*vec2( clamp( w.x/q.x, 0.0, 1.0 ), 1.0 );
-    float k = sign( q.y );
-    float d = min(dot( a, a ),dot(b, b));
-    float s = max( k*(w.x*q.y-w.y*q.x),k*(w.y-q.y)  );
-    return sqrt(d)*sign(s);
-}
-
-float sdCapsule(vec3 p, vec3 a, vec3 b, float r)
-{
-    vec3 pa = p - a, ba = b - a;
-    float h = clamp(dot(pa,ba) / dot(ba,ba), 0.0, 1.0 );
-    return length(pa - ba*h) - r;
-}
-
-float sdVectorArrow(vec3 p, vec3 target, vec3 vec, float offset, float scale) {
-    if (vec == c.yyy) {
-        return sdSphere(p - target, 0.2 * scale);
-    }
-    vec *= scale;
-    target += offset * vec;
-    vec3 start = target - vec;
-    float rLine = 0.02 * pow(scale, 0.7);
-    float hHead = 6. * rLine;
-    const vec2 headShape = vec2(0.06, 0.1);
-    // sdCone schaut intrinsisch nach c.yxy (Spitze Richtung +y).
-    vec = normalize(vec);
-    mat3 rot = rotTowards(c.yxy, vec);
-    float dHead = sdCone(rot * (p - target), headShape, hHead);
-    float dLine = sdCapsule(p, start, target - hHead * vec, rLine);
-    return min(dLine, dHead);
-}
-
-float opSmoothUnion(float d1, float d2, float k)
-{
-    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
-    return mix( d2, d1, h ) - k*h*(1.0-h);
-}
-
 //------------------------------------------------------------------
-// Eigene structs -- beste Idee ever für cleane Shader
+// Eigene structs -- beste Idee für lesbare Shader :)
 
 struct Ray {
     vec3 origin;
@@ -251,7 +205,7 @@ struct Ray {
 };
 
 struct Hit {
-    float distance; // <-- heißt oft nur "t". Wir machen es _hier_mal_explizit_.
+    float distance;
     int material;
 };
 
@@ -260,20 +214,17 @@ struct Hit {
 #define SPHERE_MATERIAL 2
 #define GOL_MATERIAL 9
 
-Hit sphere(vec3 pos, float radius) {
-    // SDF von Kugel == Kreis in 3D
-    float sd = sdSphere(pos, iSphereSize);
-    return Hit(sd, SPHERE_MATERIAL);
-}
-
-const vec3 sphereCenter = vec3(0., 0.8, 3.);
+vec3 sphereCenter = vec3(0., 0.8, 3.);
+float sphereSize = 1.5;
 const float textureRotation = 0.2;
 const float textureFunnyBounce = 0.07;
+const vec3 torusCenter = vec3(0., 1., 1.);
+mat3 torusRotate;
 
 vec2 sphereSurface(vec3 pos) {
     // "interne (kugel-eigene) Koordinaten" [-1; 1]
-    vec3 p = (pos - sphereCenter) / iSphereSize;
-    // y-flip weil brauchen wir halt, danke, OpenGL.
+    vec3 p = (pos - sphereCenter) / sphereSize;
+    // y-flip weil will OpenGL so
     p.y *= -1.;
 
     // hint: https://de.wikipedia.org/wiki/Kugelkoordinaten
@@ -281,98 +232,24 @@ vec2 sphereSurface(vec3 pos) {
     float normY = 0.5 * p.y + 0.5;
     /// Verzerrt zwar etwas, aber good enough, erstmal.
     vec2 surfaceST = vec2(polarAngle, normY);
-
-    /// Variation per iTime, weil a) macht Spaß und b) kann Fehler aufzeigen
-    surfaceST.s -= textureRotation * iTime;
-    surfaceST.t += textureFunnyBounce * sin(8. * iTime);
-
     return surfaceST;
 }
-
-float hash11(float n) {
-    return fract(sin(n) * 43758.5453123);
-}
-
-vec2 hash22(vec2 p, float seed)
-{
-    p = p*mat2(127.1,311.7,269.5,183.3);
-    p = -1.0 + 2.0 * fract(sin(p + seed)*43758.5453123);
-    return sin(p*6.283);
-}
-
-float hash12(vec2 p, float seed) {
-    p = vec2(dot(p, vec2(127.1, 311.7)) + seed * 17.3, seed * 23.7);
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-float perlin1D(float x) {
-    float i = floor(x);
-    float f = fract(x);
-    float g0 = hash11(i) * 2.0 - 1.0;
-    float g1 = hash11(i + 1.0) * 2.0 - 1.0;
-    float d0 = g0 * f;
-    float d1 = g1 * (f - 1.0);
-    float u = smoothstep(0., 1., f);
-    return mix(d0, d1, u);
-}
-
-float perlin2D(vec2 p)
-{
-    vec2 pi = floor(p);
-    vec2 pf = p - pi;
-    vec2 w = pf * pf * (3. - 2. * pf);
-
-    float f00 = dot(hash22(pi+c.yy, 0.), pf-vec2(.0,.0));
-    float f01 = dot(hash22(pi+c.yx, 0.), pf-vec2(.0,1.));
-    float f10 = dot(hash22(pi+c.xy, 0.), pf-vec2(1.0,0.));
-    float f11 = dot(hash22(pi+c.xx, 0.), pf-vec2(1.0,1.));
-
-    float xm1 = mix(f00,f10,w.x);
-    float xm2 = mix(f01,f11,w.x);
-    float ym = mix(xm1,xm2,w.y);
-    return ym;
-}
-
-float perlin2D(vec2 p, float seed) {
-    vec2 pi = floor(p);
-    vec2 pf = p - pi;
-    vec2 w = smoothstep(0., 1., pf);
-
-    float f00 = hash12(pi + c.yy, seed);
-    float f01 = hash12(pi + c.yx, seed);
-    float f10 = hash12(pi + c.xy, seed);
-    float f11 = hash12(pi + c.xx, seed);
-
-    float xm1 = mix(f00, f10, w.x);
-    float xm2 = mix(f01, f11, w.x);
-    return mix(xm1, xm2, w.y);
-}
-
-float stackedPerlin2D(vec2 uv, float seed) {
-    float n = 0.0;
-    float scale = 1.;
-    n += perlin2D(uv * scale, seed) * 0.5;
-    scale *= 2.;
-    n += perlin2D(uv * scale, 2.0 + seed * 1.31) * 0.25;
-    scale *= 2.;
-    n += perlin2D(uv * scale, 4.0 + seed * 2.18) * 0.125;
-
-    n = 0.5 + 0.5 * n;
-    return n;
-}
-
-const vec3 torusCenter = vec3(0., 1., 1.);
-mat3 torusRotate;
 
 Hit scene(in vec3 pos)
 {
     Hit hit = Hit(pos.y, NOTHING_HIT);
 
+    sphereCenter = rotY(.2 * iTime - pi) * vec3(0., 1.5, 12.);
+    float d = sdSphere(pos - sphereCenter, sphereSize);
+    if (d < hit.distance) {
+        hit = Hit(d, SPHERE_MATERIAL);
+    }
+
     float yAngle = radians(iTorusSpin.x) * iTime;
     float yTilt = radians(iTorusSpin.y) * iTime;
     torusRotate = rotY(yAngle) * rotX(radians(iTorusRotate)) * rotY(yTilt);
     vec3 posTorus = torusRotate * (pos - torusCenter);
-    float d = sdTorus(posTorus, iTorusRadii);
+    d = sdTorus(posTorus, iTorusRadii);
     if (d < hit.distance) {
         hit = Hit(d, GOL_MATERIAL);
     }
@@ -482,13 +359,9 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
         }
         case SPHERE_MATERIAL: {
             /// Beispiel für irgendeine Farbberechnung für ein bestimmtes Material...
-            col = 0.2 + 0.2 * sin(2. * (c.ywx + 1.6 + 0.2 * iTime));
-
-            /// ...oder Textur mappen (selten trivial!)
-            if (makeSphereTextured) {
-                vec2 texCoord = sphereSurface(rayPos);
-                col = texture(texFloof, texCoord).rgb;
-            }
+            vec2 texCoord = sphereSurface(rayPos);
+            texCoord.s += 0.35;
+            col = texture(texFloof, texCoord).rgb;
             break;
         }
         case GOL_MATERIAL: {
