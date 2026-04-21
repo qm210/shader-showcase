@@ -1,8 +1,5 @@
 #version 300 es
 
-// based on: https://www.shadertoy.com/view/Xds3zN
-// very much simplified for our lecture.
-
 precision highp float;
 out vec4 fragColor;
 uniform vec2 iResolution;
@@ -162,25 +159,19 @@ float sdTorus( vec3 p, vec2 t )
 
 vec2 texCoordTorus(vec3 p, vec2 t)
 {
-    // Texturkoordinaten vec2(s, t) wählen wir als Umkehrung der SDF.
-    // -> hier verbleibt eine Entscheidungsfreiheit, siehe Anhand 2D-Kreis:
-    // 0 == length(p) - s
-    // wird von p = r * vec2(sin(phi), cos(phi)) gelöst,
-    // aber auch von allen beliebig rotierten phi -> phi + konstante.
-    // Beim Ring hier (der hier liegt in der XZ-Ebene) wählen wir mal
-    // phi   = Polarwinkel um die y-Achse (also in Y-Drehrichtung)
-    // theta = Polarwinkel des Ringquerschnitts (also entlang der Ringachse)
-    // (...wo deren Nullpunkte sind, entscheiden wir danach.)
-    // Eine Parametrisierung wäre dann:
+    // Texturkoordinaten vec2(s, t) müssen sdTorus(p,t) == 0. beschreiben.
+    // Mögliche Parametrisierung analog Polarkoordinaten:
+    // phi   = Polarwinkel um die y-Achse, d.h. des Ring selbst
+    // theta = Polarwinkel des Ringquerschnitts (senkrecht zu Phi)
     // p.x = (t.y * cos(theta) + t.x) * cos(phi)
     // p.y = t.y * sin(theta)
     // p.z = (t.y * cos(theta) + t.x) * sin(phi)
     float phi = atan(p.z, p.x);
     vec2 q = vec2(length(p.xz) - t.x, p.y);
     float theta = atan(q.y, q.x);
-    // atan() -> [-pi, pi]
-    // atan()/2pi + 0.5 -> [0, 1]
-    return vec2(phi, theta) / twoPi + 0.5;
+    // atan()/2pi + 0.5 -> [-pi, pi]/2pi + 0.5 -> [0, 1] für st
+    vec2 st = vec2(phi, theta) / twoPi + 0.5;
+    return st;
 }
 
 // vertical

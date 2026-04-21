@@ -1,16 +1,15 @@
 import {
-    createPingPongFramebuffersWithTexture,
     createTextureFromImage,
     updateResolution
 } from "../webgl/helpers.js";
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol_basic.glsl";
+import fragmentShaderSource from "../shaders/gol_basic_singlepass.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
-    title: "Game Of Life - Basic",
+    title: "Game Of Life - Singlepass",
     init: (gl, sources = {}) => {
         sources.vertex ??= vertexShaderSource;
         sources.fragment ??= fragmentShaderSource;
@@ -34,19 +33,18 @@ export default {
 
         const {width, height} = updateResolution(state, gl);
 
-        // Struktur fürs erste:
-        // - Game-Of-Life-Textur wird evolviert
-        //   -> braucht Ping Pong, weil gleichzeitig lesen und schreiben
-        // - Render-Pass zeichnet einfach aufs Bild
-
-        state.gameBuffers = createPingPongFramebuffersWithTexture(gl, {
-            width,
-            height,
-            attachment: gl.COLOR_ATTACHMENT0,
-            dataFormat: gl.RGBA,
-            dataType: gl.UNSIGNED_BYTE,
-            internalFormat: gl.RGBA8,
-        });
+        // Speicher für Textur allozieren (*4 wegen RGBA-vec4)
+        state.cellState = new Uint8Array(width * height * 4);
+        state.texPrevious = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, state.texPrevious);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        gl.texImage2D(
+            gl.TEXTURE_2D, 0, gl.RGBA8, width, height,
+            0, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState
+        );
 
         state.isRunning = true;
         state.doInit = true;
@@ -86,8 +84,6 @@ export default {
     })
 };
 
-let write, read;
-
 function render(gl, state) {
     const loc = state.location;
     gl.uniform1f(loc.iTime, state.time);
@@ -108,7 +104,7 @@ function render(gl, state) {
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, state.texInit);
-    gl.uniform1i(state.location.texInit, 1);
+    gl.uniform1i(loc.texInit, 1);
 
     if (state.isRunning && state.iFrame % 50 === 0) {
         state.doEvolve = true;
@@ -118,32 +114,24 @@ function render(gl, state) {
     gl.uniform1i(loc.doEvolve, state.doEvolve);
     gl.uniform1i(loc.drawByMouse, state.drawByMouse);
     gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
-
-    // Framebuffer Ping Pong - in eigene Struktur ausgelagert
-    [write, read] = state.gameBuffers.currentWriteReadOrder();
-    state.gameBuffers.doPingPong();
-
-    gl.uniform1i(state.location.iPassIndex, 0);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, write.fbo);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.uniform1i(state.location.texPrevious, 0);
-    gl.bindTexture(gl.TEXTURE_2D, read.texture);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    // Backbuffer: Read-Buffer ist jetzt der andere.
-    // -> Müssen wir auch nicht mehr pingpongen, nur beim Feedback.
-    read = write;
-
-    gl.uniform1i(state.location.iPassIndex, 1);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.uniform1i(state.location.texPrevious, 0);
-    gl.bindTexture(gl.TEXTURE_2D, read.texture);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
     state.doEvolve = false;
     state.spawnRandomly = false;
     state.doInit = false;
+
+    // Single Pass - schreibt direkt aufs Bild (Back Buffer)
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(loc.texPrevious, 0);
+    gl.bindTexture(gl.TEXTURE_2D, state.texPrevious);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // jetzt die Daten lesen... (ineffizient, weil Umweg über die CPU)
+    const [width, height] = state.resolution;
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState);
+    // ... und wieder zur GPU reichen:
+    gl.texImage2D(
+        gl.TEXTURE_2D, 0, gl.RGBA8, width, height,
+        0, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState
+    );
 }
 
 const uniformsFor = () => [{

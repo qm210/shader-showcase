@@ -14,6 +14,7 @@ import golStage1 from "./showcases/GOL__Stage1.js";
 import golStage2 from "./showcases/GOL__Stage2.js";
 import golStage3 from "./showcases/GOL__Stage3.js";
 import golBasic from "./showcases/GOL_Basic.js";
+import golBasicSinglepass from "./showcases/GOL_BasicSinglepass.js";
 import golExtended from "./showcases/GOL_Extended.js";
 import golExtended2 from "./showcases/GOL_Extended2.js";
 import golPlayground from "./showcases/GOL_Playground.js";
@@ -30,7 +31,7 @@ import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 import showcase12 from "./showcases/12_Video_TestLab.js"
 
-const defaultShowcase = golBasic;
+const defaultShowcase = golBasicSinglepass;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
@@ -81,6 +82,7 @@ const MAP_PATH = {
     "gol3": golStage3,
     // ... wohin die Reise gehen könnte:
     "gol": golBasic,
+    "golbad": golBasicSinglepass,
     "golX": golExtended,
     "golY": golExtended2,
     "golZ": golPlayground,
