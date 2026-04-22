@@ -53,6 +53,10 @@ export default {
         state.doEvolve = false;
         state.spawnRandomly = false;
         state.drawByMouse = true;
+
+        state.debug = {
+            loopMs: null,
+        };
         return state;
     },
     generateControls: (gl, state) => ({
@@ -63,6 +67,7 @@ export default {
                 "Running: " + state.isRunning,
             onClick: () => {
                 state.isRunning = !state.isRunning;
+                console.log("[MEASURE] Loop:", state.debug.loopMs, "ms");
             }
         }, {
             label: () =>
@@ -89,6 +94,7 @@ export default {
 let write, read;
 
 function render(gl, state) {
+    const timeStart = performance.now();
     const loc = state.location;
     gl.uniform1f(loc.iTime, state.time);
     gl.uniform1f(state.location.iDeltaTime, state.deltaTime);
@@ -118,6 +124,9 @@ function render(gl, state) {
     gl.uniform1i(loc.doEvolve, state.doEvolve);
     gl.uniform1i(loc.drawByMouse, state.drawByMouse);
     gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
+    state.doEvolve = false;
+    state.spawnRandomly = false;
+    state.doInit = false;
 
     // Framebuffer Ping Pong - in eigene Struktur ausgelagert
     [write, read] = state.gameBuffers.currentWriteReadOrder();
@@ -141,9 +150,7 @@ function render(gl, state) {
     gl.bindTexture(gl.TEXTURE_2D, read.texture);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    state.doEvolve = false;
-    state.spawnRandomly = false;
-    state.doInit = false;
+    state.debug.loopMs = performance.now() - timeStart;
 }
 
 const uniformsFor = () => [{

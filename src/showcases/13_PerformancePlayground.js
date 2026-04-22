@@ -1,8 +1,7 @@
-import {startRenderLoop} from "../../webgl/render.js";
-import {createFramebufferWithTexture} from "../../webgl/helpers.js";
-
-import fragmentShaderSource from "../../shaders/performancePlayground.glsl";
-import {initBasicState} from "../common.js";
+import {startRenderLoop} from "../webgl/render.js";
+import {createFramebufferWithTexture} from "../webgl/helpers.js";
+import {initBasicState} from "./common.js";
+import fragmentShaderSource from "../shaders/performancePlayground.glsl";
 
 export default {
     title: "Performance Considerations",
@@ -60,7 +59,7 @@ export default {
             name: "iQueryRepetitions",
             defaultValue: 1,
             min: 1,
-            max: 100_000,
+            max: 500_000,
             log: true
         }, {
             type: "bool",

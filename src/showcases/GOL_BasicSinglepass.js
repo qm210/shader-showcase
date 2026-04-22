@@ -5,7 +5,7 @@ import {
 import {initBasicState} from "./common.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
-import fragmentShaderSource from "../shaders/gol_basic_singlepass.glsl";
+import fragmentShaderSource from "../shaders/gol_basic_single.glsl";
 import initial from "../textures/gol_init.png";
 
 export default {
@@ -54,6 +54,10 @@ export default {
                 readPixels: null,
                 texImage2D: null,
             },
+            query: {
+                doExecute: false,
+                object: gl.createQuery(),
+            }
         };
 
         state.isRunning = true;
@@ -73,11 +77,11 @@ export default {
 function render(gl, state) {
     const timeStart = performance.now();
 
+    const [width, height] = state.resolution;
     const loc = state.location;
     gl.uniform1f(loc.iTime, state.time);
     gl.uniform1f(state.location.iDeltaTime, state.deltaTime);
     gl.uniform2fv(loc.iResolution, state.resolution);
-    gl.uniform2fv(loc.texelSize, state.texelSize);
     gl.uniform1i(loc.iFrame, state.iFrame);
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
@@ -117,7 +121,6 @@ function render(gl, state) {
     const timeDrawn = performance.now();
 
     // jetzt die Daten lesen... (ineffizient, weil Umweg über die CPU)
-    const [width, height] = state.resolution;
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, state.cellState);
 
     const timeReadPixels = performance.now();
