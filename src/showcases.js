@@ -25,6 +25,9 @@ import showcase8a from "./showcases/8a_RayMarching_Start.js";
 import showcase8b from "./showcases/8b_RayMarching.js";
 import showcase8c from "./showcases/8c_VariousConceptsFor3D.js";
 import showcaseIQ from "./showcases/specific/iq_RayMarchingPrimitives.js";
+import showcase8x from "./showcases/8x_RayMarching_Playground.js";
+import showcase8y from "./showcases/8y_RayMarching_Playground.js";
+import showcase8z from "./showcases/8z_RayMarching_Playground.js";
 import showcase9a from "./showcases/9_RayTracingFirstSteps.js"
 import showcase9b from "./showcases/9b_RayTracingPlusVolumetric.js"
 import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
@@ -32,7 +35,7 @@ import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 import showcaseVideo from "./showcases/12_Video_TestLab.js";
 import showcasePerformance from "./showcases/13_PerformancePlayground.js";
 
-const defaultShowcase = golBasicSinglepass;
+const defaultShowcase = showcase8x;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
@@ -65,6 +68,10 @@ const MAP_PATH = {
     "8b": showcase8b,
     "8c": showcase8c,
     "8iq": showcaseIQ,
+    // Ray Marching Playgrounds...
+    "8x": showcase8x,
+    "8y": showcase8y,
+    "8z": showcase8z,
     // Ray Tracing ("8b" mit Volumetric Ray Marching am Rand, der wurde im Nachhinein ergänzt)
     "9": showcase9a,
     "9a": showcase9a,

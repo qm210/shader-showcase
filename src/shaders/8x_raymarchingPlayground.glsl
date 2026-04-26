@@ -15,10 +15,12 @@ uniform bool doEvolve;
 uniform bool spawnRandomly;
 uniform bool drawByMouse;
 uniform bool debugFlag;
+uniform vec3 iTorusCenter;
 uniform vec2 iTorusRadii;
 uniform float iTorusRotate;
 uniform vec2 iTorusSpin;
 uniform vec2 iTorusRepeat;
+uniform float iMoonAngularPos;
 
 uniform sampler2D texFloof;
 uniform sampler2D texSpace;
@@ -69,9 +71,9 @@ mat3 rotX(float angle) {
     // Obacht: GLSL-Matrizen sind "column-major", d.h. die ersten drei Einträge sind die erste Spalte, etc.
     // Auf die einzelnen Spalten zugreifen lässt sich per: vec3 zweiteSpalte = matrix[1];
     return mat3(
-    1.0, 0.0, 0.0,
-    0.0,   c,   s,
-    0.0,  -s,   c
+        1.0, 0.0, 0.0,
+        0.0,   c,   s,
+        0.0,  -s,   c
     );
 }
 
@@ -79,9 +81,9 @@ mat3 rotY(float angle) {
     float c = cos(angle);
     float s = sin(angle);
     return mat3(
-    c, 0.0,  -s,
-    0.0, 1.0, 0.0,
-    s, 0.0,   c
+          c, 0.0,  -s,
+        0.0, 1.0, 0.0,
+          s, 0.0,   c
     );
 }
 
@@ -89,9 +91,9 @@ mat3 rotZ(float angle) {
     float c = cos(angle);
     float s = sin(angle);
     return mat3(
-    c,   s, 0.0,
-    -s,   c, 0.0,
-    0.0, 0.0, 1.0
+          c,   s, 0.0,
+         -s,   c, 0.0,
+        0.0, 0.0, 1.0
     );
 }
 
@@ -99,9 +101,9 @@ mat3 rodrigues(vec3 axis, float angle) {
     // huh?
     vec3 v = normalize(axis);
     mat3 skewSymmetricCrossProduct = mat3(
-    0, v.z, -v.y,
-    -v.z, 0, v.x,
-    v.y, -v.x, 0
+        0, v.z, -v.y,
+        -v.z, 0, v.x,
+        v.y, -v.x, 0
     );
     float c = cos(angle * twoPi);
     float s = sin(angle * twoPi);
@@ -114,9 +116,9 @@ mat3 rotAround(vec3 axis, float angle) {
     // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
     vec3 v = normalize(axis);
     mat3 skewSym = mat3(
-    0, v.z, -v.y,
-    -v.z, 0, v.x,
-    v.y, -v.x, 0
+        0, v.z, -v.y,
+        -v.z, 0, v.x,
+        v.y, -v.x, 0
     );
     float c = cos(angle);
     float s = sin(angle);
@@ -157,6 +159,33 @@ float perlin2D(vec2 p, float seed) {
     return mix(xm1, xm2, w.y);
 }
 
+vec2 hash22(vec2 p) {
+    float n = sin(dot(p, vec2(127.1, 311.7))) * 43758.5453;
+    return fract(vec2(n, n * 1.2154));
+}
+
+float voronoiPattern(vec2 uv) {
+    const float scale = 10.;
+    uv *= scale;
+    vec2 uvInt = floor(uv);
+    vec2 uvFrac = fract(uv);
+    float dMin = 1.0;
+    float dSecondMin = 1.0;
+    for (float y = -1.; y < 1.01; y += 1.) {
+        for (float x = -1.; x < 1.01; x += 1.) {
+            vec2 b = vec2(x, y);
+            vec2 r = b + hash22(uvInt + b) - uvFrac;
+            float d = length(r);
+            if (d < dMin) {
+                dSecondMin = dMin;
+                dMin = d;
+            } else if (d < dSecondMin) {
+                dSecondMin = d;
+            }
+        }
+    }
+    return dSecondMin - dMin;
+}
 /// ------------------- SDF ---------------------------
 
 float dot2( in vec2 v ) { return dot(v,v); }
@@ -197,13 +226,8 @@ vec2 texCoordTorus(vec3 p, vec2 t)
 }
 
 //------------------------------------------------------------------
-// Eigene structs -- beste Idee für lesbare Shader :)
 
-struct Ray {
-    vec3 origin;
-    vec3 dir;
-};
-
+// Eigene structs -- für lesbarere Shader :)
 struct Hit {
     float distance;
     int material;
@@ -212,14 +236,17 @@ struct Hit {
 #define NOTHING_HIT -1
 #define FLOOR_MATERIAL 1
 #define SPHERE_MATERIAL 2
-#define GOL_MATERIAL 9
+#define TORUS_MATERIAL 3
 
 vec3 sphereCenter = vec3(0., 0.8, 3.);
 float sphereSize = 1.5;
 const float textureRotation = 0.2;
 const float textureFunnyBounce = 0.07;
-const vec3 torusCenter = vec3(0., 1., 1.);
 mat3 torusRotate;
+
+const vec3 dirLightColor = vec3(1.30, 1.00, 0.80);
+const vec3 pointLightColor = vec3(1., 0.3, .7);
+vec3 pointLightCenter;
 
 vec2 sphereSurface(vec3 pos) {
     // "interne (kugel-eigene) Koordinaten" [-1; 1]
@@ -237,10 +264,26 @@ vec2 sphereSurface(vec3 pos) {
 
 Hit scene(in vec3 pos)
 {
-    Hit hit = Hit(pos.y, NOTHING_HIT);
+    // Hint: wenn Anfangsabstand zu klein, könnte die Szene abgeschnitten werden.
+    Hit hit = Hit(1.e3, NOTHING_HIT);
 
-    sphereCenter = rotY(.2 * iTime - pi) * vec3(0., 1.5, 12.);
+    // float angle = .2 * iTime - pi;
+    float angle = iMoonAngularPos;
+    // ... Bewegung ist cool, aber zum Entwickeln auch manchmal nachteilig ...
+    sphereCenter = rotY(angle) * vec3(0., 1.5, 12.);
     float d = sdSphere(pos - sphereCenter, sphereSize);
+    if (d < hit.distance) {
+        hit = Hit(d, SPHERE_MATERIAL);
+    }
+
+    /// (neben der Farbe), wenn wir lightDirection von jedem Oberflächenpunktaber
+    /// aber entsprechend zum alten Fall _in_Richtung_ der Lichtquelle wählen,
+    /// ist jeder weiteren Folgerechnung egal, woher das Licht nun stammt.
+    vec3 distanceToSphereCenter = vec3(1.5 * sphereSize, 0., 0.);
+    vec3 rotatedDistance = rotX(1.2 * iTime) * rotZ(iTime) * distanceToSphereCenter;
+    pointLightCenter = sphereCenter + rotatedDistance;
+    // NUR ZUR ENTWICKLUNG -- Kugel um pointLightCenter dazuzeichnen. Fällt später weg.
+    d = sdSphere(pos - pointLightCenter, 0.2);
     if (d < hit.distance) {
         hit = Hit(d, SPHERE_MATERIAL);
     }
@@ -248,16 +291,16 @@ Hit scene(in vec3 pos)
     float yAngle = radians(iTorusSpin.x) * iTime;
     float yTilt = radians(iTorusSpin.y) * iTime;
     torusRotate = rotY(yAngle) * rotX(radians(iTorusRotate)) * rotY(yTilt);
-    vec3 posTorus = torusRotate * (pos - torusCenter);
+    vec3 posTorus = torusRotate * (pos - iTorusCenter);
     d = sdTorus(posTorus, iTorusRadii);
     if (d < hit.distance) {
-        hit = Hit(d, GOL_MATERIAL);
+        hit = Hit(d, TORUS_MATERIAL);
     }
 
     return hit;
 }
 
-Hit raymarch(Ray ray)
+Hit raymarch(vec3 rayOrigin, vec3 rayDir)
 {
     float tmin = iMarchingMin;
     float tmax = iMarchingMax;
@@ -268,7 +311,7 @@ Hit raymarch(Ray ray)
     float t = tmin;
     for (int i=0; i < iMarchingSteps && t < tmax; i++)
     {
-        vec3 pos = ray.origin + ray.dir * t;
+        vec3 pos = rayOrigin + rayDir * t;
         Hit h = scene(pos);
 
         if (abs(h.distance) < iMarchingPrecision)
@@ -311,33 +354,39 @@ vec3 calcNormal( in vec3 pos )
 {
     vec2 e = vec2(1.0,-1.0)*0.5773*0.0005;
     return normalize(
-    e.xyy * scene(pos + e.xyy).distance +
-    e.yyx * scene(pos + e.yyx).distance +
-    e.yxy * scene(pos + e.yxy).distance +
-    e.xxx * scene(pos + e.xxx).distance
+        e.xyy * scene(pos + e.xyy).distance +
+        e.yyx * scene(pos + e.yyx).distance +
+        e.yxy * scene(pos + e.yxy).distance +
+        e.xxx * scene(pos + e.xxx).distance
     );
 }
 
-const vec3 lightColor = vec3(1.30, 1.00, 0.80);
+vec3 somePalette(float t) {
+    const vec3 a = vec3(0.45, 0.10, 0.30);
+    const vec3 b = vec3(0.35, 0.35, 0.35);
+    const vec3 c = vec3(1.0, 1.0, 1.0);
+    const vec3 d = vec3(0.00, 0.33, 0.67);
+    return a + b * cos(twoPi * (c * t + d));
+}
 
-vec3 background(in Ray ray) {
+vec3 background(in vec3 rayDir) {
     vec3 col = c.yyy;
-    col = texture(texSpace, ray.dir.xy).rgb;
+    col = texture(texSpace, rayDir.xy).rgb;
     col = pow(col, vec3(3.24 / 1.));
     return col;
 }
 
 bool isAlive(vec2 st);
 
-void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
-    Hit hit = raymarch(ray);
+void doTheRayMarching(in vec3 rayOrigin, in vec3 rayDir, out vec3 rayPos, out vec3 col, out bool isBackground) {
+    Hit hit = raymarch(rayOrigin, rayDir);
 
     if (hit.material == NOTHING_HIT) {
         isBackground = true;
         return;
     }
 
-    vec3 rayPos = ray.origin + hit.distance * ray.dir;
+    rayPos = rayOrigin + hit.distance * rayDir;
     vec3 normal = calcNormal(rayPos);
 
     // Beleuchtungsanteile (s.u.) können vom Material abhängen:
@@ -358,49 +407,99 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
             break;
         }
         case SPHERE_MATERIAL: {
-            /// Beispiel für irgendeine Farbberechnung für ein bestimmtes Material...
             vec2 texCoord = sphereSurface(rayPos);
             texCoord.s += 0.35;
             col = texture(texFloof, texCoord).rgb;
             break;
         }
-        case GOL_MATERIAL: {
+        case TORUS_MATERIAL: {
             // Vorgehen ähnlich wie bei sdf-Minimum auswerten selbst:
             // 1. Welt-Koordinaten in die transformieren, in der der Torus zentral liegt
-            vec3 posTorus = torusRotate * (rayPos - torusCenter);
+            vec3 posTorus = torusRotate * (rayPos - iTorusCenter);
             // 2. Form auswerten, dieses Mal also die ST-Koordinaten an der Oberfläche
             vec2 texCoord = texCoordTorus(posTorus, iTorusRadii);
             // ... wiederholen -- nur für die Veranschaulichung.
             //     Hängt von Texturparametern WRAP_S & WRAP_T ab! (-> REPEAT/MIRRORED_REPEAT)
             texCoord *= iTorusRepeat;
 
+            /// Hier das Game-Of-Life...
             if (isAlive(texCoord)) {
                 col = vec3(2., 4., 9.);
             } else {
                 col = vec3(0., 0., 0.2);
             }
+
+            // Oder halt was ganz anderes
+//            const vec3 torusDark = vec3(0., 0., 0.2);
+//            float pattern = voronoiPattern(texCoord);
+//            pattern = pow(3. * pattern, 4.4);
+//            vec3 bright = somePalette(texCoord.s);
+//            col = mix(torusDark, bright, pattern);
+//            col = pow(col, vec3(-0.6));
+
             break;
         }
     }
 
-    /// Beleuchtungsterme aufsummieren
-    vec3 shade = vec3(0.0);
+    /* == Übung ==
+     * Lichtquelle 1 war ein reines Richtungslicht (wie Sonne -- Quelle weit weg)
+     * Lichtquelle 2 soll nun ein Punktlicht sein, der um den "Mond" kreist. Wie?
+     * (und Bonusfrage: Wie macht man diese Lichtquelle selbst sichtbar?)
+    */
+    vec3 totalShade = c.yyy;
 
-    // Licht: reines Richtungslicht (z.B. Sonne, die weit weg ist, im Gegensatz zu Punktlicht)
-    //        ... TODO Bonusfrage: Wie macht man diese Lichtquelle selbst sichtbar?
+    // Extrabeitrag: "Ambient" Light, ganz unabhängig von allen Lichtquellen
+    totalShade += iAmbientAmount * col;
+
+    for (int light = 0; light < 2; light++)
     {
-        // Vorzeichenkonvention: lightDirection geht ZUR Lichtquelle.
-        vec3 lightDirection = normalize(vecDirectionalLight);
+        vec3 shade = c.yyy;
 
-        // Beitrag 1: "Diffuse" Lichtstreuung, unabhängig _Blickrichtung_
+        // Vorzeichenkonvention: lightDirection geht konventuell ZUR Lichtquelle
+        vec3 lightDirection, lightColor;
+        // Die Farbe der Einzelnen Lichter wird nach Belieben gewählt, aufpassen muss man
+        // meist erst am Ende, dass alle Effekte in 8bit RGBA passen (-> Tone Mapping)
+
+        if (light == 0) {
+            /// Unidirektionales Richtungslicht; parallele Lichtstrahlen.
+            /// hier ist diese Richtungsvektor komplett freier Parameter.
+            lightDirection = normalize(vecDirectionalLight);
+            lightColor = dirLightColor;
+        }
+        else if (light == 1) {
+            /// Zusätzliches Punktlicht -> dessen Position ist hier global und vorsichtshalber
+            /// schon in der scene() ausgerechnet, es zwangsläufig auch passiert.
+            /// Unterschied jetzt: der Auftrittspunkt "rayPos" geht in lightDirection ein!
+            /// -> ab dann hat aber jeder Punkt wieder ein eindeutiges, festes lightDirection,
+            ///    d.h. die Beleuchtungsmodelle funktionieren äquivalent dazu.
+            lightDirection = normalize(pointLightCenter - rayPos);
+            /// -> Farbe können wir natürlich auch frei wählen.
+            ///    Stärke beliebig, HDR -> LDR (Tone Mapping) bedenken!
+            lightColor = pointLightColor;
+
+            // PS: Klugscheißerkommentar: Das Licht strahlt nicht realistisch.
+            //     Sich radial ausbreitendes Licht müsste mit r^2 abnehmen.
+            //     Könnten wir aber eigentlich sogar berücksichtigen...
+        } else {
+            break;
+        }
+
+        /// "Diffuse" Lichtstreuung, unabhängig _Blickrichtung_
+        /// -> Das Skalarprodukt sagt uns hier einfach, wie viel Licht anteilig:
+        //     auf die Oberfläche trifft. Weitere Richtungsvektoren gehen nicht ein.
         float diffuse = dot(normal, lightDirection);
-        diffuse = clamp(diffuse, 0.0, 1.0);
-        diffuse *= diffuseCoeff;
-        shade += iDiffuseAmount * col * lightColor * diffuse;
+        // diffuse = clamp(diffuse, 0.0, 1.0);
+        diffuse = max(dot(normal, lightDirection), 0.0);
+        diffuse *= diffuseCoeff * iDiffuseAmount;
+        shade += diffuse * col * lightColor;
+        // ... was sagt uns multiplikative Verknüpfung des Lichts?
 
-        // Beitrag 2: "Specular" Lichtstreuung, abhängig von Reflektionswinkel
+        // "Specular" Lichtstreuung, abhängig von Reflektionswinkel
         vec3 reflected = reflect(lightDirection, normal);
-        float specular = dot(ray.dir, reflected);
+        // reflect(I, N) == I - 2.0 * dot(N, I) * N
+        // I: Incident / Einfallswinkel _von_ Oberfläche _zur_ Kamera
+        // N: Normalenvektor auf Oberfläche zeigt senkrecht nach _außen_.
+        float specular = dot(rayDir, reflected);
         specular = pow(clamp(specular, 0.0, 1.0), specularExponent);
         specular *= specularCoeff;
         shade += iSpecularAmount * lightColor * specular;
@@ -408,11 +507,10 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
         // Shadow Cast: Reduziert das Ganze wieder um Faktor [0..1]
         shade *= calcSoftshadow(rayPos, lightDirection, 0.02, 2.5);
 
-        // Beitrag 3: "Ambient" Light, ganz unabhängig von dieser einen Lichtquelle
-        shade += iAmbientAmount * col;
+        totalShade += shade;
     }
 
-    col = shade;
+    col = totalShade;
 
     // Distanznebel mit "Hintergrund, wenn zu dicht" (wegen Übergang)
     float fog = 1.0 - exp(-iDistanceFogDensity * pow(hit.distance, 3.0));
@@ -424,27 +522,46 @@ void doTheRayMarching(in Ray ray, out vec3 col, out bool isBackground) {
 }
 
 vec3 renderPass(vec2 uv) {
-    Ray ray;
-    ray.origin = iCameraOffset;
-    ray.dir = normalize(vec3(uv, iFocalLength));
-
+    vec3 rayOrigin = iCameraOffset;
+    vec3 rayDir = normalize(vec3(uv, iFocalLength));
+    vec3 rayPos;
     vec3 col;
     bool isBackground;
-    doTheRayMarching(ray, col, isBackground);
+    doTheRayMarching(rayOrigin, rayDir, rayPos, col, isBackground);
 
     if (isBackground) {
-        col = background(ray);
+        col = background(rayDir);
 
-        // Sonne hinzufügen
+        /// Sonne hinzufügen
         vec3 sunDir = vecDirectionalLight;
-        float sunOverlap = max(dot(ray.dir, sunDir), 0.);
+        /// dot() sagt auch hier schlicht: wie sehr parallel zum Licht schauen wir?
+        float sunOverlap = max(dot(rayDir, sunDir), 0.);
         float sunCore = pow(sunOverlap, 1800.);
         float sunAura = pow(sunOverlap, 20.);
-        vec3 colSun = lightColor * (sunCore + 0.05 * sunAura);
+        vec3 colSun = dirLightColor * (sunCore + 0.05 * sunAura);
         col += colSun;
     }
+    const bool showPointLightSource = true;
+    if (showPointLightSource) {
+        /// Lichtpunkt hinzufügen (Man beachte, pointLightCenter ist global)
+        vec3 cameraToLightPoint = pointLightCenter - rayOrigin;
+        vec3 directionToLightPoint = normalize(cameraToLightPoint);
 
-    // Gamma Grading:
+        // Wie kommen wir jetzt von der Richtung auf die Farbgebung?
+        float intensity = 0.;
+    }
+
+    /// !! Hier ist Tone Mapping angebracht !!
+    /// Wir haben einfach irgendwelche Werte auf col addiert und liegt ziemlich sicher
+    /// irgendwo in RGB > 1. -- das Gamma-pow() unten könnte uns alles weiter übersteuern.
+    /// Reinhard:
+    /// col = col / (col + 1.);
+    /// Oder Tanh(x):
+    col = tanh(col);
+    /// --> die genaue Funktion ist nicht so wichtig, sie muss nur die Werte nach [0; 1] bringen
+    /// cf. https://graphtoy.com/?f1(x,t)=x/(1+x)&v1=true&f2(x,t)=tanh(x)&v2=true&f3(x,t)=&v3=true&f4(x,t)=&v4=true&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=1.807181496351828,0.979521495144816,2.611549629481785
+
+    /// Gamma Grading:
     col = clamp(col, 0.0, 1.0);
     col = pow( col, vec3(1./iPostGamma) );
 
@@ -515,6 +632,9 @@ void main()
         if (debugFlag || drawByMouse) {
             fragColor.rgb = isAlive(stCell) ? c.yyy : c.xxx;
         } else {
+            /* !! FAST ALLES AN DIESER main() ist fürs GOL.
+             *    --> für den Raymarcher wird nur hier abgebogen.
+             */
             fragColor.rgb = renderPass(uv);
         }
         fragColor.a = 1.;
