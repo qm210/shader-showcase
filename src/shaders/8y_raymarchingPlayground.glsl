@@ -287,6 +287,7 @@ Hit scene(in vec3 pos)
     float yTilt = radians(iTorusSpin.y) * iTime;
     torusRotate = rotY(yAngle) * rotX(radians(iTorusRotate)) * rotY(yTilt);
     vec3 posTorus = torusRotate * (pos - iTorusCenter);
+    posTorus *= 0.3;
     d = sdTorus(posTorus, iTorusRadii);
     if (d < hit.distance) {
         hit = Hit(d, TORUS_MATERIAL);
@@ -298,8 +299,8 @@ Hit scene(in vec3 pos)
     vec3 distanceToSphereCenter = vec3(1.5 * sphereSize, 0., 0.);
     vec3 rotatedDistance = rotX(1.4 * iTime) * distanceToSphereCenter;
     pointLightCenter[0] = sphereCenter + rotatedDistance;
-    rotatedDistance = rotZ(4.2 * iTime) * distanceToSphereCenter;
-    pointLightCenter[1] = sphereCenter + rotatedDistance;
+    rotatedDistance = rotZ(2.2 * iTime) * distanceToSphereCenter;
+    pointLightCenter[1] = sphereCenter + rotatedDistance * (1. + sin(iTime));
     rotatedDistance = rotY(2.2 * iTime) * distanceToSphereCenter;
     pointLightCenter[2] = sphereCenter + rotatedDistance;
 

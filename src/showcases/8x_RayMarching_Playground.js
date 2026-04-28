@@ -85,6 +85,7 @@ function render(gl, state) {
     gl.uniform2fv(loc.iTorusSpin, state.iTorusSpin);
     gl.uniform2fv(loc.iTorusRepeat, state.iTorusRepeat);
     gl.uniform1f(loc.iMoonAngularPos, state.iMoonAngularPos);
+    gl.uniform3fv(loc.iPointLightColor, state.iPointLightColor);
     gl.uniform1f(loc.iFocalLength, state.iFocalLength);
     gl.uniform3fv(loc.iCameraOffset, state.iCameraOffset);
     gl.uniform3fv(loc.vecDirectionalLight, state.vecDirectionalLight);
@@ -209,6 +210,12 @@ const uniforms = [{
     min: 1,
     max: 16,
     step: 1
+}, {
+    type: "vec3",
+    name: "iPointLightColor",
+    defaultValue: [1, 0.3, 0.7],
+    min: -1,
+    max: 2,
 }, {
     separator: "Camera Setup (Ray Origin & Direction)"
 }, {

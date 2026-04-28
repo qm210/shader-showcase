@@ -21,6 +21,7 @@ uniform float iTorusRotate;
 uniform vec2 iTorusSpin;
 uniform vec2 iTorusRepeat;
 uniform float iMoonAngularPos;
+uniform vec3 iPointLightColor;
 
 uniform sampler2D texFloof;
 uniform sampler2D texSpace;
@@ -245,7 +246,7 @@ const float textureFunnyBounce = 0.07;
 mat3 torusRotate;
 
 const vec3 dirLightColor = vec3(1.30, 1.00, 0.80);
-const vec3 pointLightColor = vec3(1., 0.3, .7);
+vec3 pointLightColor;
 vec3 pointLightCenter;
 
 vec2 sphereSurface(vec3 pos) {
@@ -282,11 +283,14 @@ Hit scene(in vec3 pos)
     vec3 distanceToSphereCenter = vec3(1.5 * sphereSize, 0., 0.);
     vec3 rotatedDistance = rotX(1.2 * iTime) * rotZ(iTime) * distanceToSphereCenter;
     pointLightCenter = sphereCenter + rotatedDistance;
+
     // NUR ZUR ENTWICKLUNG -- Kugel um pointLightCenter dazuzeichnen. Fällt später weg.
+    /*
     d = sdSphere(pos - pointLightCenter, 0.2);
     if (d < hit.distance) {
         hit = Hit(d, SPHERE_MATERIAL);
     }
+    */
 
     float yAngle = radians(iTorusSpin.x) * iTime;
     float yTilt = radians(iTorusSpin.y) * iTime;
@@ -522,6 +526,8 @@ void doTheRayMarching(in vec3 rayOrigin, in vec3 rayDir, out vec3 rayPos, out ve
 }
 
 vec3 renderPass(vec2 uv) {
+    pointLightColor = iPointLightColor;
+
     vec3 rayOrigin = iCameraOffset;
     vec3 rayDir = normalize(vec3(uv, iFocalLength));
     vec3 rayPos;
@@ -548,7 +554,15 @@ vec3 renderPass(vec2 uv) {
         vec3 directionToLightPoint = normalize(cameraToLightPoint);
 
         // Wie kommen wir jetzt von der Richtung auf die Farbgebung?
-        float intensity = 0.;
+        float overlap = dot(directionToLightPoint, rayDir);
+        float intensity = pow(overlap, 1800.);
+
+        // col += pointLightColor * step(0.99999, overlap);
+
+        float shadowed = calcSoftshadow(rayPos, directionToLightPoint, 0.02, 2.5);
+        intensity *= shadowed;
+
+        col += intensity * pointLightColor;
     }
 
     /// !! Hier ist Tone Mapping angebracht !!
