@@ -1,6 +1,6 @@
 import {initBasicState} from "./common.js";
 import {createPingPongFramebuffersWithTexture, createTextureFromImage, updateResolution} from "../webgl/helpers.js";
-import fragmentShaderSource from "../shaders/gol_torus3D.glsl";
+import fragmentShaderSource from "../shaders/gol_torus3d.glsl";
 import imageFloof from "../textures/goofy_floofy.png"
 import imageBG from "../textures/hubble_extreme_deep_field.jpg"
 import initial from "../textures/gol_init.png";
