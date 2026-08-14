@@ -208,17 +208,17 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
             continue;
         }
         else if (control.type === "button") {
-            elements.controlButtons[control.name] = addButton({
+            elements.buttons[control.name] = addButton({
                 title: control.label,
                 onClick: () =>
-                    control.onClick(elements.controlButtons[control.name], control)
+                    control.onClick(elements.buttons[control.name], control)
             });
             elements[control.name] =
                 addFreeRow({
                     parent: elements.uniformControls,
                     label: "",
                     id: control.name,
-                    content: elements.controlButtons[control.name]
+                    content: elements.buttons[control.name]
                 })
             continue;
         }

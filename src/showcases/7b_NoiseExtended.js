@@ -68,7 +68,7 @@ function render(gl, state, elements) {
         void readPixelsAndEvaluate(gl,
             state.resolution,
             state.reading.buffer,
-            elements.readPixels.content
+            elements.buttons.readPixels.content
         );
     }
 }

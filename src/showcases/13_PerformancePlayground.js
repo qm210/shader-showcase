@@ -313,7 +313,7 @@ function checkQueries(gl, state, elements) {
         )
     ).then(time => {
         const ratio = time[0] / time[1];
-        elements.controlButtons.executeQueries.innerHTML = `
+        elements.buttons.executeQueries.innerHTML = `
             <div class="readout-stats">
                 <div>Queried Rendering Times</div>
                 <div>Pass A: ${(time[0] / 1e6).toFixed(6)} ms</div>
