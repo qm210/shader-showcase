@@ -162,6 +162,36 @@ float symmetricalMix(float v0, float v1, float ratio) {
     return mix(v0, v1, ratio);
 }
 
+float voronoi(vec2 p, float time) {
+    vec2 cell = floor(p);
+    vec2 local = fract(p);
+    float dmin = 1000.;
+    for (int y = -1; y <= 1; y++)
+    for (int x = -1; x <= 1; x++) {
+        vec2 next = vec2(float(x), float(y));
+        vec2 rand = hash22(cell + next);
+        rand = 0.5 + 0.5 * sin(time * vec2(0.88, 1.14) + twoPi * rand);
+        vec2 delta = next + rand - local;
+        dmin = min(dmin, dot(delta, delta));
+    }
+    return sqrt(dmin);
+}
+
+float caustics(vec2 worldXZ, float time) {
+    vec2 q = worldXZ;
+    q += 0.32 * vec2(
+        sin(q.y * 1.7 + time * 0.9),
+        sin(q.x * 1.4 - time * 1.1)
+    );
+    float a = voronoi(q * 1.10,  time * 0.70);
+    float b = voronoi(q * 1.85 + vec2(7.3, 2.8), -time * 0.53);
+
+    float pattern = min(a, b);
+    pattern = 1.0 - smoothstep(0.28 + 0.1 * iFree0, 0.72 + 0.1 * iFree1, pattern);
+    pattern = pow(pattern, 3.0 + iFree2);
+    return pattern;
+}
+
 void main() {
     vec2 uv = (2. * gl_FragCoord.xy - iResolution.xy) / iResolution.y;
     uv *= iOverallScale;
@@ -173,22 +203,25 @@ void main() {
     // zu strukturbehaftet, taugt da also nicht als guter "Zufallsgenerator".
     // D.h. man verschiebt sich gewöhnlich in regelmäßigere Bereiche.
     // Ruhig aber mal den iOverallNoiseShift auf 0 stellen, um diesen Effekt auch zu sehen...
-    uv += iOverallNoiseShift;
+//    uv += iOverallNoiseShift;
+//
+//    float noiseClouds = symmetricalMix(1., noiseStack(uv), iNoiseLevelA);
+//    float noiseTurbulence = symmetricalMix(1., noiseAbsoluteStack(uv), iNoiseLevelB);
+//    float noiseMarble = symmetricalMix(1., noiseAbsoluteStackWithFurtherProcessing(uv), iNoiseLevelC);
+//    float totalNoise = (
+//        noiseClouds *
+//        noiseTurbulence *
+//        noiseMarble
+//    );
+//    totalNoise = clamp(totalNoise, 0., 1.);
+//    vec3 col = mix(
+//        vec3(totalNoise),
+//        colorPalette(totalNoise * iColorStrength),
+//        iColorStrength
+//    );
+//    col = col - iGridOpacity * gridCol;
 
-    float noiseClouds = symmetricalMix(1., noiseStack(uv), iNoiseLevelA);
-    float noiseTurbulence = symmetricalMix(1., noiseAbsoluteStack(uv), iNoiseLevelB);
-    float noiseMarble = symmetricalMix(1., noiseAbsoluteStackWithFurtherProcessing(uv), iNoiseLevelC);
-    float totalNoise = (
-        noiseClouds *
-        noiseTurbulence *
-        noiseMarble
-    );
-    totalNoise = clamp(totalNoise, 0., 1.);
-    vec3 col = mix(
-        vec3(totalNoise),
-        colorPalette(totalNoise * iColorStrength),
-        iColorStrength
-    );
-    col = col - iGridOpacity * gridCol;
+    float d = caustics(uv * 0.7, iTime);
+    vec3 col = c.xxx - vec3(1., .93, .72) * d;
     fragColor = vec4(col, 1.);
 }

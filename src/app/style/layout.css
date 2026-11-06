@@ -105,8 +105,21 @@
         min-height: min(100%, 400px);
     }
 }
+^
+#control-frame {
+    grid-area: controls;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    padding-right: 8px;
+    overflow: hidden;
+    font-family: monospace;
+    font-size: var(--font-size-base);
+}
 
-#shader-controls {
+#uniform-controls {
+    grid-area: uniforms;
     flex: 1;
     display: grid;
     grid-template-columns: auto auto auto 1fr auto auto;
@@ -114,7 +127,37 @@
     padding-right: 8px;
     align-items: center;
     align-content: start;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#control-frame > div,
+#uniform-controls > div {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: stretch;
+    align-items: center;
+}
+
+#uniform-controls > div {
+    font-family: monospace;
+    gap: 0.5rem;
+}
+
+#uniform-controls > div.value-label {
+    padding-left: 0.25rem;
+    padding-right: 0.5rem;
+    white-space: nowrap;
+    font-size: var(--font-size-label);
+}
+
+#uniform-controls > div > label {
+    white-space: nowrap;
+}
+
+#uniform-controls .unused {
+    opacity: 0.5;
 }
 
 button.render-button {
@@ -123,32 +166,12 @@ button.render-button {
     font-size: var(--font-size-large);
 }
 
-#shader-controls > div {
+.full-row {
     display: flex;
     flex-direction: row;
     width: 100%;
-    justify-content: stretch;
+    justify-content: space-between;
     align-items: center;
-}
-
-#shader-controls > div {
-    font-family: monospace;
-    gap: 0.5rem;
-}
-
-#shader-controls > div.value-label {
-    padding-left: 0.25rem;
-    padding-right: 0.5rem;
-    white-space: nowrap;
-    font-size: var(--font-size-label);
-}
-
-#shader-controls > div > label {
-    white-space: nowrap;
-}
-
-#shader-controls .unused {
-    opacity: 0.5;
 }
 
 .free-row {
