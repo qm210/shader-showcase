@@ -1,39 +1,28 @@
 /**
- * This is our basic structure to call a render function repeatedly
- * and have the time value displayed on our main page
- *
- * in general, your render Function should
- *  - call useProgram()
- *  - set uniforms
- *  - call a drawing function like drawArrays()
- *
- *  this does not support advanced stuff like custom framebuffers etc. yet
- *
- * @param renderFunction - pass your actual render function
- * @param state
- * @param elements
+ * these should be legacy relics; check whether really never needed
+ *   --> then remove
  */
-
-export function resetRenderLoop(renderFunction, state, elements) {
-    cancelAnimationFrame(state.animationFrame);
-    state.animationFrame = null;
-    state.startTime = null;
-    state.timeRunning = true;
-    state.deltaTime = 0;
-    state.iFrame ??= -1;
-    state.resetSignal = false;
-    state.stopSignal = false;
-    state.stopReached = false;
-    state.debugSignal = false;
-    state.fps = null;
-    state.animation = (timestamp) =>
-        runLoop(renderFunction, state, elements, timestamp);
-}
-
-export function startRenderLoop(renderFunction, state, elements) {
-    resetRenderLoop(renderFunction, state, elements);
-    state.animationFrame = requestAnimationFrame(state.animation);
-}
+//
+// export function resetRenderLoop(renderFunction, state, elements) {
+//     cancelAnimationFrame(state.animationFrame);
+//     state.animationFrame = null;
+//     state.startTime = null;
+//     state.timeRunning = true;
+//     state.deltaTime = 0;
+//     state.iFrame ??= -1;
+//     state.resetSignal = false;
+//     state.stopSignal = false;
+//     state.stopReached = false;
+//     state.debugSignal = false;
+//     state.fps = null;
+//     state.animation = (timestamp) =>
+//         runLoop(renderFunction, state, elements, timestamp);
+// }
+//
+// export function startRenderLoop(renderFunction, state, elements) {
+//     resetRenderLoop(renderFunction, state, elements);
+//     state.animationFrame = requestAnimationFrame(state.animation);
+// }
 
 // TODO: unused because framebuffers need care on resizing
 export function whilePausingRendering(state, callFunction) {

@@ -1,9 +1,60 @@
-import {createDiv} from "./dom.js";
+import {appendElement, createDiv} from "./dom.js";
 import {analyzeShader} from "../../glslCode/analysis.js";
 
-export function registerShaderCode(elements, shaderSource, errorLog, shaderKey, title = "") {
+export function createShaderCodeRegister(elements, state) {
+    const register = [];
+
+    register.push(
+        createShaderCode(
+            elements,
+            state.source.fragment,
+            state.error.fragment,
+            "fragment.source",
+            "Fragment Shader"
+        )
+    );
+    register.push(
+        createShaderCode(
+            elements,
+            state.source.vertex,
+            state.error.vertex,
+            "vertex.source",
+            "Vertex Shader"
+        )
+    );
+
+    if (state.post) {
+        appendElement(
+            elements.shaders,
+            "Second Program (Post Processing):",
+            "h4",
+        );
+        register.push(
+            createShaderCode(
+                elements,
+                state.post.source.fragment,
+                state.post.error.fragment,
+                "fragment.post.source",
+                "Fragment Shader"
+            )
+        );
+        register.push(
+            createShaderCode(
+                elements,
+                state.post.source.vertex,
+                state.post.error.vertex,
+                "vertex.post.source",
+                "Vertex Shader"
+            )
+        );
+    }
+
+    return register.filter(it => it !== null);
+}
+
+export function createShaderCode(elements, shaderSource, errorLog, shaderKey, title = "") {
     if (!shaderSource) {
-        return;
+        return null;
     }
 
     const codeBlock = createDiv("", "code-block");
@@ -25,7 +76,7 @@ export function registerShaderCode(elements, shaderSource, errorLog, shaderKey, 
         references[line.number] = elements;
     }
 
-    elements.register.push({shaderKey, references, analyzed});
+    return {shaderKey, references, analyzed};
 }
 
 export function idForLine(shaderKey, lineNumber) {

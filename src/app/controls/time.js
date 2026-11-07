@@ -1,5 +1,5 @@
-import {binarySearchInsert, clamp} from "../../algorithms.js";
-import {createDiv} from "../dom.js";
+import {binarySearchInsert, clamp} from "../algorithms.js";
+import {createDiv} from "../layout/dom.js";
 
 export function createTimeSeeker(parent, state, bookmarkElement) {
     parent.innerHTML =
@@ -8,7 +8,7 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
               height="100%"
               ></svg>`;
     const svg = parent.firstElementChild;
-    const el = {
+    const obj = {
         virgin: true,
         parent,
         svg,
@@ -95,11 +95,11 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
     };
 
     if (!state.track) {
-        delete el.icons.audio;
+        delete obj.icons.audio;
     }
 
-    el.callback.resize = () => {
-        const r = el.rect;
+    obj.callback.resize = () => {
+        const r = obj.rect;
         r.bounds = parent.getBoundingClientRect();
         const rem = parseFloat(
             getComputedStyle(document.documentElement).fontSize
@@ -107,7 +107,7 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
         const unit = {
             rem,
             step: 1.5 * rem,
-            text: el.value.getBBox().height,
+            text: obj.value.getBBox().height,
             tick: 3,
             padding: 4
         };
@@ -118,92 +118,92 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
             y: unit.padding,
             rx: unit.padding / 2,
         };
-        withRect(el.track, r.track);
+        withRect(obj.track, r.track);
         r.handle = {
             width: unit.step,
             x: unit.padding / 2,
             height: r.bounds.height - unit.padding,
             y: unit.padding / 2
         };
-        withRect(el.handle, r.handle);
-        el.handleBar.span = r.track.width - r.handle.width;
-        el.handleBar.min = r.track.x + r.handle.x;
-        el.handleBar.max = el.handleBar.min + el.handleBar.span;
+        withRect(obj.handle, r.handle);
+        obj.handleBar.span = r.track.width - r.handle.width;
+        obj.handleBar.min = r.track.x + r.handle.x;
+        obj.handleBar.max = obj.handleBar.min + obj.handleBar.span;
         r.loop = {
             ...r.track,
             y: r.track.height * 0.9,
             height: r.track.height * 0.3,
         };
-        withRect(el.area.loop, r.loop);
+        withRect(obj.area.loop, r.loop);
         r.markers = {
             x: 0,
             width: r.track.width,
             y: r.track.y / 2,
             height: r.bounds.height - r.track.y,
         };
-        withRect(el.ticks.markers, r.markers);
+        withRect(obj.ticks.markers, r.markers);
         r.value = {
             width: unit.step * 1.25,
             x: r.track.x + r.track.width + 1.25 * unit.step,
             height: r.bounds.height,
             y: unit.text - r.track.y / 2,
         };
-        withRect(el.value, r.value);
+        withRect(obj.value, r.value);
         let x = r.value.x + r.value.width + 0.5 * unit.step;
-        const icons = Object.values(el.icons);
+        const icons = Object.values(obj.icons);
         for (const icon of icons) {
             r.icon = {...r.value, x, width: 3.5 * unit.step / icons.length};
             withRect(icon, r.icon);
             x += r.icon.width;
         }
-        if (el.virgin) {
-            el.ticks.pattern.append(
+        if (obj.virgin) {
+            obj.ticks.pattern.append(
                 svgChild(svg, "rect", {
-                    x: r.handle.width / 2 + el.handleBar.min / 2,
+                    x: r.handle.width / 2 + obj.handleBar.min / 2,
                     width: unit.tick,
                     height: r.bounds.height,
                     fill: "#ffffff77",
                 })
             );
-            el.ticks.pattern.setAttribute("width", intervalPixels(el, state));
-            delete el.virgin;
+            obj.ticks.pattern.setAttribute("width", intervalPixels(obj, state));
+            delete obj.virgin;
         }
-        if (el.remember.toUpdateLoop) {
-            el.remember.toUpdateLoop = false;
-            stretchLoopMarker(el, state);
-            adjustMaxRange(el, state, {
+        if (obj.remember.toUpdateLoop) {
+            obj.remember.toUpdateLoop = false;
+            stretchLoopMarker(obj, state);
+            adjustMaxRange(obj, state, {
                 max: Math.max(
                     state.play.range.max,
                     state.play.loop.end + state.play.range.autoExtendMargin
                 ),
             });
         }
-        if (el.remember.toUpdate) {
-            el.remember.toUpdate = false;
-            el.callback.update();
+        if (obj.remember.toUpdate) {
+            obj.remember.toUpdate = false;
+            obj.callback.update();
         }
     };
 
-    el.callback.update = () => {
-        if (el.virgin) {
+    obj.callback.update = () => {
+        if (obj.virgin) {
             // if called too early, we need to wait for the first resize, and THEN return.
-            el.remember.toUpdate = true;
+            obj.remember.toUpdate = true;
             return;
         }
-        applyStateDependantStyling(el, state);
+        applyStateDependantStyling(obj, state);
         if (!state.play.running) {
-            if (el.remember.timestamp === state.play.previousTimestamp) {
+            if (obj.remember.timestamp === state.play.previousTimestamp) {
                 return;
             } else {
-                el.remember.timestamp = state.play.previousTimestamp ?? undefined;
+                obj.remember.timestamp = state.play.previousTimestamp ?? undefined;
             }
         }
-        el.value.textContent = state.time.toFixed(2);
+        obj.value.textContent = state.time.toFixed(2);
         mightAutoExtendRange();
-        moveHandle(el, state);
+        moveHandle(obj, state);
     };
 
-    el.do.jump = ({to = undefined, delta = undefined, min = undefined, max = undefined}) => {
+    obj.do.jump = ({to = undefined, delta = undefined, min = undefined, max = undefined}) => {
         state.play.rememberedTime = state.time;
         state.play.previousTimestamp = null;
         state.time = (to ?? state.time) + (delta ?? 0);
@@ -219,7 +219,7 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
         mightAutoExtendRange();
     };
 
-    el.do.toggle = (force = undefined) => {
+    obj.do.toggle = (force = undefined) => {
         if (!state.play.running) {
             state.play.previousTimestamp = null;
         }
@@ -230,7 +230,7 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
         }
     };
 
-    el.do.toggleLoop = ({start, end, active} = {}) => {
+    obj.do.toggleLoop = ({start, end, active} = {}) => {
         if (start !== undefined) {
             state.play.loop.start = start;
         }
@@ -244,10 +244,10 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
             state.track.actions.toggleLoop(state.play.loop.active);
         }
 
-        stretchLoopMarker(el, state);
+        stretchLoopMarker(obj, state);
     };
 
-    el.do.setBookmark = (args) => {
+    obj.do.setBookmark = (args) => {
         if (args.bar !== undefined) {
             args.beat = 4. * args.bar;
         }
@@ -274,23 +274,23 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
         } else {
             binarySearchInsert(args, state.play.sync.bookmarks, "time");
         }
-        el.bookmarks.innerHTML = "";
+        obj.bookmarks.innerHTML = "";
         for (const bookmark of state.play.sync.bookmarks) {
             const link = createDiv(`${bookmark.timeLabel}\n\u00bb${bookmark.label}`, "small-link wrap-centered");
             link.addEventListener("click", () => {
-                el.do.jump({to: bookmark.time});
+                obj.do.jump({to: bookmark.time});
             });
             if (color) {
                 link.style.color = color;
             }
-            el.bookmarks.appendChild(link);
+            obj.bookmarks.appendChild(link);
         }
     };
 
-    addDocumentListeners(el, state);
-    addMouseInteraction(el, state);
+    addDocumentListeners(obj, state);
+    addMouseInteraction(obj, state);
 
-    return el;
+    return obj;
 
     function mightAutoExtendRange() {
         if (state.play.loop.active) {
@@ -301,8 +301,8 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
         if (extend <= 0) {
             return;
         }
-        adjustMaxRange(el, state, {delta: extend});
-        stretchLoopMarker(el, state);
+        adjustMaxRange(obj, state, {delta: extend});
+        stretchLoopMarker(obj, state);
     }
 }
 
@@ -464,7 +464,7 @@ function addDocumentListeners(el, state) {
     }
 }
 
-function addMouseInteraction(el, state) {
+function addMouseInteraction(obj, state) {
     const drag = {
         ghost: null,
         offset: 0,
@@ -474,29 +474,29 @@ function addMouseInteraction(el, state) {
         ctm: null,
     };
 
-    el.handle.addEventListener("mouseover", () => {
-        el.handle.setAttribute("fill", el.handle.getAttribute("stroke"));
+    obj.handle.addEventListener("mouseover", () => {
+        obj.handle.setAttribute("fill", obj.handle.getAttribute("stroke"));
     });
-    el.handle.addEventListener("mouseout", () => {
-        el.handle.setAttribute("fill", "none");
+    obj.handle.addEventListener("mouseout", () => {
+        obj.handle.setAttribute("fill", "none");
     });
 
-    el.svg.addEventListener("mousedown", event => {
+    obj.svg.addEventListener("mousedown", event => {
         const pos = mousePosition(event);
-        if (event.target === el.handle) {
-            drag.original = parseFloatAttributes(el.handle, "x", "opacity");
+        if (event.target === obj.handle) {
+            drag.original = parseFloatAttributes(obj.handle, "x", "opacity");
             drag.original.rangeMax = state.play.range.max;
             drag.original.wasRunning = state.play.running;
-            el.do.toggle(false);
+            obj.do.toggle(false);
             drag.initial = pos.x;
             drag.offset = pos.x - drag.original.x;
-            drag.ghost = el.handle.cloneNode(true);
-            el.svg.appendChild(drag.ghost);
+            drag.ghost = obj.handle.cloneNode(true);
+            obj.svg.appendChild(drag.ghost);
             drag.ghost.id = "ghost-handle";
             drag.ghost.setAttribute("opacity", 1);
             drag.ghost.setAttribute("fill", "currentColor");
-            el.handle.setAttribute("opacity", 0.4);
-        } else if (event.target === el.track) {
+            obj.handle.setAttribute("opacity", 0.4);
+        } else if (event.target === obj.track) {
             seekPixel(pos.x);
         }
     }, {
@@ -511,7 +511,7 @@ function addMouseInteraction(el, state) {
         cancelAnimationFrame(drag.throttleFrame);
         const mouseX = mousePosition(event).x;
         drag.throttleFrame = requestAnimationFrame(() => {
-            const x = clamp(mouseX - drag.offset, el.handleBar.min, el.handleBar.max);
+            const x = clamp(mouseX - drag.offset, obj.handleBar.min, obj.handleBar.max);
             seekPixel(x);
             drag.ghost.setAttribute("x", x);
             drag.throttleFrame = null;
@@ -531,42 +531,44 @@ function addMouseInteraction(el, state) {
         if (dropOnGhost) {
             seekPixel(dropX);
         } else {
-            adjustMaxRange(el, state, {
+            adjustMaxRange(obj, state, {
                 max: drag.original.rangeMax
             });
         }
-        el.svg.removeChild(drag.ghost);
+        obj.svg.removeChild(drag.ghost);
         drag.ghost = null;
-        el.handle.setAttribute("opacity", drag.original.opacity);
-        el.do.toggle(drag.original.wasRunning);
+        obj.handle.setAttribute("opacity", drag.original.opacity);
+        obj.do.toggle(drag.original.wasRunning);
     });
 
-    el.value.addEventListener("click", () => {
-        promptForSecondToJump(el, state);
+    obj.value.addEventListener("click", () => {
+        promptForSecondToJump(obj.do, state);
     });
-    el.value.addEventListener("contextmenu", (event) => {
+    obj.value.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         const second =
-            promptFloat(el, state.play.range.max, "Enter new MAX Second:");
+            promptFloat(
+                state.play.range.max,
+                "Enter new MAX Second:"
+            );
         if (second) {
             // state.play.range.max = second;
-            adjustMaxRange(el, state, {
+            adjustMaxRange(obj, state, {
                 max: second
             });
         }
     });
 
-    el.icons.toggle.addEventListener("click", () => {
-        el.do.toggle();
+    obj.icons.toggle.addEventListener("click", () => {
+        obj.do.toggle();
     });
 
-    el.icons.loop.addEventListener("click", () => {
-        el.do.toggleLoop();
+    obj.icons.loop.addEventListener("click", () => {
+        obj.do.toggleLoop();
     });
-    el.icons.loop.addEventListener("contextmenu", (event) => {
+    obj.icons.loop.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         const answer = promptFloatArray(
-            el,
             [state.play.loop.start, state.play.loop.end],
             "Enter new Loop START and END Second (Space-Separated, any NaN for max. interval):",
         );
@@ -574,31 +576,31 @@ function addMouseInteraction(el, state) {
             alert(`Discard Input: ${answer} because it has not 2 elements.`);
             return;
         }
-        el.do.toggleLoop({
+        obj.do.toggleLoop({
             start: answer[0],
             end: answer[1],
             active: true
         });
     });
 
-    el.icons.rewind.addEventListener("click", () => {
+    obj.icons.rewind.addEventListener("click", () => {
         if (state.time === 0 && state.play.rememberedTime) {
-            el.do.jump({to: state.play.rememberedTime})
+            obj.do.jump({to: state.play.rememberedTime});
         } else {
-            el.do.jump({to: 0})
+            obj.do.jump({to: 0});
         }
     });
 
-    el.icons.audio?.addEventListener("click", () => {
+    obj.icons.audio?.addEventListener("click", () => {
         state.track.actions.toggleMuted();
     });
-    el.icons.audio?.addEventListener("contextmenu", () => {
+    obj.icons.audio?.addEventListener("contextmenu", () => {
         state.track.actions.toggleDisabled();
     });
 
     function seekPixel(x) {
-        const second = pixelsAsSeconds(x, el, state);
-        el.do.jump({
+        const second = pixelsAsSeconds(x, obj, state);
+        obj.do.jump({
             to: second,
             min: 0,
             max: state.play.range.max
@@ -607,7 +609,7 @@ function addMouseInteraction(el, state) {
 
     function mousePosition(event) {
         if (!drag.ctm) {
-            drag.ctm = el.svg.getScreenCTM();
+            drag.ctm = obj.svg.getScreenCTM();
         }
         return {
             x: (event.clientX - drag.ctm.e) / drag.ctm.a,
@@ -635,7 +637,7 @@ function parseFloatLeniently(input) {
     return Number.isNaN(result) ? null : result;
 }
 
-export function promptFloat(el, defaultValue, message) {
+export function promptFloat(defaultValue, message) {
     const input = window.prompt(
         message ?? "Enter new Value:",
         (defaultValue ?? "").toString()
@@ -643,12 +645,12 @@ export function promptFloat(el, defaultValue, message) {
     return parseFloatLeniently(input);
 }
 
-export function promptForSecondToJump(el, state) {
-    const time = promptFloat(el, state.time, "Jump to Second:");
-    el.do.jump({to: time});
+export function promptForSecondToJump(seekAction, state) {
+    const time = promptFloat(state.time, "Jump to Second:");
+    seekAction.jump({to: time});
 }
 
-export function promptFloatArray(el, defaultValues, message, separator = " ") {
+export function promptFloatArray(defaultValues, message, separator = " ") {
     const input = window.prompt(
         message ?? `Enter new values. separated with \"${separator}\":`,
         defaultValues.join(separator)

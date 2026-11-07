@@ -1,5 +1,5 @@
-import {createDiv, createElement, createSpan} from "../dom.js";
-import {initMouseState} from "../../mouse.js";
+import {createDiv, createElement, createSpan} from "../layout/dom.js";
+import {initMouseState} from "../mouse.js";
 
 export function addButton({parent, onClick, onRightClick, title = "", className = "", style}) {
     const button = document.createElement("button");

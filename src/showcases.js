@@ -36,8 +36,9 @@ import showcaseVideo from "./showcases/12_Video_TestLab.js";
 import showcasePerformance from "./showcases/13_PerformancePlayground.js";
 import showcaseDream210 from "./showcases/D210_Dream.js";
 import showcaseNoise210 from "./showcases/Z_Noise210.js";
+import showcaseSchlosslichtspiel from "./showcases/specific/Schlosslichtspiel.js";
 
-const defaultShowcase = showcaseDream210;
+const defaultShowcase = showcaseSchlosslichtspiel;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
@@ -102,6 +103,7 @@ const MAP_PATH = {
 
     "d210": showcaseDream210,
     "noise210": showcaseNoise210,
+    "sls": showcaseSchlosslichtspiel,
 };
 
 export function selectShowcase() {

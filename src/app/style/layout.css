@@ -44,6 +44,28 @@
     height: 100%;
 }
 
+#layout.no-code > #shaders {
+    display: none;
+}
+
+#layout.no-code > #working-program {
+    flex: 1;
+    display: grid;
+    grid-template:
+        "uniforms canvas"   auto
+        "uniforms controls" 1fr
+        / 2fr 1fr;
+    grid-column-gap: 2rem;
+}
+
+#layout.no-code canvas {
+    margin: 1rem;
+}
+
+#layout.no-code #control-frame {
+    gap: 2rem;
+}
+
 #console {
     display: flex;
     flex-direction: column;
@@ -87,6 +109,7 @@
 }
 
 #canvas-frame {
+    grid-area: canvas;
     display: flex;
     place-items: center;
     gap: 0.25rem;

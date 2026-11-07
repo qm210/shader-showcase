@@ -1,16 +1,18 @@
-import {registerShaderCode} from "./shaderCode.js";
-import {appendButton, appendElement, createDiv, createElement} from "./dom.js";
+import {addFreeRow, createInputElements} from "../controls/uniforms.js";
+import {createShaderCodeRegister} from "./shaderCode.js";
+import {addButton, appendButton, appendElement, createDiv, createElement} from "./dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
 import {deferExtendedAnalysis} from "../../glslCode/deferredAnalysis.js";
-import {startRenderLoop} from "../../webgl/render.js";
 import {setCanvasResolution} from "../../webgl/setup.js";
 import {addCanvasMouseInteraction} from "../mouse.js";
 import {createClipboardButtons, createPresetSelector, refreshPresets} from "../exchange.js";
 import {initializePresetStore} from "../database.js";
-import {addButton, addFreeRow, createInputElements} from "./controls/uniforms.js";
+import {createMainControlBar} from "../controls/bar.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
-import {createMainControlBar} from "./controls/bar.js";
-import {promptForSecondToJump} from "./controls/time.js";
+import {promptForSecondToJump} from "../controls/time.js";
+import {startRenderLoop} from "../playback.js";
+import {addVideoElement} from "../controls/webcam.js";
+import {addKeyboardShortcuts} from "../controls/keyboard.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -23,52 +25,13 @@ const generatePage = (glContext, elements, state, controls) => {
     }
 
     elements.scrollStack = createScrollStackOn(elements.shaders);
-
-    elements.register = [];
-
-    registerShaderCode(
-        elements,
-        state.source.fragment,
-        state.error.fragment,
-        "fragment.source",
-        "Fragment Shader"
-    );
-    registerShaderCode(
-        elements,
-        state.source.vertex,
-        state.error.vertex,
-        "vertex.source",
-        "Vertex Shader"
-    );
-
-    if (state.post) {
-        appendElement(
-            elements.shaders,
-            "Second Program (Post Processing):",
-            "h4",
-        );
-        registerShaderCode(
-            elements,
-            state.post.source.fragment,
-            state.post.error.fragment,
-            "fragment.post.source",
-            "Fragment Shader"
-        );
-        registerShaderCode(
-            elements,
-            state.post.source.vertex,
-            state.post.error.vertex,
-            "vertex.post.source",
-            "Vertex Shader"
-        );
-    }
-
+    elements.register = createShaderCodeRegister(elements, state);
     deferExtendedAnalysis(elements)
         .then(scrollToFirstInterestingLine);
 
     addCanvasMouseInteraction(elements, state);
     addVideoElement(elements, state);
-    sanitizeControl(elements, state, controls, glContext);
+    sanitizeControls(elements, state, controls, glContext);
     addMainControls(elements, state, controls, glContext);
     addUniformControls(elements, state, controls);
     addDisplayControls(elements, state, glContext);
@@ -81,54 +44,16 @@ const generatePage = (glContext, elements, state, controls) => {
             refreshPresets(elements, state);
         });
 
-    // TODO move that somewhere more aesthetic-ishy
-    void Promise.all(
-        controls.toggles
-            .filter(toggle => toggle.tryOnStartup)
-            .map(toggle =>
-                toggle.onClick().then(() =>
-                    console.log("[STARTUP] Toggled ", toggle)
-                )
-            )
-    ).catch((err) =>
-        console.warn("[STARTUP] Failed:", err)
-    );
+    tryStartupToggles(controls);
+    addKeyboardShortcuts(state, {
+        printDebug: () => console.info(state, elements)
+    });
 
     elements.pageLoadingMs = performance.now() - elements.initialMs;
 };
 
 export default generatePage;
 
-
-const addVideoElement = (elements, state) => {
-    // For WebCam input
-    elements.video = document.createElement("video");
-    elements.video.autoplay = true;
-    elements.video.muted = true;
-    elements.video.playsinline = true;
-    elements.video.hidden = true;
-    elements.canvasFrame.appendChild(elements.video);
-
-    state.videoInput = null;
-    elements.video.initialize = async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-        });
-        elements.video.srcObject = stream;
-        await new Promise((resolve) => {
-            elements.video.onloadedmetadata = resolve;
-        });
-        try {
-            await elements.video.play();
-            state.videoInput = elements.video;
-            console.log("[VIDEO]", stream, elements.video);
-        } catch (err) {
-            console.warn("[VIDEO] Failed", err);
-            state.videoInput = null;
-        }
-    };
-}
 
 export const addMainControls = (elements, state, controls) => {
     if (!state.program) {
@@ -143,7 +68,7 @@ export const addMainControls = (elements, state, controls) => {
     const {seeker} = createMainControlBar(elements, state, controls);
     state.play.actions = seeker.do;
 
-    for (const control of controls.toggles ?? []) {
+    for (const control of controls.toggles) {
         elements.controlBar.buttons.push(
             addButton({
                 title: control.label(),
@@ -176,101 +101,7 @@ export const addMainControls = (elements, state, controls) => {
         addFreeRow({
             parent: elements.controlBar.frame,
         });
-
-    let printNextKey;
-    document.addEventListener("keydown", event => {
-        if (printNextKey) {
-            console.log("Key:", event.key, event.code);
-            printNextKey = false;
-        }
-        if (document.activeElement !== document.body) {
-            return;
-        }
-        let preventBrowserBehaviour = true;
-        // cf. playback.js for how the state variables work
-        const combinedKey = readableKeyCombinations(event);
-        // console.log(`[KEY COMBINATION] "${combinedKey}"`);
-        switch (combinedKey) {
-            case "Ctrl + Backspace":
-                state.play.signal.reset = true;
-                break;
-            case "Ctrl + Space":
-                seeker.do.toggle();
-                break;
-            case "Ctrl + ArrowLeft":
-                seeker.do.jump({delta: -1});
-                break;
-            case "Ctrl + ArrowRight":
-                seeker.do.jump({delta: +1});
-                break;
-            case "Ctrl + ArrowUp":
-                seeker.do.jump({delta: +0.05});
-                break;
-            case "Ctrl + ArrowDown":
-                seeker.do.jump({delta: -0.05});
-                break;
-            case "Ctrl + Home":
-                seeker.do.jump({to: 0});
-                break;
-            case "Ctrl + End":
-                seeker.do.jump({to: state.play.range.max});
-                break;
-            case "Ctrl + Insert":
-                promptForSecondToJump(seeker, state.time);
-                break;
-            case "Ctrl + I":
-                console.info(state, elements);
-                printNextKey = true;
-                break;
-            case "Ctrl + U":
-                openUniformInputHelper();
-                break;
-            case "Ctrl + Tab":
-                console.log("[JUST PRESSED AT]", state.time, state.track?.audio?.currentTime, state);
-                break;
-            case "MediaPlayPause":
-                if (state.track) {
-                    state.track.actions.togglePlay().then(() => {
-                        console.info("[AUDIO] Playing?", !state.track.audio.paused)
-                    });
-                } else {
-                    preventBrowserBehaviour = false;
-                }
-                break;
-            case "AudioVolumeMute":
-                if (state.track) {
-                    state.track.actions.toggleMuted();
-                    console.info("[AUDIO] Muted?", !state.track.audio.muted)
-                } else {
-                    preventBrowserBehaviour = false;
-                }
-                break;
-            default:
-                preventBrowserBehaviour = false;
-                break;
-        }
-        if (preventBrowserBehaviour) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    });
 };
-
-function readableKeyCombinations(event) {
-    const modifiers = [
-        event.ctrlKey ? "Ctrl" : "",
-        event.shiftKey ? "Shift" : "",
-        event.altKey ? "Alt" : "",
-    ].filter(Boolean);
-    let key = event.key;
-    if (key === " ") {
-        key = "Space";
-    }
-    if (key.length === 1) {
-        key = key.toUpperCase();
-    }
-    return [...modifiers, key].join(" + ");
-}
 
 export const addUniformControls = (elements, state, controls) => {
     if (!state.program) {
@@ -353,6 +184,7 @@ export const addUniformControls = (elements, state, controls) => {
         }
         elements.uniforms[control.name] = input;
     }
+
 };
 
 function renderErrorConsole(state) {
@@ -395,12 +227,14 @@ const PAGE_FONT = {
     storageKey: "qm.fontsize.factor"
 };
 
+const NO_CODE_STORAGE_KEY = "qm.no-code";
+
 const CHAR = {
     PLUS: "+",
     MINUS: "\u2013",
     ARROW_UP: "\u2191",
     ARROW_DOWN: "\u2193",
-}
+};
 
 function addDisplayControls(elements, state, glContext) {
     const canvasControls = createDiv();
@@ -417,15 +251,27 @@ function addDisplayControls(elements, state, glContext) {
     fontLabel.addEventListener("dblclick", () => setPageFontFactor(1));
     pageFontInitialize();
 
-    const info = appendElement(elements.displayControls, "", "div", "fps-box");
+    const codeToggle = createDiv("code?", "small-link");
+    fontControls.appendChild(codeToggle);
+    codeToggle.addEventListener("click", toggleShaderCode);
+    if (localStorage.getItem(NO_CODE_STORAGE_KEY)) {
+        toggleShaderCode();
+    }
+
+    const info = appendElement(
+        elements.displayControls,
+        "", "div", "fps-box"
+    );
     elements.fps = {
         label: createElement("label", "FPS..?"),
         display: createDiv("\u2013 ? \u2013", "fps"),
     }
+    elements.fps.display.id = "fps";
     info.appendChild(elements.fps.label);
     info.appendChild(elements.fps.display);
     info.addEventListener("click", () => {
-        state.debugSignal = true;
+        state.play.signal.takeRenderTime = true;
+        console.log(state.play);
     });
 
     elements.presets = createPresetSelector(elements, state);
@@ -446,7 +292,7 @@ function addDisplayControls(elements, state, glContext) {
             width = Math.max(Math.round(width * factor), 1);
             height = Math.max(Math.round(height * factor), 1);
             setCanvasResolution(elements.canvas, glContext, width, height);
-            updateResolutionInState(state, glContext);
+            updateResolutionInState(state, gl);
             /*
             // TODO: must recreate framebuffers, but for that we need a short break from rendering
             whilePausingRendering(state, () => {
@@ -475,67 +321,17 @@ function addDisplayControls(elements, state, glContext) {
         const currentFactor = JSON.parse(localStorage.getItem(PAGE_FONT.storageKey) ?? "1");
         document.documentElement.style.setProperty(PAGE_FONT.cssProperty, currentFactor);
     }
+
+    function toggleShaderCode() {
+        elements.layout.classList.toggle("no-code");
+        if (elements.layout.classList.contains("no-code")) {
+            localStorage.setItem(NO_CODE_STORAGE_KEY, "true");
+        } else {
+            localStorage.removeItem(NO_CODE_STORAGE_KEY);
+        }
+    }
 }
 
-/**
- * openUniformInputHelper() is just for developing when adding new uniforms to a shader.
- * The output is given in the Browser Console and consists of
- * - the declaration line in GLSL
- * - the gl.uniform...() call for our render(...) function
- * - the object for the uniforms array in generateControls(...) for the slider
- */
-function openUniformInputHelper() {
-    const inputString = window.prompt(
-        "Enter for new Uniform (whitespace-separated, i.e. vectors as [0,1] without spaces):\n" +
-        "<type> <name> <defaultValue> [<min> <max>]\n\n" +
-        "(then check output in Console)"
-    );
-    if (!inputString) {
-        return;
-    }
-    const glUniformSuffix = {
-        "float": "1f",
-        "int": "1i",
-        "bool": "1i",
-        "vec2": "2fv",
-        "vec3": "3fv",
-        "vec4": "4fv",
-        "ivec2": "2iv",
-        "ivec3": "3iv",
-        "ivec4": "4iv",
-    };
-    const knownTypes = Object.keys(glUniformSuffix);
-    let type, name, defaultValue, min, max;
-    const parts = inputString
-        .split(/\s+/)
-        .map(part =>
-            part.replaceAll(",", ", ")
-        );
-    if (knownTypes.includes(parts[0])) {
-        [type, name, defaultValue, min, max] = parts;
-    } else {
-        type = "float";
-        [name, defaultValue, min, max] = parts;
-    }
-    const glslDeclaration =
-        `uniform ${type} ${name};`;
-    const glUniformCall =
-        `gl.uniform${glUniformSuffix[type]}(state.location.${name}, state.${name});`;
-    let inputControl =
-        `        }, {
-            type: "${type}",
-            name: "${name}",
-            defaultValue: ${defaultValue ?? 0},`;
-    if (min !== undefined) {
-        inputControl += `\n            min: ${min},`;
-    }
-    if (max !== undefined) {
-        inputControl += `\n            max: ${max},`;
-    }
-
-    const combined = [glslDeclaration, glUniformCall, inputControl].join("\n\n");
-    console.info(combined);
-}
 
 function collectGroups(controls) {
     const result = {};
@@ -551,7 +347,7 @@ function collectGroups(controls) {
     return result;
 }
 
-function sanitizeControl(elements, state, controls, glContext) {
+function sanitizeControls(elements, state, controls, glContext) {
     // TODO: lost & found, move when some place looks suited (:
 
     if (!controls.onRender) {
@@ -565,4 +361,21 @@ function sanitizeControl(elements, state, controls, glContext) {
                 elements
             );
     }
+
+    controls.uniforms ??= [];
+    controls.toggles ??= [];
+}
+
+function tryStartupToggles(controls) {
+    Promise.all(
+        controls.toggles
+            .filter(toggle => toggle.tryOnStartup)
+            .map(toggle =>
+                toggle.onClick().then(() =>
+                    console.log("[STARTUP] Toggled ", toggle)
+                )
+            )
+    ).catch((err) =>
+        console.warn("[STARTUP] Failed:", err)
+    );
 }
