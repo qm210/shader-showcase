@@ -27,7 +27,7 @@ import fontMsdfJson from "../textures/dream210/SpicySale.msdf.json";
 // import track from "/DreamySchilfester2024_3_2025-12-11_2128.ogg?url";
 
 import monaAtlas from "../textures/dream210/mona/mona_atlas.png";
-import {startRenderLoop} from "../webgl/render.js";
+import {startRenderLoop} from "../app/playback.js";
 
 
 export default {
