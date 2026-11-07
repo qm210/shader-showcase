@@ -565,5 +565,4 @@ function sanitizeControl(elements, state, controls, glContext) {
                 elements
             );
     }
-    controls.onRender();
 }
