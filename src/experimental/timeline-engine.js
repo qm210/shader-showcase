@@ -189,7 +189,7 @@ export class TimelineTrack {
     /** Deserialize from JSON */
     static fromJSON(json) {
         const track = new TimelineTrack(json.name);
-        track.id = json.id;
+        track.id = json.id ?? track.id;
         track.targets = json.targets || [];
         track.keyframes = json.keyframes || [];
         track.loop = json.loop || false;
@@ -208,6 +208,17 @@ export class TimelineEngine {
         this.speed = 1.0;
         this.baseTime = 0; // offset for shader iTime sync
         this.onUpdate = null; // callback: (engine) => void, called every frame
+        this._overrides = {};
+    }
+
+    /** Clear all tracks, overrides and playback state. */
+    reset() {
+        this.tracks.clear();
+        this.currentTime = 0;
+        this.playing = false;
+        this.speed = 1.0;
+        this.baseTime = 0;
+        this._overrides = {};
     }
 
     /** Add a track by name */
@@ -259,18 +270,17 @@ export class TimelineEngine {
 
     /** Set a single uniform value directly (bypasses timeline) */
     setUniformValue(uniformName, value) {
-        // Store in a special "override" map
-        if (!this._overrides) this._overrides = {};
         this._overrides[uniformName] = value;
+    }
+
+    /** Get a copy of the manual overrides */
+    getOverrides() {
+        return { ...this._overrides };
     }
 
     /** Get all uniform values including overrides */
     getAllUniformValues() {
-        const result = this.getUniformValues();
-        if (this._overrides) {
-            Object.assign(result, this._overrides);
-        }
-        return result;
+        return Object.assign(this.getUniformValues(), this._overrides);
     }
 
     /** Clear manual overrides */
@@ -293,17 +303,22 @@ export class TimelineEngine {
         };
     }
 
+    /** Replace this engine's state with serialized data (keeps the instance). */
+    loadJSON(json) {
+        this.reset();
+        this.currentTime = Number(json?.currentTime) || 0;
+        this.playing = Boolean(json?.playing);
+        this.speed = Number(json?.speed) || 1.0;
+        this.baseTime = Number(json?.baseTime) || 0;
+        for (const trackJson of json?.tracks ?? []) {
+            const track = TimelineTrack.fromJSON(trackJson);
+            this.tracks.set(track.id, track);
+        }
+        return this;
+    }
+
     /** Deserialize timeline from JSON */
     static fromJSON(json) {
-        const engine = new TimelineEngine();
-        engine.currentTime = json.currentTime || 0;
-        engine.playing = json.playing || false;
-        engine.speed = json.speed || 1.0;
-        engine.baseTime = json.baseTime || 0;
-        for (const trackJson of json.tracks) {
-            const track = TimelineTrack.fromJSON(trackJson);
-            engine.tracks.set(track.id, track);
-        }
-        return engine;
+        return new TimelineEngine().loadJSON(json);
     }
 }

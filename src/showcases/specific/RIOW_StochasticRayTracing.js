@@ -145,19 +145,19 @@ function render(gl, state) {
     gl.uniform2fv(state.location.iResolution, state.resolution);
     gl.uniform1i(state.location.iFrame, state.iFrame);
 
-    gl.uniform1f(state.location.iMaxDistance, state.iMaxDistance);
-    gl.uniform1f(state.location.nSmallSpheresX, state.nSmallSpheresX);
-    gl.uniform1f(state.location.nSmallSpheresZ, state.nSmallSpheresZ);
-    gl.uniform1i(state.location.iMaxRecursion, state.iMaxRecursion);
-    gl.uniform1i(state.location.disableVariationWithTime, state.disableVariationWithTime);
-    gl.uniform1i(state.location.disableVariationOverall, state.disableVariationOverall);
-    gl.uniform1i(state.location.disableAccumulation, state.disableAccumulation);
-    gl.uniform1i(state.location.demonstrateMovement, state.demonstrateMovement);
-    gl.uniform1f(state.location.iDielectricEta, state.iDielectricEta);
-    gl.uniform1f(state.location.iDielectricRandomizeDir, state.iDielectricRandomizeDir);
-    gl.uniform3fv(state.location.colMetalReflectance, state.colMetalReflectance);
-    gl.uniform1f(state.location.iMetalRandomizeDir, state.iMetalRandomizeDir);
-    gl.uniform1f(state.location.iGamma, state.iGamma);
+    gl.uniform1f(state.location.iMaxDistance, state.uni.iMaxDistance);
+    gl.uniform1f(state.location.nSmallSpheresX, state.uni.nSmallSpheresX);
+    gl.uniform1f(state.location.nSmallSpheresZ, state.uni.nSmallSpheresZ);
+    gl.uniform1i(state.location.iMaxRecursion, state.uni.iMaxRecursion);
+    gl.uniform1i(state.location.disableVariationWithTime, state.uni.disableVariationWithTime);
+    gl.uniform1i(state.location.disableVariationOverall, state.uni.disableVariationOverall);
+    gl.uniform1i(state.location.disableAccumulation, state.uni.disableAccumulation);
+    gl.uniform1i(state.location.demonstrateMovement, state.uni.demonstrateMovement);
+    gl.uniform1f(state.location.iDielectricEta, state.uni.iDielectricEta);
+    gl.uniform1f(state.location.iDielectricRandomizeDir, state.uni.iDielectricRandomizeDir);
+    gl.uniform3fv(state.location.colMetalReflectance, state.uni.colMetalReflectance);
+    gl.uniform1f(state.location.iMetalRandomizeDir, state.uni.iMetalRandomizeDir);
+    gl.uniform1f(state.location.iGamma, state.uni.iGamma);
 
     const {write, read} = takePingPongFramebuffers(state);
 

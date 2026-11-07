@@ -93,3 +93,4 @@ export function createSmallButton(title, ...extraClasses) {
     button.textContent = title;
     return button;
 }
+

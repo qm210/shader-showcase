@@ -1,4 +1,4 @@
-import {promptForSecondToJump} from "./time.js";
+import {promptForSecondToJump} from "./layout/elements/time.js";
 
 export function addKeyboardShortcuts(state, {printDebug} = {}) {
     const seekAction = state.play.actions;
@@ -139,7 +139,7 @@ function openUniformInputHelper() {
     const glslDeclaration =
         `uniform ${type} ${name};`;
     const glUniformCall =
-        `gl.uniform${glUniformSuffix[type]}(state.location.${name}, state.${name});`;
+        `gl.uniform${glUniformSuffix[type]}(state.location.${name}, state.uni.${name});`;
     let inputControl =
         `        }, {
             type: "${type}",

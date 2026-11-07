@@ -1,5 +1,5 @@
-import {initMouseState} from "../mouse.js";
-import {createDiv, createSmallButton} from "../layout/dom.js";
+import {initMouseState} from "../../mouse.js";
+import {createDiv, createSmallButton} from "../dom.js";
 import {sessionStoreControlState, updateVecLabel} from "./uniforms.js";
 import {createTimeSeeker} from "./time.js";
 
@@ -42,7 +42,7 @@ function createResetAllButton(elements, state, controls) {
         }
         for (const control of controls.uniforms) {
             if (control.type === "cursorInput") {
-                state[control.name] = control.defaultValue;
+                state.uni[control.name] = control.defaultValue;
                 const label = elements.uniforms[control.name].value;
                 updateVecLabel(label, state, control);
                 sessionStoreControlState(state, control);

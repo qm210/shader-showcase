@@ -6,7 +6,7 @@ const HEADER = {
     VERSION: 1,
 };
 
-const uniformNameMap = {
+const uniformFieldMap = {
     iTime: "time",
     iResolution: "resolution",
 };
@@ -19,7 +19,7 @@ function bundleUniforms(state) {
         showcaseId: state.showcaseId,
     };
     for (const uniform of state.expectedUniforms) {
-        const value = state[uniform.name] ?? state[uniformNameMap[uniform.name]]
+        const value = state.uni[uniform.name] ?? state[uniformFieldMap[uniform.name]]
         result.uniforms.push({
             type: uniform.type,
             name: uniform.name,
@@ -48,8 +48,12 @@ function unpackBundle(state, json) {
             console.warn("Uniform doesn't match type, ignore:", loaded[uniform.name]);
             continue;
         }
-        const uniformKey = uniformNameMap[uniform.name] ?? uniform.name;
-        state[uniformKey] = loaded[uniform.name].value;
+        const mappedKey = uniformFieldMap[uniform.name];
+        if (mappedKey) {
+            state[mappedKey] = loaded[uniform.name].value;
+        } else {
+            state.uni[uniform.name] = loaded[uniform.name].value;
+        }
     }
 }
 

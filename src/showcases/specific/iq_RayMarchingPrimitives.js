@@ -95,16 +95,16 @@ function render(gl, state) {
     gl.uniform2fv(state.location.iResolution, state.resolution);
     gl.uniform4fv(state.location.iMouse, state.iMouse);
 
-    gl.uniform1f(state.location.iFree0, state.iFree0);
-    gl.uniform1f(state.location.iFree1, state.iFree1);
-    gl.uniform1f(state.location.iFree2, state.iFree2);
-    gl.uniform1f(state.location.iFree3, state.iFree3);
-    gl.uniform1f(state.location.iFree4, state.iFree4);
-    gl.uniform1f(state.location.iFree5, state.iFree5);
-    gl.uniform1f(state.location.iFree6, state.iFree6);
-    gl.uniform1f(state.location.iFree7, state.iFree7);
-    gl.uniform1f(state.location.iFree8, state.iFree8);
-    gl.uniform1f(state.location.iFree9, state.iFree9);
+    gl.uniform1f(state.location.iFree0, state.uni.iFree0);
+    gl.uniform1f(state.location.iFree1, state.uni.iFree1);
+    gl.uniform1f(state.location.iFree2, state.uni.iFree2);
+    gl.uniform1f(state.location.iFree3, state.uni.iFree3);
+    gl.uniform1f(state.location.iFree4, state.uni.iFree4);
+    gl.uniform1f(state.location.iFree5, state.uni.iFree5);
+    gl.uniform1f(state.location.iFree6, state.uni.iFree6);
+    gl.uniform1f(state.location.iFree7, state.uni.iFree7);
+    gl.uniform1f(state.location.iFree8, state.uni.iFree8);
+    gl.uniform1f(state.location.iFree9, state.uni.iFree9);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

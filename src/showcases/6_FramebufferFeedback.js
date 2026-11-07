@@ -133,20 +133,20 @@ function render(gl, state) {
     gl.uniform1f(state.location.iDeltaTime, state.deltaTime);
     gl.uniform2fv(loc.iResolution, state.resolution);
     gl.uniform2fv(loc.texelSize, state.texelSize);
-    gl.uniform1i(loc.iFrame, state.iFrame);
-    gl.uniform1i(loc.onlyFresh, state.onlyFresh);
-    gl.uniform1f(loc.iHashSeed, state.iHashSeed);
-    gl.uniform1f(loc.iFadeFactor, state.iFadeFactor);
-    gl.uniform1f(loc.iCircleSize, state.iCircleSize);
-    gl.uniform1f(loc.iCircleSizeVariation, state.iCircleSizeVariation);
+    gl.uniform1i(loc.iFrame, state.uni.iFrame);
+    gl.uniform1i(loc.onlyFresh, state.uni.onlyFresh);
+    gl.uniform1f(loc.iHashSeed, state.uni.iHashSeed);
+    gl.uniform1f(loc.iFadeFactor, state.uni.iFadeFactor);
+    gl.uniform1f(loc.iCircleSize, state.uni.iCircleSize);
+    gl.uniform1f(loc.iCircleSizeVariation, state.uni.iCircleSizeVariation);
 
-    gl.uniform1f(loc.iFree0, state.iFree0);
-    gl.uniform1f(loc.iFree1, state.iFree1);
-    gl.uniform1f(loc.iFree2, state.iFree2);
-    gl.uniform1f(loc.iFree3, state.iFree3);
-    gl.uniform3fv(loc.vecFree0, state.vecFree0);
-    gl.uniform3fv(loc.vecFree1, state.vecFree1);
-    gl.uniform3fv(loc.vecFree2, state.vecFree2);
+    gl.uniform1f(loc.iFree0, state.uni.iFree0);
+    gl.uniform1f(loc.iFree1, state.uni.iFree1);
+    gl.uniform1f(loc.iFree2, state.uni.iFree2);
+    gl.uniform1f(loc.iFree3, state.uni.iFree3);
+    gl.uniform3fv(loc.vecFree0, state.uni.vecFree0);
+    gl.uniform3fv(loc.vecFree1, state.uni.vecFree1);
+    gl.uniform3fv(loc.vecFree2, state.uni.vecFree2);
 
     // FRAMEBUFFER PING-PONG!
     let write = state.framebuffer[state.ping];

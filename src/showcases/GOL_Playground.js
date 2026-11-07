@@ -101,31 +101,31 @@ let write, read;
 function render(gl, state) {
     const loc = state.location;
     gl.uniform1f(loc.iTime, state.time);
-    gl.uniform1f(state.location.iDeltaTime, state.deltaTime);
+    gl.uniform1f(state.location.iDeltaTime, state.uni.deltaTime);
     gl.uniform2fv(loc.iResolution, state.resolution);
     gl.uniform2fv(loc.texelSize, state.texelSize);
-    gl.uniform1i(loc.iFrame, state.iFrame);
+    gl.uniform1i(loc.iFrame, state.uni.iFrame);
     gl.uniform3fv(loc.iMouseHover, state.iMouseHover);
     gl.uniform1i(loc.iMouseDown, state.iMouseDown);
-    gl.uniform1i(loc.debugMode, state.debugMode);
-    gl.uniform1f(loc.iHashSeed, state.iHashSeed);
-    gl.uniform1f(loc.iBarrelDistortion, state.iBarrelDistortion);
-    gl.uniform1f(loc.iBarrelDistortionExponent, state.iBarrelDistortionExponent);
-    gl.uniform1f(loc.iGlitchMaxOffset, state.iGlitchMaxOffset);
-    gl.uniform1f(loc.iGlitchChance, state.iGlitchChance);
-    gl.uniform1f(loc.iGlitchVisibility, state.iGlitchVisibility);
-    gl.uniform1f(loc.iCellBorder, state.iCellBorder);
-    gl.uniform1f(loc.iCellShape, state.iCellShape);
-    gl.uniform1f(loc.iCellSmoothing, state.iCellSmoothing);
-    gl.uniform1f(loc.iBoxSize, state.iBoxSize);
-    gl.uniform1f(loc.iBoxSmear, state.iBoxSmear);
+    gl.uniform1i(loc.debugMode, state.uni.debugMode);
+    gl.uniform1f(loc.iHashSeed, state.uni.iHashSeed);
+    gl.uniform1f(loc.iBarrelDistortion, state.uni.iBarrelDistortion);
+    gl.uniform1f(loc.iBarrelDistortionExponent, state.uni.iBarrelDistortionExponent);
+    gl.uniform1f(loc.iGlitchMaxOffset, state.uni.iGlitchMaxOffset);
+    gl.uniform1f(loc.iGlitchChance, state.uni.iGlitchChance);
+    gl.uniform1f(loc.iGlitchVisibility, state.uni.iGlitchVisibility);
+    gl.uniform1f(loc.iCellBorder, state.uni.iCellBorder);
+    gl.uniform1f(loc.iCellShape, state.uni.iCellShape);
+    gl.uniform1f(loc.iCellSmoothing, state.uni.iCellSmoothing);
+    gl.uniform1f(loc.iBoxSize, state.uni.iBoxSize);
+    gl.uniform1f(loc.iBoxSmear, state.uni.iBoxSmear);
 
-    gl.uniform1f(loc.iFree0, state.iFree0);
-    gl.uniform1f(loc.iFree1, state.iFree1);
-    gl.uniform1f(loc.iFree2, state.iFree2);
-    gl.uniform1f(loc.iFree3, state.iFree3);
-    gl.uniform1f(loc.iFree4, state.iFree4);
-    gl.uniform1f(loc.iFree5, state.iFree5);
+    gl.uniform1f(loc.iFree0, state.uni.iFree0);
+    gl.uniform1f(loc.iFree1, state.uni.iFree1);
+    gl.uniform1f(loc.iFree2, state.uni.iFree2);
+    gl.uniform1f(loc.iFree3, state.uni.iFree3);
+    gl.uniform1f(loc.iFree4, state.uni.iFree4);
+    gl.uniform1f(loc.iFree5, state.uni.iFree5);
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, state.texInit);
@@ -135,11 +135,11 @@ function render(gl, state) {
         state.doEvolve = true;
     }
 
-    gl.uniform1i(loc.doInit, state.doInit);
-    gl.uniform1i(loc.doEvolve, state.doEvolve);
-    gl.uniform1i(loc.spawnRandomly, state.spawnRandomly);
-    gl.uniform1i(loc.drawByMouse, state.drawByMouse);
-    gl.uniform1i(loc.transitionFrames, state.transitionFrames);
+    gl.uniform1i(loc.doInit, state.uni.doInit);
+    gl.uniform1i(loc.doEvolve, state.uni.doEvolve);
+    gl.uniform1i(loc.spawnRandomly, state.uni.spawnRandomly);
+    gl.uniform1i(loc.drawByMouse, state.uni.drawByMouse);
+    gl.uniform1i(loc.transitionFrames, state.uni.transitionFrames);
 
     // Framebuffer Ping Pong - in eigene Struktur ausgelagert
     [write, read] = state.gameBuffers.currentWriteRead();

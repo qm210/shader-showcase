@@ -44,7 +44,7 @@ export class UniformAutomationizer {
             const value = this.evaluate(uniformName, s.time);
             if (value !== this.values[uniformName]) {
                 this.values[uniformName] = value;
-                s[uniformName] = value;
+                s.uni[uniformName] = value;
                 // this.hasChanged.add(uniformName);
             }
         }

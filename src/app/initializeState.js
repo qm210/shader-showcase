@@ -17,13 +17,14 @@ export function createInitialState(sources) {
         activeUniforms: [],
         location: {},
         framebuffer: [],
+        uni: {},
+        time: 0,
         createdAt: takeMilliSeconds(),
     };
     return withPlaybackFeatures(state);
 }
 
 function withPlaybackFeatures(state) {
-    state.time = 0;
     state.play = {
         dt: 0,
         running: undefined,

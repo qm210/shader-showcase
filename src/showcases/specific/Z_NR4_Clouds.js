@@ -267,33 +267,33 @@ function render(gl, state) {
     gl.uniform1f(state.location.iMouseWheel, state.iMouseWheel);
     gl.uniform1i(state.location.passIndex, state.passIndex);
 
-    gl.uniform1f(state.location.iCloudYDisplacement, state.iCloudYDisplacement);
-    gl.uniform1f(state.location.iCloudLayerDistance, state.iCloudLayerDistance);
-    gl.uniform1f(state.location.iLightLayerDistance, state.iLightLayerDistance);
-    gl.uniform1f(state.location.iCloudSeed, state.iCloudSeed);
-    gl.uniform1f(state.location.iSkyQuetschung, state.iSkyQuetschung);
-    gl.uniform1i(state.location.iSampleCount, state.iSampleCount);
-    gl.uniform1i(state.location.iCloudLayerCount, state.iCloudLayerCount);
-    gl.uniform1i(state.location.iLightLayerCount, state.iLightLayerCount);
-    gl.uniform1i(state.location.iCloudNoiseCount, state.iCloudNoiseCount);
-    gl.uniform1i(state.location.iLightNoiseCount, state.iLightNoiseCount);
-    gl.uniform3fv(state.location.iNoiseScale, state.iNoiseScale);
-    gl.uniform1f(state.location.iNoiseScaleB, state.iNoiseScaleB);
-    gl.uniform1f(state.location.iCloudAbsorptionCoeff, state.iCloudAbsorptionCoeff);
-    gl.uniform1f(state.location.iCloudAnisoScattering, state.iCloudAnisoScattering);
-    gl.uniform3fv(state.location.vecSunPosition, state.vecSunPosition);
-    gl.uniform3fv(state.location.vecSunColorYCH, state.vecSunColorYCH);
-    gl.uniform1f(state.location.iSunExponent, state.iSunExponent);
-    gl.uniform3fv(state.location.vecTone1, state.vecTone1);
-    gl.uniform3fv(state.location.vecTone2, state.vecTone2);
-    gl.uniform1f(state.location.iAccumulateMix, state.iAccumulateMix);
+    gl.uniform1f(state.location.iCloudYDisplacement, state.uni.iCloudYDisplacement);
+    gl.uniform1f(state.location.iCloudLayerDistance, state.uni.iCloudLayerDistance);
+    gl.uniform1f(state.location.iLightLayerDistance, state.uni.iLightLayerDistance);
+    gl.uniform1f(state.location.iCloudSeed, state.uni.iCloudSeed);
+    gl.uniform1f(state.location.iSkyQuetschung, state.uni.iSkyQuetschung);
+    gl.uniform1i(state.location.iSampleCount, state.uni.iSampleCount);
+    gl.uniform1i(state.location.iCloudLayerCount, state.uni.iCloudLayerCount);
+    gl.uniform1i(state.location.iLightLayerCount, state.uni.iLightLayerCount);
+    gl.uniform1i(state.location.iCloudNoiseCount, state.uni.iCloudNoiseCount);
+    gl.uniform1i(state.location.iLightNoiseCount, state.uni.iLightNoiseCount);
+    gl.uniform3fv(state.location.iNoiseScale, state.uni.iNoiseScale);
+    gl.uniform1f(state.location.iNoiseScaleB, state.uni.iNoiseScaleB);
+    gl.uniform1f(state.location.iCloudAbsorptionCoeff, state.uni.iCloudAbsorptionCoeff);
+    gl.uniform1f(state.location.iCloudAnisoScattering, state.uni.iCloudAnisoScattering);
+    gl.uniform3fv(state.location.vecSunPosition, state.uni.vecSunPosition);
+    gl.uniform3fv(state.location.vecSunColorYCH, state.uni.vecSunColorYCH);
+    gl.uniform1f(state.location.iSunExponent, state.uni.iSunExponent);
+    gl.uniform3fv(state.location.vecTone1, state.uni.vecTone1);
+    gl.uniform3fv(state.location.vecTone2, state.uni.vecTone2);
+    gl.uniform1f(state.location.iAccumulateMix, state.uni.iAccumulateMix);
 
     gl.uniform1i(state.location.debugOption, state.debugOption);
-    gl.uniform1f(state.location.iFree0, state.iFree0);
-    gl.uniform1f(state.location.iFree1, state.iFree1);
-    gl.uniform1f(state.location.iFree2, state.iFree2);
-    gl.uniform1f(state.location.iFree3, state.iFree3);
-    gl.uniform1f(state.location.iFree4, state.iFree4);
+    gl.uniform1f(state.location.iFree0, state.uni.iFree0);
+    gl.uniform1f(state.location.iFree1, state.uni.iFree1);
+    gl.uniform1f(state.location.iFree2, state.uni.iFree2);
+    gl.uniform1f(state.location.iFree3, state.uni.iFree3);
+    gl.uniform1f(state.location.iFree4, state.uni.iFree4);
 
     // there's only one texture (prevImage), so this stays the same
     gl.activeTexture(gl.TEXTURE0);

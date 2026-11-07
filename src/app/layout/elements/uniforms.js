@@ -1,28 +1,5 @@
-import {createDiv, createElement, createSpan} from "../layout/dom.js";
-import {initMouseState} from "../mouse.js";
-
-export function addButton({parent, onClick, onRightClick, title = "", className = "", style}) {
-    const button = document.createElement("button");
-    button.textContent = title;
-    if (className) {
-        button.className = className;
-    }
-    if (style) {
-        for (const key in style) {
-            button.style[key] = style[key];
-        }
-    }
-    if (onClick) {
-      button.addEventListener("click", onClick);
-    }
-    if (onRightClick) {
-      button.addEventListener("contextmenu", onRightClick);
-    }
-    if (parent) {
-        parent.appendChild(button);
-    }
-    return button;
-}
+import {createDiv, createElement, createSpan} from "../dom.js";
+import {initMouseState} from "../../mouse.js";
 
 export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator, className = ""}) => {
     const name = createElement("label", label);
@@ -75,19 +52,20 @@ export function createInputElements(state, control) {
 
     control.storageKey = `qm.${state.title}.${control.name}`;
     const storedState = sessionStorage.getItem(control.storageKey);
+    let target = expected ? state.uni : state;
     if (storedState) {
-        state[control.name] = JSON.parse(storedState);
+        target[control.name] = JSON.parse(storedState);
     }
-    if (state[control.name] === undefined) {
-        state[control.name] = control.defaultValue;
+    if (target[control.name] === undefined) {
+        target[control.name] = control.defaultValue;
         if (control.defaultValue === undefined) {
             console.warn("Uniform control has no defaultValue defined: ", control.name, control);
         } else if (control.defaultValue instanceof Array) {
-            state[control.name] = [...control.defaultValue];
+            target[control.name] = [...control.defaultValue];
         }
     }
-    if (control.dim > 1 && !(state[control.name] instanceof Array)) {
-        state[control.name] = toVec(control.dim, state[control.name]);
+    if (control.dim > 1 && !(target[control.name] instanceof Array)) {
+        target[control.name] = toVec(control.dim, target[control.name]);
     }
 
     if (control.hidden) {
@@ -131,12 +109,13 @@ export function createInputElements(state, control) {
 }
 
 export function sessionStoreControlState(state, control) {
-    if (state[control.name] === control.defaultValue) {
+    const source = control.notAnUniform ? state : state.uni;
+    if (source[control.name] === control.defaultValue) {
         sessionStorage.removeItem(control.storageKey);
     } else {
         sessionStorage.setItem(
             control.storageKey,
-            JSON.stringify(state[control.name])
+            JSON.stringify(source[control.name])
         );
     }
 }
@@ -217,14 +196,14 @@ export const asFloatInput = (elements, state, control) => {
             if (isNaN(value)) {
                 return;
             }
-            state[control.name] = value;
+            state.uni[control.name] = value;
         }
         updateSlider(elements, state, control, true);
         sessionStoreControlState(state, control);
     };
 
     elements.control.addEventListener("input", event => {
-        state[control.name] = valueFrom(event, control);
+        state.uni[control.name] = valueFrom(event, control);
         updateSlider(elements, state, control, false);
     });
     elements.control.addEventListener("change", event => {
@@ -274,7 +253,7 @@ function asSlider(inputElement, control) {
 }
 
 function updateSlider(elements, state, control, full = false, givenValue = undefined) {
-    let value = givenValue ?? state[control.name];
+    let value = givenValue ?? state.uni[control.name];
     value = round(value, control.step);
     if (control.log) {
         value = Math.log10(value);
@@ -336,7 +315,7 @@ export const asVecInput = (elements, state, control) => {
     if (control.normalize) {
         control.min = control.log ? 1e-6 : -1;
         control.max = 1;
-        control.normScale = 1 / (squareNorm(state[control.name]) || 1);
+        control.normScale = 1 / (squareNorm(state.uni[control.name]) || 1);
     }
 
     control.sameMin = !(control.min instanceof Array);
@@ -351,9 +330,9 @@ export const asVecInput = (elements, state, control) => {
     if (control.sameStep) {
         control.step = toVec(control.dim, control.step);
     }
-    if (!(state[control.name] instanceof Array)) {
+    if (!(state.uni[control.name] instanceof Array)) {
         // fixes bad data from the Browser Storage
-        state[control.name] = toVec(control.dim, state[control.name]);
+        state.uni[control.name] = toVec(control.dim, state.uni[control.name]);
     }
 
     const sliders = [];
@@ -372,9 +351,9 @@ export const asVecInput = (elements, state, control) => {
         sliders.push(forComponent.control);
         asSlider(forComponent.control, componentControl);
         control.step[index] ??= componentControl.step;
-        state[control.name][index] *= control.normScale;
+        state.uni[control.name][index] *= control.normScale;
         forComponent.control.value =
-            updateSlider(forComponent, state, componentControl, true, state[control.name][index]);
+            updateSlider(forComponent, state, componentControl, true, state.uni[control.name][index]);
         forComponent.control.addEventListener("input", event => {
             updateSlider(forComponent, state, componentControl, false, event.target.value);
             updateVector();
@@ -415,7 +394,7 @@ export const asVecInput = (elements, state, control) => {
             console.warn(`Bad input for ${control.type} ${control.name}: ${value}`);
             return;
         }
-        state[control.name] = value;
+        state.uni[control.name] = value;
         updateVector(value);
     };
 
@@ -428,9 +407,9 @@ export const asVecInput = (elements, state, control) => {
         const norm = control.normalize
             ? squareNorm(vector)
             : 1;
-        state[control.name] = vector.map(v => v / norm);
+        state.uni[control.name] = vector.map(v => v / norm);
         sliders.forEach((slider, i) => {
-            slider.value = state[control.name][i];
+            slider.value = state.uni[control.name][i];
         });
         updateVecLabel(elements.value, state, control);
         sessionStoreControlState(state, control);
@@ -481,7 +460,7 @@ const asCursorInput = (elements, state, control) => {
                 shiftComponent(1, -control.step);
                 break;
             case reset:
-                state[control.name] = control.defaultValue;
+                state.uni[control.name] = control.defaultValue;
                 break;
             default:
                 return;
@@ -497,10 +476,10 @@ const asCursorInput = (elements, state, control) => {
     }
 
     function shiftComponent(index, shift) {
-        if (index >= state[control.name].length) {
+        if (index >= state.uni[control.name].length) {
             return;
         }
-        state[control.name] = state[control.name].map((value, i) =>
+        state.uni[control.name] = state.uni[control.name].map((value, i) =>
             index !== i ? value :
                 value + shift
         );
@@ -508,7 +487,7 @@ const asCursorInput = (elements, state, control) => {
 }
 
 export function updateVecLabel(labelElement, state, control) {
-    let value = state[control.name];
+    let value = state.uni[control.name];
     if (value instanceof Array) {
         value = value
             .map(i => i.toFixed(2))
@@ -555,11 +534,11 @@ export const asBoolInput = (elements, state, control) => {
     function update(value = undefined) {
         const manuallyChanged = value !== undefined;
         if (manuallyChanged) {
-            state[control.name] = value;
+            state.uni[control.name] = value;
             sessionStoreControlState(state, control);
             control.onToggle(value);
         } else {
-            value = !!state[control.name];
+            value = !!state.uni[control.name];
         }
         elements.control.checked = value;
         elements.value.textContent = `= ${value}`;
@@ -587,7 +566,7 @@ export const asBoolInput = (elements, state, control) => {
         }
         for (const otherControl of control.groupedControls) {
             if (otherControl.name !== control.name) {
-                state[otherControl.name] = false;
+                state.uni[otherControl.name] = false;
                 sessionStoreControlState(state, otherControl);
             }
         }

@@ -216,17 +216,17 @@ function render(gl, state) {
     gl.uniform2fv(state.location.iResolution, state.resolution);
     gl.uniform1i(state.location.iFrame, state.iFrame);
 
-    gl.uniform1f(state.location.iNoiseLevel, state.iNoiseLevel);
-    gl.uniform1f(state.location.iNoiseFreq, state.iNoiseFreq);
-    gl.uniform1f(state.location.iNoiseOffset, state.iNoiseOffset);
-    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.iFractionalOctaves));
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iCloudMorph, state.iCloudMorph);
-    gl.uniform1f(state.location.iCloudVelX, state.iCloudVelX);
-    gl.uniform3fv(state.location.iFree0, state.iFree0);
-    gl.uniform3fv(state.location.iFree1, state.iFree1);
-    gl.uniform3fv(state.location.iFree2, state.iFree2);
+    gl.uniform1f(state.location.iNoiseLevel, state.uni.iNoiseLevel);
+    gl.uniform1f(state.location.iNoiseFreq, state.uni.iNoiseFreq);
+    gl.uniform1f(state.location.iNoiseOffset, state.uni.iNoiseOffset);
+    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.uni.iFractionalOctaves));
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iCloudMorph, state.uni.iCloudMorph);
+    gl.uniform1f(state.location.iCloudVelX, state.uni.iCloudVelX);
+    gl.uniform3fv(state.location.iFree0, state.uni.iFree0);
+    gl.uniform3fv(state.location.iFree1, state.uni.iFree1);
+    gl.uniform3fv(state.location.iFree2, state.uni.iFree2);
 
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, state.dream210logo);

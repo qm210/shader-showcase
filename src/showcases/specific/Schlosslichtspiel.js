@@ -6,7 +6,6 @@ import {
 
 import vertexShaderSource from "../../shaders/vertex.basic.glsl";
 import fragmentShaderSource from "../../shaders/specific/schlosslichtspiel.fragment.glsl";
-import {initTimeline} from "../../experimental/timeline-integration.js";
 
 export default {
     title: "Schlosslichtspiel",
@@ -24,123 +23,123 @@ export default {
 
         initVertices(gl, state, "aPosition");
 
-        state.timeline = initTimeline(state);
-
         return state;
     },
     generateControls: () => ({
         renderLoop: render,
         uniforms: createUniforms(),
+        hasTimeline: true,
     })
 }
 
-let _lastTime = 0;
+let printDebug = false;
 
 function render(gl, state) {
-    if (state.timeline) {
-        const dt = state.time - _lastTime;
-        _lastTime = state.time;
-        state.timeline.update(dt);
+    if (printDebug) {
+        console.info("[DEBUG STATE]", state);
+        printDebug = false;
     }
+    state.playground?.update(state.play.dt);
+
     gl.useProgram(state.program);
 
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform2fv(state.location.iResolution, state.resolution);
 
-    gl.uniform1f(state.location.iNoiseScaleA, state.iNoiseScaleA);
-    gl.uniform1f(state.location.iNoiseMorphingA, state.iNoiseMorphingA);
-    gl.uniform1i(state.location.iFractionalOctaves, state.iFractionalOctaves);
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iNoiseScaleC, state.iNoiseScaleC);
-    gl.uniform1f(state.location.iNoiseMorphingC, state.iNoiseMorphingC);
-    gl.uniform1f(state.location.iMarbleGranularity, state.iMarbleGranularity);
-    gl.uniform2fv(state.location.iMarbleSqueeze, state.iMarbleSqueeze);
-    gl.uniform1f(state.location.iMarbleGradingExponent, state.iMarbleGradingExponent);
-    gl.uniform1f(state.location.iMarbleRange, state.iMarbleRange);
-    gl.uniform1f(state.location.iMarbleDrift, state.iMarbleDrift);
+    gl.uniform1f(state.location.iNoiseScaleA, state.uni.iNoiseScaleA);
+    gl.uniform1f(state.location.iNoiseMorphingA, state.uni.iNoiseMorphingA);
+    gl.uniform1i(state.location.iFractionalOctaves, state.uni.iFractionalOctaves);
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iNoiseScaleC, state.uni.iNoiseScaleC);
+    gl.uniform1f(state.location.iNoiseMorphingC, state.uni.iNoiseMorphingC);
+    gl.uniform1f(state.location.iMarbleGranularity, state.uni.iMarbleGranularity);
+    gl.uniform2fv(state.location.iMarbleSqueeze, state.uni.iMarbleSqueeze);
+    gl.uniform1f(state.location.iMarbleGradingExponent, state.uni.iMarbleGradingExponent);
+    gl.uniform1f(state.location.iMarbleRange, state.uni.iMarbleRange);
+    gl.uniform1f(state.location.iMarbleDrift, state.uni.iMarbleDrift);
 
-    gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
-    gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
-    gl.uniform2fv(state.location.iWallDrift, state.iWallDrift);
-    gl.uniform1f(state.location.iNoiseLevelA, state.iNoiseLevelA);
-    gl.uniform1f(state.location.iNoiseLevelC, state.iNoiseLevelC);
-    gl.uniform1f(state.location.iNoiseLevelAC, state.iNoiseLevelAC);
-    gl.uniform1f(state.location.iColorStrength, state.iColorStrength);
-    gl.uniform1f(state.location.iColorContrast, state.iColorContrast);
-    gl.uniform1f(state.location.iColorOffset, state.iColorOffset);
-    gl.uniform1f(state.location.iColorCycle, state.iColorCycle);
-    gl.uniform1f(state.location.iPaletteMix, state.iPaletteMix);
-    gl.uniform3fv(state.location.iColorCosineFreq, state.iColorCosineFreq);
-    gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
-    gl.uniform1f(state.location.iStructureOpacity, state.iStructureOpacity);
+    gl.uniform1f(state.location.iOverallScale, state.uni.iOverallScale);
+    gl.uniform2fv(state.location.iOverallNoiseShift, state.uni.iOverallNoiseShift);
+    gl.uniform2fv(state.location.iWallDrift, state.uni.iWallDrift);
+    gl.uniform1f(state.location.iNoiseLevelA, state.uni.iNoiseLevelA);
+    gl.uniform1f(state.location.iNoiseLevelC, state.uni.iNoiseLevelC);
+    gl.uniform1f(state.location.iNoiseLevelAC, state.uni.iNoiseLevelAC);
+    gl.uniform1f(state.location.iColorStrength, state.uni.iColorStrength);
+    gl.uniform1f(state.location.iColorContrast, state.uni.iColorContrast);
+    gl.uniform1f(state.location.iColorOffset, state.uni.iColorOffset);
+    gl.uniform1f(state.location.iColorCycle, state.uni.iColorCycle);
+    gl.uniform1f(state.location.iPaletteMix, state.uni.iPaletteMix);
+    gl.uniform3fv(state.location.iColorCosineFreq, state.uni.iColorCosineFreq);
+    gl.uniform3fv(state.location.iColorCosinePhase, state.uni.iColorCosinePhase);
+    gl.uniform1f(state.location.iStructureOpacity, state.uni.iStructureOpacity);
 
-    gl.uniform1f(state.location.iFlowPush, state.iFlowPush);
-    gl.uniform1f(state.location.iFlowRadius, state.iFlowRadius);
-    gl.uniform1f(state.location.iWrapRadius, state.iWrapRadius);
-    gl.uniform1f(state.location.iWallAO, state.iWallAO);
-    gl.uniform1f(state.location.iWallAORadius, state.iWallAORadius);
-    gl.uniform1f(state.location.iLitFraction, state.iLitFraction);
-    gl.uniform1f(state.location.iLightSwitchRate, state.iLightSwitchRate);
-    gl.uniform1f(state.location.iLightSpill, state.iLightSpill);
-    gl.uniform1f(state.location.iGlassReflect, state.iGlassReflect);
-    gl.uniform1f(state.location.iVignetteStrength, state.iVignetteStrength);
-    gl.uniform1f(state.location.iGamma, state.iGamma);
+    gl.uniform1f(state.location.iFlowPush, state.uni.iFlowPush);
+    gl.uniform1f(state.location.iFlowRadius, state.uni.iFlowRadius);
+    gl.uniform1f(state.location.iWrapRadius, state.uni.iWrapRadius);
+    gl.uniform1f(state.location.iWallAO, state.uni.iWallAO);
+    gl.uniform1f(state.location.iWallAORadius, state.uni.iWallAORadius);
+    gl.uniform1f(state.location.iLitFraction, state.uni.iLitFraction);
+    gl.uniform1f(state.location.iLightSwitchRate, state.uni.iLightSwitchRate);
+    gl.uniform1f(state.location.iLightSpill, state.uni.iLightSpill);
+    gl.uniform1f(state.location.iGlassReflect, state.uni.iGlassReflect);
+    gl.uniform1f(state.location.iVignetteStrength, state.uni.iVignetteStrength);
+    gl.uniform1f(state.location.iGamma, state.uni.iGamma);
 
-    gl.uniform4fv(state.location.iEventStart, state.iEventStart);
-    gl.uniform4fv(state.location.iEventPathY, state.iEventPathY);
-    gl.uniform4fv(state.location.iEventDirection, state.iEventDirection);
-    gl.uniform1f(state.location.iEventDuration, state.iEventDuration);
-    gl.uniform1f(state.location.iEventRepeat, state.iEventRepeat);
-    gl.uniform1f(state.location.iEventSize, state.iEventSize);
-    gl.uniform2fv(state.location.iEventWobble, state.iEventWobble);
-    gl.uniform1f(state.location.iEventSpin, state.iEventSpin);
-    gl.uniform3fv(state.location.iEventColor, state.iEventColor);
-    gl.uniform1f(state.location.iEventOpacity, state.iEventOpacity);
-    gl.uniform1f(state.location.iEventOutline, state.iEventOutline);
-    gl.uniform1f(state.location.iEventWarp, state.iEventWarp);
-    gl.uniform1f(state.location.iEventOverWindows, state.iEventOverWindows);
+    gl.uniform4fv(state.location.iEventStart, state.uni.iEventStart);
+    gl.uniform4fv(state.location.iEventPathY, state.uni.iEventPathY);
+    gl.uniform4fv(state.location.iEventDirection, state.uni.iEventDirection);
+    gl.uniform1f(state.location.iEventDuration, state.uni.iEventDuration);
+    gl.uniform1f(state.location.iEventRepeat, state.uni.iEventRepeat);
+    gl.uniform1f(state.location.iEventSize, state.uni.iEventSize);
+    gl.uniform2fv(state.location.iEventWobble, state.uni.iEventWobble);
+    gl.uniform1f(state.location.iEventSpin, state.uni.iEventSpin);
+    gl.uniform3fv(state.location.iEventColor, state.uni.iEventColor);
+    gl.uniform1f(state.location.iEventOpacity, state.uni.iEventOpacity);
+    gl.uniform1f(state.location.iEventOutline, state.uni.iEventOutline);
+    gl.uniform1f(state.location.iEventWarp, state.uni.iEventWarp);
+    gl.uniform1f(state.location.iEventOverWindows, state.uni.iEventOverWindows);
 
-    gl.uniform1f(state.location.iGlowStart, state.iGlowStart);
-    gl.uniform1f(state.location.iGlowRamp, state.iGlowRamp);
-    gl.uniform3fv(state.location.iGlowColor, state.iGlowColor);
-    gl.uniform1f(state.location.iGlowIntensity, state.iGlowIntensity);
-    gl.uniform1f(state.location.iGlowRadius, state.iGlowRadius);
-    gl.uniform1f(state.location.iGlowFlicker, state.iGlowFlicker);
-    gl.uniform1f(state.location.iGlowHueCycle, state.iGlowHueCycle);
+    gl.uniform1f(state.location.iGlowStart, state.uni.iGlowStart);
+    gl.uniform1f(state.location.iGlowRamp, state.uni.iGlowRamp);
+    gl.uniform3fv(state.location.iGlowColor, state.uni.iGlowColor);
+    gl.uniform1f(state.location.iGlowIntensity, state.uni.iGlowIntensity);
+    gl.uniform1f(state.location.iGlowRadius, state.uni.iGlowRadius);
+    gl.uniform1f(state.location.iGlowFlicker, state.uni.iGlowFlicker);
+    gl.uniform1f(state.location.iGlowHueCycle, state.uni.iGlowHueCycle);
 
-    gl.uniform1f(state.location.uLayoutNCols, state.uLayoutNCols);
-    gl.uniform1f(state.location.uLayoutNRows, state.uLayoutNRows);
-    gl.uniform1f(state.location.uLayoutPanesX, state.uLayoutPanesX);
-    gl.uniform1f(state.location.uLayoutPanesY, state.uLayoutPanesY);
-    gl.uniform1f(state.location.uLayoutGapBottomMid, state.uLayoutGapBottomMid);
-    gl.uniform1f(state.location.uLayoutGapMidTop, state.uLayoutGapMidTop);
-    gl.uniform1f(state.location.uLayoutMarginX, state.uLayoutMarginX);
-    gl.uniform1f(state.location.uLayoutMarginY, state.uLayoutMarginY);
-    gl.uniform1f(state.location.uLayoutBlockShiftY, state.uLayoutBlockShiftY);
-    gl.uniform1f(state.location.uLayoutFrameW, state.uLayoutFrameW);
-    gl.uniform1f(state.location.uLayoutMullionW, state.uLayoutMullionW);
-    gl.uniform1f(state.location.uLayoutSillH, state.uLayoutSillH);
-    gl.uniform1f(state.location.uLayoutSillOverhang, state.uLayoutSillOverhang);
-    gl.uniform1f(state.location.uLayoutPlinthH, state.uLayoutPlinthH);
-    gl.uniform1f(state.location.uLayoutCorniceH, state.uLayoutCorniceH);
-    gl.uniform1f(state.location.uLayoutWrapSmooth, state.uLayoutWrapSmooth);
+    gl.uniform1f(state.location.uLayoutNCols, state.uni.uLayoutNCols);
+    gl.uniform1f(state.location.uLayoutNRows, state.uni.uLayoutNRows);
+    gl.uniform1f(state.location.uLayoutPanesX, state.uni.uLayoutPanesX);
+    gl.uniform1f(state.location.uLayoutPanesY, state.uni.uLayoutPanesY);
+    gl.uniform1f(state.location.uLayoutGapBottomMid, state.uni.uLayoutGapBottomMid);
+    gl.uniform1f(state.location.uLayoutGapMidTop, state.uni.uLayoutGapMidTop);
+    gl.uniform1f(state.location.uLayoutMarginX, state.uni.uLayoutMarginX);
+    gl.uniform1f(state.location.uLayoutMarginY, state.uni.uLayoutMarginY);
+    gl.uniform1f(state.location.uLayoutBlockShiftY, state.uni.uLayoutBlockShiftY);
+    gl.uniform1f(state.location.uLayoutFrameW, state.uni.uLayoutFrameW);
+    gl.uniform1f(state.location.uLayoutMullionW, state.uni.uLayoutMullionW);
+    gl.uniform1f(state.location.uLayoutSillH, state.uni.uLayoutSillH);
+    gl.uniform1f(state.location.uLayoutSillOverhang, state.uni.uLayoutSillOverhang);
+    gl.uniform1f(state.location.uLayoutPlinthH, state.uni.uLayoutPlinthH);
+    gl.uniform1f(state.location.uLayoutCorniceH, state.uni.uLayoutCorniceH);
+    gl.uniform1f(state.location.uLayoutWrapSmooth, state.uni.uLayoutWrapSmooth);
 
-    gl.uniform3fv(state.location.uColPlaster, state.uColPlaster);
-    gl.uniform3fv(state.location.uColFrame, state.uColFrame);
-    gl.uniform3fv(state.location.uColMullion, state.uColMullion);
-    gl.uniform3fv(state.location.uColSill, state.uColSill);
-    gl.uniform3fv(state.location.uColPlinth, state.uColPlinth);
-    gl.uniform3fv(state.location.uColCornice, state.uColCornice);
-    gl.uniform3fv(state.location.uColGlassLo, state.uColGlassLo);
-    gl.uniform3fv(state.location.uColGlassHi, state.uColGlassHi);
-    gl.uniform3fv(state.location.uColLitLo, state.uColLitLo);
-    gl.uniform3fv(state.location.uColLitHi, state.uColLitHi);
+    gl.uniform3fv(state.location.uColPlaster, state.uni.uColPlaster);
+    gl.uniform3fv(state.location.uColFrame, state.uni.uColFrame);
+    gl.uniform3fv(state.location.uColMullion, state.uni.uColMullion);
+    gl.uniform3fv(state.location.uColSill, state.uni.uColSill);
+    gl.uniform3fv(state.location.uColPlinth, state.uni.uColPlinth);
+    gl.uniform3fv(state.location.uColCornice, state.uni.uColCornice);
+    gl.uniform3fv(state.location.uColGlassLo, state.uni.uColGlassLo);
+    gl.uniform3fv(state.location.uColGlassHi, state.uni.uColGlassHi);
+    gl.uniform3fv(state.location.uColLitLo, state.uni.uColLitLo);
+    gl.uniform3fv(state.location.uColLitHi, state.uni.uColLitHi);
 
     // Debugging
-    gl.uniform1i(state.location.uDebugView, state.uDebugView || 0);
+    gl.uniform1i(state.location.uDebugView, state.uni.uDebugView || 0);
 
-    state.timeline?.syncToShader(gl, state);
+    state.playground?.syncToShader(gl, state);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

@@ -409,38 +409,38 @@ const SPAWN_EVERY_SECONDS = 2.5;
 
 function render(gl, state) {
     gl.uniform1f(state.location.iTime, state.time);
-    gl.uniform1f(state.location.deltaTime, state.deltaTime);
+    gl.uniform1f(state.location.deltaTime, state.play.dt);
     gl.uniform2fv(state.location.iResolution, state.resolution);
-    gl.uniform1i(state.location.iFrame, state.iFrame);
-    gl.uniform1f(state.location.iGamma, state.iGamma);
-    gl.uniform3fv(state.location.iSpawnColorHSV, state.iSpawnColorHSV);
-    gl.uniform1f(state.location.iSpawnHueGradient, state.iSpawnHueGradient);
-    gl.uniform1f(state.location.iSpawnRandomizeHue, state.iSpawnRandomizeHue);
-    gl.uniform1f(state.location.iColorDissipation, state.iColorDissipation);
-    gl.uniform1f(state.location.iVelocityDissipation, state.iVelocityDissipation);
-    gl.uniform1f(state.location.iMaxInitialVelocity, state.iMaxInitialVelocity);
-    gl.uniform1f(state.location.iCurlStrength, state.iCurlStrength);
-    gl.uniform1f(state.location.iPressure, state.iPressure);
-    gl.uniform1f(state.location.iSunraysWeight, state.iSunraysWeight);
-    gl.uniform1f(state.location.iSunraysDensity, state.iSunraysDensity);
-    gl.uniform1f(state.location.iSunraysDecay, state.iSunraysDecay);
-    gl.uniform1f(state.location.iSunraysExposure, state.iSunraysExposure);
-    gl.uniform1f(state.location.iSunraysIterations, state.iSunraysIterations);
+    gl.uniform1i(state.location.iFrame, state.uni.iFrame);
+    gl.uniform1f(state.location.iGamma, state.uni.iGamma);
+    gl.uniform3fv(state.location.iSpawnColorHSV, state.uni.iSpawnColorHSV);
+    gl.uniform1f(state.location.iSpawnHueGradient, state.uni.iSpawnHueGradient);
+    gl.uniform1f(state.location.iSpawnRandomizeHue, state.uni.iSpawnRandomizeHue);
+    gl.uniform1f(state.location.iColorDissipation, state.uni.iColorDissipation);
+    gl.uniform1f(state.location.iVelocityDissipation, state.uni.iVelocityDissipation);
+    gl.uniform1f(state.location.iMaxInitialVelocity, state.uni.iMaxInitialVelocity);
+    gl.uniform1f(state.location.iCurlStrength, state.uni.iCurlStrength);
+    gl.uniform1f(state.location.iPressure, state.uni.iPressure);
+    gl.uniform1f(state.location.iSunraysWeight, state.uni.iSunraysWeight);
+    gl.uniform1f(state.location.iSunraysDensity, state.uni.iSunraysDensity);
+    gl.uniform1f(state.location.iSunraysDecay, state.uni.iSunraysDecay);
+    gl.uniform1f(state.location.iSunraysExposure, state.uni.iSunraysExposure);
+    gl.uniform1f(state.location.iSunraysIterations, state.uni.iSunraysIterations);
 
-    gl.uniform1f(state.location.iNoiseLevel, state.iNoiseLevel);
-    gl.uniform1f(state.location.iNoiseFreq, state.iNoiseFreq);
-    gl.uniform1f(state.location.iNoiseOffset, state.iNoiseOffset);
-    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.iFractionalOctaves));
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iCloudMorph, state.iCloudMorph);
-    gl.uniform1f(state.location.iCloudVelX, state.iCloudVelX);
-    gl.uniform1f(state.location.iVignetteInner, state.iVignetteInner);
-    gl.uniform1f(state.location.iVignetteOuter, state.iVignetteOuter);
-    gl.uniform1f(state.location.iVignetteScale, state.iVignetteScale);
-    gl.uniform3fv(state.location.iFree0, state.iFree0);
-    gl.uniform3fv(state.location.iFree1, state.iFree1);
-    gl.uniform3fv(state.location.iFree2, state.iFree2);
+    gl.uniform1f(state.location.iNoiseLevel, state.uni.iNoiseLevel);
+    gl.uniform1f(state.location.iNoiseFreq, state.uni.iNoiseFreq);
+    gl.uniform1f(state.location.iNoiseOffset, state.uni.iNoiseOffset);
+    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.uni.iFractionalOctaves));
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iCloudMorph, state.uni.iCloudMorph);
+    gl.uniform1f(state.location.iCloudVelX, state.uni.iCloudVelX);
+    gl.uniform1f(state.location.iVignetteInner, state.uni.iVignetteInner);
+    gl.uniform1f(state.location.iVignetteOuter, state.uni.iVignetteOuter);
+    gl.uniform1f(state.location.iVignetteScale, state.uni.iVignetteScale);
+    gl.uniform3fv(state.location.iFree0, state.uni.iFree0);
+    gl.uniform3fv(state.location.iFree1, state.uni.iFree1);
+    gl.uniform3fv(state.location.iFree2, state.uni.iFree2);
 
     // as we now only have write texture _at_the_same_time_, only need one color attachment
     // -> no gl.drawBuffers() required.
@@ -454,7 +454,7 @@ function render(gl, state) {
     gl.uniform1f(state.location.iSpawnSeed, state.spawn.seed);
     gl.uniform1f(state.location.iSpawnAge, state.spawn.age);
 
-    gl.uniform1i(state.location.doDebugRender, state.doDebugRender);
+    gl.uniform1i(state.location.doDebugRender, state.uni.doDebugRender);
 
     // also, the assignment of the two input textures stay the same:
     // texPrevious @ texture unit gl.TEXTURE0

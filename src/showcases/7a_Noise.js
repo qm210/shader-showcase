@@ -29,32 +29,32 @@ export default {
 function render(gl, state, elements) {
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform2fv(state.location.iResolution, state.resolution);
-    gl.uniform1f(state.location.iGridOpacity, state.iGridOpacity);
-    gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
-    gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
-    gl.uniform1f(state.location.iOverallHashOffset, state.iOverallHashOffset);
-    gl.uniform1f(state.location.iOverallHashMorphing, state.iOverallHashMorphing);
-    gl.uniform1f(state.location.iNoiseLevelA, state.iNoiseLevelA);
-    gl.uniform1f(state.location.iNoiseLevelB, state.iNoiseLevelB);
-    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.iFractionalOctaves));
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iNormFactorForNoiseA, state.iNormFactorForNoiseA);
-    gl.uniform1f(state.location.iMeanOffsetForNoiseA, state.iMeanOffsetForNoiseA);
-    gl.uniform1f(state.location.iNormFactorForNoiseB, state.iNormFactorForNoiseB);
-    gl.uniform1f(state.location.iMeanOffsetForNoiseB, state.iMeanOffsetForNoiseB);
-    gl.uniform3fv(state.location.vecFree, state.vecFree);
-    gl.uniform1f(state.location.iFree0, state.iFree0);
-    gl.uniform1f(state.location.iFree1, state.iFree1);
-    gl.uniform1f(state.location.iFree2, state.iFree2);
-    gl.uniform1f(state.location.iFree3, state.iFree3);
+    gl.uniform1f(state.location.iGridOpacity, state.uni.iGridOpacity);
+    gl.uniform2fv(state.location.iOverallNoiseShift, state.uni.iOverallNoiseShift);
+    gl.uniform1f(state.location.iOverallScale, state.uni.iOverallScale);
+    gl.uniform1f(state.location.iOverallHashOffset, state.uni.iOverallHashOffset);
+    gl.uniform1f(state.location.iOverallHashMorphing, state.uni.iOverallHashMorphing);
+    gl.uniform1f(state.location.iNoiseLevelA, state.uni.iNoiseLevelA);
+    gl.uniform1f(state.location.iNoiseLevelB, state.uni.iNoiseLevelB);
+    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.uni.iFractionalOctaves));
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iNormFactorForNoiseA, state.uni.iNormFactorForNoiseA);
+    gl.uniform1f(state.location.iMeanOffsetForNoiseA, state.uni.iMeanOffsetForNoiseA);
+    gl.uniform1f(state.location.iNormFactorForNoiseB, state.uni.iNormFactorForNoiseB);
+    gl.uniform1f(state.location.iMeanOffsetForNoiseB, state.uni.iMeanOffsetForNoiseB);
+    gl.uniform3fv(state.location.vecFree, state.uni.vecFree);
+    gl.uniform1f(state.location.iFree0, state.uni.iFree0);
+    gl.uniform1f(state.location.iFree1, state.uni.iFree1);
+    gl.uniform1f(state.location.iFree2, state.uni.iFree2);
+    gl.uniform1f(state.location.iFree3, state.uni.iFree3);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     if (state.reading.doRead) {
         state.reading.doRead = false;
         void readPixelsAndEvaluate(gl,
-            state.resolution,
+        state.resolution,
             state.reading.buffer,
             elements.buttons.readPixels.content
         );

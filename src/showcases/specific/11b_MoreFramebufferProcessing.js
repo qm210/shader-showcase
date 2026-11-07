@@ -169,25 +169,25 @@ function render(gl, state) {
     gl.uniform2fv(state.location.texelSize, state.texelSize);
     gl.uniform1i(state.location.iFrame, state.iFrame);
 
-    gl.uniform1f(state.location.iColorDissipation, state.iColorDissipation);
-    gl.uniform1f(state.location.iVelocityDissipation, state.iVelocityDissipation);
-    gl.uniform1f(state.location.iMaxInitialVelocity, state.iMaxInitialVelocity);
-    gl.uniform1f(state.location.iCurlStrength, state.iCurlStrength);
-    gl.uniform1i(state.location.doDebugRender, state.doDebugRender);
-    gl.uniform1f(state.location.iSunraysWeight, state.iSunraysWeight);
-    gl.uniform1f(state.location.iSunraysIterations, state.iSunraysIterations);
+    gl.uniform1f(state.location.iColorDissipation, state.uni.iColorDissipation);
+    gl.uniform1f(state.location.iVelocityDissipation, state.uni.iVelocityDissipation);
+    gl.uniform1f(state.location.iMaxInitialVelocity, state.uni.iMaxInitialVelocity);
+    gl.uniform1f(state.location.iCurlStrength, state.uni.iCurlStrength);
+    gl.uniform1i(state.location.doDebugRender, state.uni.doDebugRender);
+    gl.uniform1f(state.location.iSunraysWeight, state.uni.iSunraysWeight);
+    gl.uniform1f(state.location.iSunraysIterations, state.uni.iSunraysIterations);
 
-    gl.uniform1f(state.location.iNoiseLevel, state.iNoiseLevel);
-    gl.uniform1f(state.location.iNoiseFreq, state.iNoiseFreq);
-    gl.uniform1f(state.location.iNoiseOffset, state.iNoiseOffset);
-    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.iFractionalOctaves));
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iCloudMorph, state.iCloudMorph);
-    gl.uniform1f(state.location.iCloudVelX, state.iCloudVelX);
-    gl.uniform3fv(state.location.iFree0, state.iFree0);
-    gl.uniform3fv(state.location.iFree1, state.iFree1);
-    gl.uniform3fv(state.location.iFree2, state.iFree2);
+    gl.uniform1f(state.location.iNoiseLevel, state.uni.iNoiseLevel);
+    gl.uniform1f(state.location.iNoiseFreq, state.uni.iNoiseFreq);
+    gl.uniform1f(state.location.iNoiseOffset, state.uni.iNoiseOffset);
+    gl.uniform1i(state.location.iFractionalOctaves, Math.floor(state.uni.iFractionalOctaves));
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iCloudMorph, state.uni.iCloudMorph);
+    gl.uniform1f(state.location.iCloudVelX, state.uni.iCloudVelX);
+    gl.uniform3fv(state.location.iFree0, state.uni.iFree0);
+    gl.uniform3fv(state.location.iFree1, state.uni.iFree1);
+    gl.uniform3fv(state.location.iFree2, state.uni.iFree2);
 
     gl.uniform1i(state.location.texPrevious, 0);
     gl.uniform1i(state.location.texImage, 1);

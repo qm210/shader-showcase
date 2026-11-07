@@ -714,73 +714,73 @@ function render(gl, state) {
     state.events.manager.manage(state);
     state.query.profiler.record("Events Manager managed.");
 
-    gl.uniform1f(state.location.iVignetteInner, state.iVignetteInner);
-    gl.uniform1f(state.location.iVignetteOuter, state.iVignetteOuter);
-    gl.uniform1f(state.location.iVignetteScale, state.iVignetteScale);
-    gl.uniform1f(state.location.iGamma, state.iGamma);
-    gl.uniform1f(state.location.iToneMapA, state.iToneMapA);
-    gl.uniform1f(state.location.iToneMapB, state.iToneMapB);
-    gl.uniform1f(state.location.iToneMapC, state.iToneMapC);
-    gl.uniform1f(state.location.iToneMapD, state.iToneMapD);
-    gl.uniform1f(state.location.iToneMapE, state.iToneMapE);
-    gl.uniform1f(state.location.iToneMapMix, state.iToneMapMix);
+    gl.uniform1f(state.location.iVignetteInner, state.uni.iVignetteInner);
+    gl.uniform1f(state.location.iVignetteOuter, state.uni.iVignetteOuter);
+    gl.uniform1f(state.location.iVignetteScale, state.uni.iVignetteScale);
+    gl.uniform1f(state.location.iGamma, state.uni.iGamma);
+    gl.uniform1f(state.location.iToneMapA, state.uni.iToneMapA);
+    gl.uniform1f(state.location.iToneMapB, state.uni.iToneMapB);
+    gl.uniform1f(state.location.iToneMapC, state.uni.iToneMapC);
+    gl.uniform1f(state.location.iToneMapD, state.uni.iToneMapD);
+    gl.uniform1f(state.location.iToneMapE, state.uni.iToneMapE);
+    gl.uniform1f(state.location.iToneMapMix, state.uni.iToneMapMix);
 
-    gl.uniform1f(state.location.iFree0, state.iFree0);
-    gl.uniform1f(state.location.iFree1, state.iFree1);
-    gl.uniform1f(state.location.iFree2, state.iFree2);
-    gl.uniform1f(state.location.iFree3, state.iFree3);
-    gl.uniform1f(state.location.iFree4, state.iFree4);
-    gl.uniform1f(state.location.iFree5, state.iFree5);
-    gl.uniform1f(state.location.iFree6, state.iFree6);
-    gl.uniform1f(state.location.iFree7, state.iFree7);
-    gl.uniform1f(state.location.iFree8, state.iFree8);
-    gl.uniform1f(state.location.iFree9, state.iFree9);
-    gl.uniform4fv(state.location.colFree0, state.colFree0);
-    gl.uniform4fv(state.location.colFree1, state.colFree1);
-    gl.uniform4fv(state.location.colFree2, state.colFree2);
-    gl.uniform4fv(state.location.colFree3, state.colFree3);
+    gl.uniform1f(state.location.iFree0, state.uni.iFree0);
+    gl.uniform1f(state.location.iFree1, state.uni.iFree1);
+    gl.uniform1f(state.location.iFree2, state.uni.iFree2);
+    gl.uniform1f(state.location.iFree3, state.uni.iFree3);
+    gl.uniform1f(state.location.iFree4, state.uni.iFree4);
+    gl.uniform1f(state.location.iFree5, state.uni.iFree5);
+    gl.uniform1f(state.location.iFree6, state.uni.iFree6);
+    gl.uniform1f(state.location.iFree7, state.uni.iFree7);
+    gl.uniform1f(state.location.iFree8, state.uni.iFree8);
+    gl.uniform1f(state.location.iFree9, state.uni.iFree9);
+    gl.uniform4fv(state.location.colFree0, state.uni.colFree0);
+    gl.uniform4fv(state.location.colFree1, state.uni.colFree1);
+    gl.uniform4fv(state.location.colFree2, state.uni.colFree2);
+    gl.uniform4fv(state.location.colFree3, state.uni.colFree3);
 
     // SOURCE: NOISE BASE -
 
-    gl.uniform1f(state.location.iGridOpacity, state.iGridOpacity);
-    gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
-    gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
-    gl.uniform1f(state.location.iOverallHashOffset, state.iOverallHashOffset);
-    gl.uniform1f(state.location.iNoiseLevelA, state.iNoiseLevelA);
-    gl.uniform1f(state.location.iNoiseLevelAC, state.iNoiseLevelAC);
-    gl.uniform1f(state.location.iNoiseLevelC, state.iNoiseLevelC);
-    gl.uniform1f(state.location.iNoiseScaleA, state.iNoiseScaleA);
-    gl.uniform1f(state.location.iNoiseScaleXT, state.iNoiseScaleXT);
-    gl.uniform1f(state.location.iNoiseScaleC, state.iNoiseScaleC);
-    gl.uniform1f(state.location.iNoiseMorphingA, state.iNoiseMorphingA);
-    gl.uniform1f(state.location.iNoiseMorphingB, state.iNoiseMorphingB);
-    gl.uniform1f(state.location.iNoiseMorphingC, state.iNoiseMorphingC);
-    gl.uniform1i(state.location.iFractionalOctaves, state.iFractionalOctaves);
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iTurbulenceNormFactor, state.iTurbulenceNormFactor);
-    gl.uniform1f(state.location.iTurbulenceMeanOffset, state.iTurbulenceMeanOffset);
-    gl.uniform2fv(state.location.iMarbleSqueeze, state.iMarbleSqueeze);
-    gl.uniform1f(state.location.iMarbleGranularity, state.iMarbleGranularity);
-    gl.uniform1f(state.location.iMarbleGradingExponent, state.iMarbleGradingExponent);
-    gl.uniform1f(state.location.iMarbleRange, state.iMarbleRange);
-    gl.uniform1f(state.location.iColorStrength, state.iColorStrength);
-    gl.uniform3fv(state.location.iColorCosineFreq, state.iColorCosineFreq);
-    gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
-    gl.uniform2fv(state.location.iForceRingCenter, state.iForceRingCenter);
-    gl.uniform1f(state.location.iForceRingRadius, state.iForceRingRadius);
-    gl.uniform1f(state.location.iForceRingBorder, state.iForceRingBorder);
-    gl.uniform1f(state.location.iForceRingStrength, state.iForceRingStrength);
-    gl.uniform1i(state.location.iBlurBlendMode, state.iBlurBlendMode);
-    gl.uniform1f(state.location.iBlurBlending, state.iBlurBlending);
-    gl.uniform1f(state.location.iHazeScale, state.iHazeScale);
-    gl.uniform1f(state.location.iHazeStrength, state.iHazeStrength);
-    gl.uniform1f(state.location.iCaleidoscopeCurvature, state.iCaleidoscopeCurvature);
-    gl.uniform1f(state.location.iCaleidoscopeDivisions, state.iCaleidoscopeDivisions);
-    gl.uniform1f(state.location.iCaleidoscopeOpacity, state.iCaleidoscopeOpacity);
-    gl.uniform1f(state.location.iCaleidoscopeAberration, state.iCaleidoscopeAberration);
-    gl.uniform1f(state.location.iCaleidoscopeAberration2, state.iCaleidoscopeAberration2);
-    gl.uniform1f(state.location.iHappyWorld, state.iHappyWorld);
+    gl.uniform1f(state.location.iGridOpacity, state.uni.iGridOpacity);
+    gl.uniform2fv(state.location.iOverallNoiseShift, state.uni.iOverallNoiseShift);
+    gl.uniform1f(state.location.iOverallScale, state.uni.iOverallScale);
+    gl.uniform1f(state.location.iOverallHashOffset, state.uni.iOverallHashOffset);
+    gl.uniform1f(state.location.iNoiseLevelA, state.uni.iNoiseLevelA);
+    gl.uniform1f(state.location.iNoiseLevelAC, state.uni.iNoiseLevelAC);
+    gl.uniform1f(state.location.iNoiseLevelC, state.uni.iNoiseLevelC);
+    gl.uniform1f(state.location.iNoiseScaleA, state.uni.iNoiseScaleA);
+    gl.uniform1f(state.location.iNoiseScaleXT, state.uni.iNoiseScaleXT);
+    gl.uniform1f(state.location.iNoiseScaleC, state.uni.iNoiseScaleC);
+    gl.uniform1f(state.location.iNoiseMorphingA, state.uni.iNoiseMorphingA);
+    gl.uniform1f(state.location.iNoiseMorphingB, state.uni.iNoiseMorphingB);
+    gl.uniform1f(state.location.iNoiseMorphingC, state.uni.iNoiseMorphingC);
+    gl.uniform1i(state.location.iFractionalOctaves, state.uni.iFractionalOctaves);
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iTurbulenceNormFactor, state.uni.iTurbulenceNormFactor);
+    gl.uniform1f(state.location.iTurbulenceMeanOffset, state.uni.iTurbulenceMeanOffset);
+    gl.uniform2fv(state.location.iMarbleSqueeze, state.uni.iMarbleSqueeze);
+    gl.uniform1f(state.location.iMarbleGranularity, state.uni.iMarbleGranularity);
+    gl.uniform1f(state.location.iMarbleGradingExponent, state.uni.iMarbleGradingExponent);
+    gl.uniform1f(state.location.iMarbleRange, state.uni.iMarbleRange);
+    gl.uniform1f(state.location.iColorStrength, state.uni.iColorStrength);
+    gl.uniform3fv(state.location.iColorCosineFreq, state.uni.iColorCosineFreq);
+    gl.uniform3fv(state.location.iColorCosinePhase, state.uni.iColorCosinePhase);
+    gl.uniform2fv(state.location.iForceRingCenter, state.uni.iForceRingCenter);
+    gl.uniform1f(state.location.iForceRingRadius, state.uni.iForceRingRadius);
+    gl.uniform1f(state.location.iForceRingBorder, state.uni.iForceRingBorder);
+    gl.uniform1f(state.location.iForceRingStrength, state.uni.iForceRingStrength);
+    gl.uniform1i(state.location.iBlurBlendMode, state.uni.iBlurBlendMode);
+    gl.uniform1f(state.location.iBlurBlending, state.uni.iBlurBlending);
+    gl.uniform1f(state.location.iHazeScale, state.uni.iHazeScale);
+    gl.uniform1f(state.location.iHazeStrength, state.uni.iHazeStrength);
+    gl.uniform1f(state.location.iCaleidoscopeCurvature, state.uni.iCaleidoscopeCurvature);
+    gl.uniform1f(state.location.iCaleidoscopeDivisions, state.uni.iCaleidoscopeDivisions);
+    gl.uniform1f(state.location.iCaleidoscopeOpacity, state.uni.iCaleidoscopeOpacity);
+    gl.uniform1f(state.location.iCaleidoscopeAberration, state.uni.iCaleidoscopeAberration);
+    gl.uniform1f(state.location.iCaleidoscopeAberration2, state.uni.iCaleidoscopeAberration2);
+    gl.uniform1f(state.location.iHappyWorld, state.uni.iHappyWorld);
 
     // SOURCE: FONTS -- TEXTURE8 für MSDF-Png
 
@@ -803,41 +803,41 @@ function render(gl, state) {
 
     // SOURCE: CLOUDS -- TEXTURE9 für Feedback / Akkumulation
 
-    gl.uniform1f(state.location.iCloudYDisplacement, state.iCloudYDisplacement);
-    gl.uniform1f(state.location.iCloudLayerDistance, state.iCloudLayerDistance);
-    gl.uniform1f(state.location.iLightLayerDistance, state.iLightLayerDistance);
-    gl.uniform1f(state.location.iCloudSeed, state.iCloudSeed);
-    gl.uniform1f(state.location.iSkyQuetschung, state.iSkyQuetschung);
-    gl.uniform1f(state.location.iSampleCount, state.iSampleCount);
-    gl.uniform1i(state.location.iCloudLayerCount, state.iCloudLayerCount);
-    gl.uniform1i(state.location.iLightLayerCount, state.iLightLayerCount);
-    gl.uniform1i(state.location.iCloudNoiseCount, state.iCloudNoiseCount);
-    gl.uniform1i(state.location.iLightNoiseCount, state.iLightNoiseCount);
-    gl.uniform1f(state.location.iCloudTransmittanceThreshold, state.iCloudTransmittanceThreshold);
-    gl.uniform3fv(state.location.iNoiseScale, state.iNoiseScale);
-    gl.uniform1f(state.location.iCloudAbsorptionCoeff, state.iCloudAbsorptionCoeff);
-    gl.uniform1f(state.location.iCloudBaseLuminance, state.iCloudBaseLuminance);
-    gl.uniform1f(state.location.iCloudAnisoScattering, state.iCloudAnisoScattering);
-    gl.uniform3fv(state.location.vecSunPosition, state.vecSunPosition);
-    gl.uniform3fv(state.location.vecSunColorYCH, state.vecSunColorYCH);
-    gl.uniform1f(state.location.iSunExponent, state.iSunExponent);
-    gl.uniform1f(state.location.iCloudFieldOfView, state.iCloudFieldOfView)
-    gl.uniform3fv(state.location.vecTone1, state.vecTone1);
-    gl.uniform3fv(state.location.vecTone2, state.vecTone2);
-    gl.uniform1f(state.location.iAccumulateMix, state.iAccumulateMix);
-    gl.uniform1i(state.location.doAccumulate, state.doAccumulate);
-    gl.uniform1i(state.location.useModdedFBM, state.useModdedFBM);
-    gl.uniform1f(state.location.iVariateCloudMarchSize, state.iVariateCloudMarchSize);
-    gl.uniform1f(state.location.iVariateCloudMarchOffset, state.iVariateCloudMarchOffset);
-    gl.uniform1f(state.location.iVariateCloudMarchFree, state.iVariateCloudMarchFree);
+    gl.uniform1f(state.location.iCloudYDisplacement, state.uni.iCloudYDisplacement);
+    gl.uniform1f(state.location.iCloudLayerDistance, state.uni.iCloudLayerDistance);
+    gl.uniform1f(state.location.iLightLayerDistance, state.uni.iLightLayerDistance);
+    gl.uniform1f(state.location.iCloudSeed, state.uni.iCloudSeed);
+    gl.uniform1f(state.location.iSkyQuetschung, state.uni.iSkyQuetschung);
+    gl.uniform1f(state.location.iSampleCount, state.uni.iSampleCount);
+    gl.uniform1i(state.location.iCloudLayerCount, state.uni.iCloudLayerCount);
+    gl.uniform1i(state.location.iLightLayerCount, state.uni.iLightLayerCount);
+    gl.uniform1i(state.location.iCloudNoiseCount, state.uni.iCloudNoiseCount);
+    gl.uniform1i(state.location.iLightNoiseCount, state.uni.iLightNoiseCount);
+    gl.uniform1f(state.location.iCloudTransmittanceThreshold, state.uni.iCloudTransmittanceThreshold);
+    gl.uniform3fv(state.location.iNoiseScale, state.uni.iNoiseScale);
+    gl.uniform1f(state.location.iCloudAbsorptionCoeff, state.uni.iCloudAbsorptionCoeff);
+    gl.uniform1f(state.location.iCloudBaseLuminance, state.uni.iCloudBaseLuminance);
+    gl.uniform1f(state.location.iCloudAnisoScattering, state.uni.iCloudAnisoScattering);
+    gl.uniform3fv(state.location.vecSunPosition, state.uni.vecSunPosition);
+    gl.uniform3fv(state.location.vecSunColorYCH, state.uni.vecSunColorYCH);
+    gl.uniform1f(state.location.iSunExponent, state.uni.iSunExponent);
+    gl.uniform1f(state.location.iCloudFieldOfView, state.uni.iCloudFieldOfView)
+    gl.uniform3fv(state.location.vecTone1, state.uni.vecTone1);
+    gl.uniform3fv(state.location.vecTone2, state.uni.vecTone2);
+    gl.uniform1f(state.location.iAccumulateMix, state.uni.iAccumulateMix);
+    gl.uniform1i(state.location.doAccumulate, state.uni.doAccumulate);
+    gl.uniform1i(state.location.useModdedFBM, state.uni.useModdedFBM);
+    gl.uniform1f(state.location.iVariateCloudMarchSize, state.uni.iVariateCloudMarchSize);
+    gl.uniform1f(state.location.iVariateCloudMarchOffset, state.uni.iVariateCloudMarchOffset);
+    gl.uniform1f(state.location.iVariateCloudMarchFree, state.uni.iVariateCloudMarchFree);
 
-    gl.uniform1f(state.location.iNoiseLevel, state.iNoiseLevel);
-    gl.uniform1f(state.location.iNoiseFreq, state.iNoiseFreq);
-    gl.uniform1f(state.location.iNoiseOffset, state.iNoiseOffset);
-    gl.uniform1i(state.location.iFractionalOctaves, state.iFractionalOctaves);
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iCloudMorph, state.iCloudMorph);
+    gl.uniform1f(state.location.iNoiseLevel, state.uni.iNoiseLevel);
+    gl.uniform1f(state.location.iNoiseFreq, state.uni.iNoiseFreq);
+    gl.uniform1f(state.location.iNoiseOffset, state.uni.iNoiseOffset);
+    gl.uniform1i(state.location.iFractionalOctaves, state.uni.iFractionalOctaves);
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iCloudMorph, state.uni.iCloudMorph);
 
     gl.uniform1i(state.location.passIndex, PASS.RENDER_CLOUDS);
 
@@ -857,20 +857,20 @@ function render(gl, state) {
 
     // SOURCE: FLUID-ESCALATION
 
-    gl.uniform3fv(state.location.iSpawnColorHSV, state.iSpawnColorHSV);
-    gl.uniform1f(state.location.iSpawnHueGradient, state.iSpawnHueGradient);
-    gl.uniform1f(state.location.iSpawnRandomizeHue, state.iSpawnRandomizeHue);
-    gl.uniform1f(state.location.iColorDissipation, state.iColorDissipation);
-    gl.uniform1f(state.location.iVelocityDissipation, state.iVelocityDissipation);
-    gl.uniform1f(state.location.iMaxInitialVelocity, state.iMaxInitialVelocity);
-    gl.uniform1f(state.location.iCurlStrength, state.iCurlStrength);
-    gl.uniform1f(state.location.iPressure, state.iPressure);
-    gl.uniform1f(state.location.iSunraysWeight, state.iSunraysWeight);
-    gl.uniform1f(state.location.iSunraysDensity, state.iSunraysDensity);
-    gl.uniform1f(state.location.iSunraysDecay, state.iSunraysDecay);
-    gl.uniform1f(state.location.iSunraysExposure, state.iSunraysExposure);
-    gl.uniform1f(state.location.iSunraysIterations, state.iSunraysIterations);
-    gl.uniform1f(state.location.iSunraysOnMaster, state.iSunraysOnMaster);
+    gl.uniform3fv(state.location.iSpawnColorHSV, state.uni.iSpawnColorHSV);
+    gl.uniform1f(state.location.iSpawnHueGradient, state.uni.iSpawnHueGradient);
+    gl.uniform1f(state.location.iSpawnRandomizeHue, state.uni.iSpawnRandomizeHue);
+    gl.uniform1f(state.location.iColorDissipation, state.uni.iColorDissipation);
+    gl.uniform1f(state.location.iVelocityDissipation, state.uni.iVelocityDissipation);
+    gl.uniform1f(state.location.iMaxInitialVelocity, state.uni.iMaxInitialVelocity);
+    gl.uniform1f(state.location.iCurlStrength, state.uni.iCurlStrength);
+    gl.uniform1f(state.location.iPressure, state.uni.iPressure);
+    gl.uniform1f(state.location.iSunraysWeight, state.uni.iSunraysWeight);
+    gl.uniform1f(state.location.iSunraysDensity, state.uni.iSunraysDensity);
+    gl.uniform1f(state.location.iSunraysDecay, state.uni.iSunraysDecay);
+    gl.uniform1f(state.location.iSunraysExposure, state.uni.iSunraysExposure);
+    gl.uniform1f(state.location.iSunraysIterations, state.uni.iSunraysIterations);
+    gl.uniform1f(state.location.iSunraysOnMaster, state.uni.iSunraysOnMaster);
 
     //// FLUID STUFF. Massiv. Erstmal auslagern
 
@@ -884,15 +884,15 @@ function render(gl, state) {
     gl.uniform1i(state.location.texPostBloom, TEXTURE_UNITS.POST_BLOOM);
     gl.uniform1i(state.location.texPostDither, TEXTURE_UNITS.POST_DITHER);
 
-    gl.uniform1f(state.location.iBloomSoftKnee, state.iBloomSoftKnee);
-    gl.uniform1f(state.location.iBloomThreshold, state.iBloomThreshold);
-    gl.uniform1f(state.location.iBloomIntensity, state.iBloomIntensity);
-    gl.uniform1f(state.location.iBloomPreGain, state.iBloomPreGain);
-    gl.uniform1f(state.location.iBloomDithering, state.iBloomDithering);
-    gl.uniform1f(state.location.iBloomOnMaster, state.iBloomOnMaster);
-    gl.uniform1f(state.location.iMasterBloomThreshold, state.iMasterBloomThreshold);
-    gl.uniform1f(state.location.iMasterBloomIntensity, state.iMasterBloomIntensity);
-    gl.uniform1f(state.location.iMasterBloomPreGain, state.iMasterBloomPreGain);
+    gl.uniform1f(state.location.iBloomSoftKnee, state.uni.iBloomSoftKnee);
+    gl.uniform1f(state.location.iBloomThreshold, state.uni.iBloomThreshold);
+    gl.uniform1f(state.location.iBloomIntensity, state.uni.iBloomIntensity);
+    gl.uniform1f(state.location.iBloomPreGain, state.uni.iBloomPreGain);
+    gl.uniform1f(state.location.iBloomDithering, state.uni.iBloomDithering);
+    gl.uniform1f(state.location.iBloomOnMaster, state.uni.iBloomOnMaster);
+    gl.uniform1f(state.location.iMasterBloomThreshold, state.uni.iMasterBloomThreshold);
+    gl.uniform1f(state.location.iMasterBloomIntensity, state.uni.iMasterBloomIntensity);
+    gl.uniform1f(state.location.iMasterBloomPreGain, state.uni.iMasterBloomPreGain);
 
     state.query.profiler.record("Before Init Fluid");
 

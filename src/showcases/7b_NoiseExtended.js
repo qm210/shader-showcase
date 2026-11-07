@@ -30,34 +30,34 @@ export default {
 function render(gl, state, elements) {
     gl.uniform1f(state.location.iTime, state.time);
     gl.uniform2fv(state.location.iResolution, state.resolution);
-    gl.uniform1f(state.location.iGridOpacity, state.iGridOpacity);
-    gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
-    gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
-    gl.uniform1f(state.location.iOverallHashOffset, state.iOverallHashOffset);
-    gl.uniform1f(state.location.iNoiseLevelA, state.iNoiseLevelA);
-    gl.uniform1f(state.location.iNoiseLevelB, state.iNoiseLevelB);
-    gl.uniform1f(state.location.iNoiseLevelC, state.iNoiseLevelC);
-    gl.uniform1f(state.location.iNoiseScaleA, state.iNoiseScaleA);
-    gl.uniform1f(state.location.iNoiseScaleB, state.iNoiseScaleB);
-    gl.uniform1f(state.location.iNoiseScaleC, state.iNoiseScaleC);
-    gl.uniform1f(state.location.iNoiseMorphingA, state.iNoiseMorphingA);
-    gl.uniform1f(state.location.iNoiseMorphingB, state.iNoiseMorphingB);
-    gl.uniform1f(state.location.iNoiseMorphingC, state.iNoiseMorphingC);
-    gl.uniform1i(state.location.iFractionalOctaves, state.iFractionalOctaves);
-    gl.uniform1f(state.location.iFractionalScale, state.iFractionalScale);
-    gl.uniform1f(state.location.iFractionalDecay, state.iFractionalDecay);
-    gl.uniform1f(state.location.iTurbulenceNormFactor, state.iTurbulenceNormFactor);
-    gl.uniform1f(state.location.iTurbulenceMeanOffset, state.iTurbulenceMeanOffset);
-    gl.uniform2fv(state.location.iMarbleSqueeze, state.iMarbleSqueeze);
-    gl.uniform1f(state.location.iMarbleGranularity, state.iMarbleGranularity);
-    gl.uniform1f(state.location.iMarbleGradingExponent, state.iMarbleGradingExponent);
-    gl.uniform1f(state.location.iMarbleRange, state.iMarbleRange);
-    gl.uniform1f(state.location.iColorStrength, state.iColorStrength);
-    gl.uniform3fv(state.location.iColorCosineFreq, state.iColorCosineFreq);
-    gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
-    gl.uniform3fv(state.location.vecFree, state.vecFree);
-    gl.uniform1f(state.location.iFree0, state.iFree0);
-    gl.uniform1f(state.location.iFree1, state.iFree1);
+    gl.uniform1f(state.location.iGridOpacity, state.uni.iGridOpacity);
+    gl.uniform2fv(state.location.iOverallNoiseShift, state.uni.iOverallNoiseShift);
+    gl.uniform1f(state.location.iOverallScale, state.uni.iOverallScale);
+    gl.uniform1f(state.location.iOverallHashOffset, state.uni.iOverallHashOffset);
+    gl.uniform1f(state.location.iNoiseLevelA, state.uni.iNoiseLevelA);
+    gl.uniform1f(state.location.iNoiseLevelB, state.uni.iNoiseLevelB);
+    gl.uniform1f(state.location.iNoiseLevelC, state.uni.iNoiseLevelC);
+    gl.uniform1f(state.location.iNoiseScaleA, state.uni.iNoiseScaleA);
+    gl.uniform1f(state.location.iNoiseScaleB, state.uni.iNoiseScaleB);
+    gl.uniform1f(state.location.iNoiseScaleC, state.uni.iNoiseScaleC);
+    gl.uniform1f(state.location.iNoiseMorphingA, state.uni.iNoiseMorphingA);
+    gl.uniform1f(state.location.iNoiseMorphingB, state.uni.iNoiseMorphingB);
+    gl.uniform1f(state.location.iNoiseMorphingC, state.uni.iNoiseMorphingC);
+    gl.uniform1i(state.location.iFractionalOctaves, state.uni.iFractionalOctaves);
+    gl.uniform1f(state.location.iFractionalScale, state.uni.iFractionalScale);
+    gl.uniform1f(state.location.iFractionalDecay, state.uni.iFractionalDecay);
+    gl.uniform1f(state.location.iTurbulenceNormFactor, state.uni.iTurbulenceNormFactor);
+    gl.uniform1f(state.location.iTurbulenceMeanOffset, state.uni.iTurbulenceMeanOffset);
+    gl.uniform2fv(state.location.iMarbleSqueeze, state.uni.iMarbleSqueeze);
+    gl.uniform1f(state.location.iMarbleGranularity, state.uni.iMarbleGranularity);
+    gl.uniform1f(state.location.iMarbleGradingExponent, state.uni.iMarbleGradingExponent);
+    gl.uniform1f(state.location.iMarbleRange, state.uni.iMarbleRange);
+    gl.uniform1f(state.location.iColorStrength, state.uni.iColorStrength);
+    gl.uniform3fv(state.location.iColorCosineFreq, state.uni.iColorCosineFreq);
+    gl.uniform3fv(state.location.iColorCosinePhase, state.uni.iColorCosinePhase);
+    gl.uniform3fv(state.location.vecFree, state.uni.vecFree);
+    gl.uniform1f(state.location.iFree0, state.uni.iFree0);
+    gl.uniform1f(state.location.iFree1, state.uni.iFree1);
     gl.uniform1f(state.location.iFree2, state.iFree2);
     gl.uniform1f(state.location.iFree3, state.iFree3);
 
@@ -66,7 +66,7 @@ function render(gl, state, elements) {
     if (state.reading.doRead) {
         state.reading.doRead = false;
         void readPixelsAndEvaluate(gl,
-            state.resolution,
+        state.resolution,
             state.reading.buffer,
             elements.buttons.readPixels.content
         );

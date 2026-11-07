@@ -1,4 +1,4 @@
-import {addFreeRow, createInputElements} from "../controls/uniforms.js";
+import {addFreeRow, createInputElements} from "./elements/uniforms.js";
 import {createShaderCodeRegister} from "./shaderCode.js";
 import {addButton, appendButton, appendElement, createDiv, createElement} from "./dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
@@ -7,12 +7,11 @@ import {setCanvasResolution} from "../../webgl/setup.js";
 import {addCanvasMouseInteraction} from "../mouse.js";
 import {createClipboardButtons, createPresetSelector, refreshPresets} from "../exchange.js";
 import {initializePresetStore} from "../database.js";
-import {createMainControlBar} from "../controls/bar.js";
+import {createMainControlBar} from "./elements/bar.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
-import {promptForSecondToJump} from "../controls/time.js";
-import {startRenderLoop} from "../playback.js";
-import {addVideoElement} from "../controls/webcam.js";
-import {addKeyboardShortcuts} from "../controls/keyboard.js";
+import {addVideoElement} from "./elements/webcam.js";
+import {addKeyboardShortcuts} from "../keyboard.js";
+import {createUniformPlayground} from "../../experimental/uniform-playground.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -31,10 +30,10 @@ const generatePage = (glContext, elements, state, controls) => {
 
     addCanvasMouseInteraction(elements, state);
     addVideoElement(elements, state);
-    sanitizeControls(elements, state, controls, glContext);
     addMainControls(elements, state, controls, glContext);
     addUniformControls(elements, state, controls);
     addDisplayControls(elements, state, glContext);
+    state.playground = createUniformPlayground(state, controls);
 
     state.selectedPreset = null;
     elements.db = undefined;
@@ -108,8 +107,6 @@ export const addUniformControls = (elements, state, controls) => {
         return;
     }
 
-    const groups = collectGroups(controls);
-
     for (const control of controls.uniforms) {
 
         if (elements[control.name] !== undefined) {
@@ -154,10 +151,6 @@ export const addUniformControls = (elements, state, controls) => {
                 isSeparator: true,
             });
             continue;
-        }
-
-        if (control.group) {
-            control.groupedControls = groups[control.group];
         }
 
         control.dim = 1;
@@ -222,12 +215,16 @@ function renderCompileStepStatus(title, error, successMessage) {
     `;
 }
 
-const PAGE_FONT = {
-    cssProperty: "--font-size-factor",
-    storageKey: "qm.fontsize.factor"
+export const STORAGE_KEY = {
+    FONT_FACTOR: "qm.fontsize.factor",
+    NO_CODE: "qm.no-code",
+    PLAYGROUND_OVERLAY: "qm.playground.overlay",
 };
 
-const NO_CODE_STORAGE_KEY = "qm.no-code";
+const PAGE_FONT = {
+    cssProperty: "--font-size-factor",
+    storageKey: STORAGE_KEY.FONT_FACTOR,
+};
 
 const CHAR = {
     PLUS: "+",
@@ -254,7 +251,7 @@ function addDisplayControls(elements, state, glContext) {
     const codeToggle = createDiv("code?", "small-link");
     fontControls.appendChild(codeToggle);
     codeToggle.addEventListener("click", toggleShaderCode);
-    if (localStorage.getItem(NO_CODE_STORAGE_KEY)) {
+    if (localStorage.getItem(STORAGE_KEY.NO_CODE)) {
         toggleShaderCode();
     }
 
@@ -325,46 +322,13 @@ function addDisplayControls(elements, state, glContext) {
     function toggleShaderCode() {
         elements.layout.classList.toggle("no-code");
         if (elements.layout.classList.contains("no-code")) {
-            localStorage.setItem(NO_CODE_STORAGE_KEY, "true");
+            localStorage.setItem(STORAGE_KEY.NO_CODE, "true");
         } else {
-            localStorage.removeItem(NO_CODE_STORAGE_KEY);
+            localStorage.removeItem(STORAGE_KEY.NO_CODE);
         }
     }
 }
 
-
-function collectGroups(controls) {
-    const result = {};
-    for (const control of controls.uniforms) {
-        if (!control.group) {
-            continue;
-        }
-        if (!result[control.group]) {
-            result[control.group] = [];
-        }
-        result[control.group].push(control);
-    }
-    return result;
-}
-
-function sanitizeControls(elements, state, controls, glContext) {
-    // TODO: lost & found, move when some place looks suited (:
-
-    if (!controls.onRender) {
-        if (!controls.renderLoop) {
-            throw new Error("generateControls() needs either onRender or renderLoop defined!");
-        }
-        controls.onRender = () =>
-            startRenderLoop(
-                state => controls.renderLoop(glContext, state, elements),
-                state,
-                elements
-            );
-    }
-
-    controls.uniforms ??= [];
-    controls.toggles ??= [];
-}
 
 function tryStartupToggles(controls) {
     Promise.all(
