@@ -418,7 +418,7 @@ function addDisplayControls(elements, state, glContext) {
 
     const info = appendElement(elements.displayControls, "", "div", "fps-box");
     elements.fps = {
-        label: createElement("label", "FPS"),
+        label: createElement("label", "FPS..?"),
         display: createDiv("\u2013 ? \u2013", "fps"),
     }
     info.appendChild(elements.fps.label);
@@ -429,6 +429,18 @@ function addDisplayControls(elements, state, glContext) {
 
     elements.presets = createPresetSelector(elements, state);
     elements.displayControls.appendChild(elements.presets.container);
+
+    elements.clipboard = {
+        ...createClipboardButtons(elements, state),
+        container: createDiv(),
+    };
+    console.log("tjo", elements.clipboard);
+    elements.clipboard.container.appendChild(elements.clipboard.copy);
+    console.log("du");
+    elements.clipboard.container.appendChild(elements.clipboard.paste);
+    console.log("nun");
+    elements.displayControls.appendChild(elements.clipboard.container);
+    console.log("dick");
 
     function canvasResize(factor) {
         return () => {

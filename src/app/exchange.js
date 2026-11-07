@@ -1,8 +1,6 @@
 import {createPreset, deletePreset, loadPresets} from "./database.js";
 import {createDiv, createSmallButton} from "./layout/dom.js";
 
-const ADVANCED = import.meta.env.VITE_MODE_ADVANCED;
-
 const HEADER = {
     IDENTIFIER: "qm210.uniforms",
     VERSION: 1,
@@ -51,7 +49,6 @@ function unpackBundle(state, json) {
             continue;
         }
         const uniformKey = uniformNameMap[uniform.name] ?? uniform.name;
-        console.log("wird hier etwa geladen?", uniformKey, uniform, loaded[uniform.name]);
         state[uniformKey] = loaded[uniform.name].value;
     }
 }
@@ -66,57 +63,6 @@ function updateFromBundle(json, state, elements) {
         input.value = uniform.value;
     }
     console.info("Updated from", json, state, elements);
-}
-
-export function createClipboardButtons(elements, state) {
-    if (!ADVANCED) {
-        return [];
-    }
-
-    const copyButton = createSmallButton("→ Clipboard", "right-align");
-    const pasteButton = createSmallButton("Paste", "right-align");
-
-    copyButton.addEventListener("click", async () => {
-        const originalContent = copyButton.textContent;
-        try {
-            const json = bundleUniforms(state);
-            await navigator.clipboard.writeText(
-                JSON.stringify(json, null, 4)
-            );
-            console.info("Copied to Clipboard", json);
-            copyButton.textContent = "✔ copied";
-        } catch (error) {
-            console.error(error);
-            copyButton.textContent = "✘ failed";
-        }
-        setTimeout(() => {
-            copyButton.textContent = originalContent;
-        }, 1000);
-    });
-
-    pasteButton.addEventListener("click", async () => {
-        const originalContent = pasteButton.textContent;
-        const originalState = {...state};
-        try {
-            const text = await navigator.clipboard.readText();
-            const json = JSON.parse(text);
-            updateFromBundle(json, state, elements);
-            pasteButton.textContent = "✔ pasted";
-        } catch (error) {
-            console.error(error);
-            state = {...originalState};
-            pasteButton.textContent = "✘ failed";
-            pasteButton.style.color = "red";
-            pasteButton.style.outlineColor = "red";
-        }
-        setTimeout(() => {
-            pasteButton.textContent = originalContent;
-            pasteButton.style.color = "";
-            pasteButton.style.outlineColor = "";
-        }, 1000);
-    });
-
-    return [copyButton, pasteButton];
 }
 
 const OPTION = {
@@ -135,16 +81,12 @@ export function createPresetSelector(elements, state) {
     const container = document.createElement("div");
     const result = {selector, container};
 
-    if (!ADVANCED) {
-        return result;
-    }
-
     selector.classList.add("presets-selector");
     addOption(selector, "Loading Presets...");
     selector.disabled = true;
 
     container.appendChild(selector);
-    container.appendChild(createDiv("Presets...", "presets-hint"));
+    container.appendChild(createDiv("Presets...", "small-link"));
 
     let ignoreChangeEvent = false;
     selector.addEventListener("change", async event => {
@@ -237,4 +179,53 @@ async function refreshPresetsFor(db, state, selector) {
 
 export function refreshPresets(elements, state) {
     void refreshPresetsFor(elements.db, state, elements.presets.selector);
+}
+
+const SHOW_CLIPBOARD_MESSAGE_FOR_MS = 2000;
+
+export function createClipboardButtons(elements, state) {
+    const copyButton = createSmallButton("\u21C9\u2009Copy", "icon-word");
+    const pasteButton = createSmallButton("\u21C7\u2009Paste", "icon-word");
+
+    copyButton.addEventListener("click", async () => {
+        const originalContent = copyButton.textContent;
+        try {
+            const json = bundleUniforms(state);
+            await navigator.clipboard.writeText(
+                JSON.stringify(json, null, 4)
+            );
+            console.info("Copied to Clipboard", json);
+            copyButton.textContent = "✔ copied";
+        } catch (error) {
+            console.error(error);
+            copyButton.textContent = "✘ failed";
+        }
+        setTimeout(() => {
+            copyButton.textContent = originalContent;
+        }, SHOW_CLIPBOARD_MESSAGE_FOR_MS);
+    });
+
+    pasteButton.addEventListener("click", async () => {
+        const originalContent = pasteButton.textContent;
+        const originalState = {...state};
+        try {
+            const text = await navigator.clipboard.readText();
+            const json = JSON.parse(text);
+            updateFromBundle(json, state, elements);
+            pasteButton.textContent = "✔ pasted";
+        } catch (error) {
+            console.error(error);
+            state = {...originalState};
+            pasteButton.textContent = "✘ failed";
+            pasteButton.style.color = "red";
+            pasteButton.style.outlineColor = "red";
+        }
+        setTimeout(() => {
+            pasteButton.textContent = originalContent;
+            pasteButton.style.color = "";
+            pasteButton.style.outlineColor = "";
+        }, SHOW_CLIPBOARD_MESSAGE_FOR_MS);
+    });
+
+    return {copy: copyButton, paste: pasteButton};
 }
