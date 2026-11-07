@@ -23,8 +23,6 @@ export default {
 
         initVertices(gl, state, "aPosition");
 
-        state.timeline = initTimeline(state);
-
         return state;
     },
     generateControls: () => ({
