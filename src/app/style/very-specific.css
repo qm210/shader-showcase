@@ -102,3 +102,11 @@
 .bool-description.extra-column {
     grid-column: span 3;
 }
+
+.toggle-buttons {
+    margin-top: 0.25rem;
+}
+
+.toggle-buttons button {
+    font-size: 0.8em;
+}

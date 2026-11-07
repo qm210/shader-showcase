@@ -24,7 +24,7 @@ export function addButton({parent, onClick, onRightClick, title = "", className 
     return button;
 }
 
-export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator}) => {
+export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator, className = ""}) => {
     const name = createElement("label", label);
     const container = createDiv("", "free-row");
     const value = createDiv("", "value-label");
@@ -57,6 +57,9 @@ export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator
     } else if (content) {
         container.appendChild(content);
     }
+    if (className) {
+        container.classList.add(className);
+    }
     return {container, name, value, content};
 };
 
@@ -82,6 +85,9 @@ export function createInputElements(state, control) {
         } else if (control.defaultValue instanceof Array) {
             state[control.name] = [...control.defaultValue];
         }
+    }
+    if (control.dim > 1 && !(state[control.name] instanceof Array)) {
+        state[control.name] = toVec(control.dim, state[control.name]);
     }
 
     if (control.hidden) {
@@ -124,7 +130,7 @@ export function createInputElements(state, control) {
     }
 }
 
-function sessionStoreControlState(state, control) {
+export function sessionStoreControlState(state, control) {
     if (state[control.name] === control.defaultValue) {
         sessionStorage.removeItem(control.storageKey);
     } else {
@@ -177,9 +183,31 @@ const createInputControlElements = (control) => {
     return elements;
 };
 
+function prepareControls(control) {
+    if (!control.step) {
+        control.step = maybeMap(control.min, min =>
+            (min > 0 && min < 0.01) ? 0.001 : 0.01
+        );
+    }
+    if (control.log && control.min > 0 && control.max > control.min) {
+        control.step = maybeMap(control.min, m => Math.max(m, 0.001));
+        control.min = maybeMap(control.min, Math.log10);
+        control.max = maybeMap(control.max, Math.log10);
+    }
+    if (control.defaultValue === undefined) {
+        control.defaultValue = maybeMap(control.log, log => log ? 1 : 0);
+    }
+    control.digits = control.integer
+        ? 0
+        : control.step instanceof Array
+            ? -Math.log10(control.step[0])
+            : -Math.log10(control.step);
+}
+
 export const asFloatInput = (elements, state, control) => {
     control.defaultValue ??= control.log ? 1 : 0;
     elements.reset.textContent = `reset: ${control.defaultValue}`;
+    prepareControls(control);
     asSlider(elements.control, control);
     updateSlider(elements, state, control, true);
 
@@ -283,6 +311,12 @@ function round(value, step) {
     return Math.round(value / step) * step;
 }
 
+function maybeMap(value, func) {
+    return value instanceof Array
+        ? value.map(func)
+        : func(value);
+}
+
 const toVec = (dim, value) =>
     Array(dim).fill(null).map(_ => value);
 
@@ -294,14 +328,15 @@ const randomVec = (control) =>
         });
 
 export const asVecInput = (elements, state, control) => {
+    prepareControls(control);
     elements.control = document.createElement("div");
     elements.control.style.gap = "0.25rem";
 
-    let maybeNormFactor = 1;
+    control.normScale = 1;
     if (control.normalize) {
         control.min = control.log ? 1e-6 : -1;
         control.max = 1;
-        maybeNormFactor = 1 / (squareNorm(state[control.name]) || 1);
+        control.normScale = 1 / (squareNorm(state[control.name]) || 1);
     }
 
     control.sameMin = !(control.min instanceof Array);
@@ -329,6 +364,7 @@ export const asVecInput = (elements, state, control) => {
             min: control.min[index],
             max: control.max[index],
             step: control.step[index],
+            log: control.log,
             debugOriginal: control,
         };
         const forComponent = createInputControlElements(componentControl);
@@ -336,7 +372,7 @@ export const asVecInput = (elements, state, control) => {
         sliders.push(forComponent.control);
         asSlider(forComponent.control, componentControl);
         control.step[index] ??= componentControl.step;
-        state[control.name][index] *= maybeNormFactor;
+        state[control.name][index] *= control.normScale;
         forComponent.control.value =
             updateSlider(forComponent, state, componentControl, true, state[control.name][index]);
         forComponent.control.addEventListener("input", event => {
@@ -471,7 +507,7 @@ const asCursorInput = (elements, state, control) => {
     }
 }
 
-function updateVecLabel(labelElement, state, control) {
+export function updateVecLabel(labelElement, state, control) {
     let value = state[control.name];
     if (value instanceof Array) {
         value = value
@@ -491,7 +527,7 @@ export const asBoolInput = (elements, state, control) => {
     }
     elements.control.id = `check.${control.name}`;
     elements.description =
-        createElement("label", control.description, "bool-description");
+        createElement("label", control.description ?? "", "bool-description");
     elements.description.htmlFor = elements.control.id;
 
     control.defaultValue ??= false;

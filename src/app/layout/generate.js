@@ -9,6 +9,8 @@ import {createClipboardButtons, createPresetSelector, refreshPresets} from "../e
 import {initializePresetStore} from "../database.js";
 import {addButton, addFreeRow, createInputElements, createResetAllButton} from "./controls/uniforms.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
+import {createMainControlBar} from "./controls/bar.js";
+import {promptForSecondToJump} from "./controls/time.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -66,7 +68,8 @@ const generatePage = (glContext, elements, state, controls) => {
 
     addCanvasMouseInteraction(elements, state);
     addVideoElement(elements, state);
-    addControlsToPage(elements, state, controls, glContext);
+    addMainControls(elements, state, controls);
+    addUniformControls(elements, state, controls);
     addDisplayControls(elements, state, glContext);
 
     state.selectedPreset = null;
@@ -126,78 +129,168 @@ const addVideoElement = (elements, state) => {
     };
 }
 
-export const addControlsToPage = (elements, state, controls, glContext) => {
+export const addMainControls = (elements, state, controls) => {
     if (!state.program) {
-        elements.controls.innerHTML = `
+        elements.controlBar.innerHTML = `
             <div class="error" style="text-align: right;">
                 Nothing to render, because compilation failed.
-            </div>`;
+            </div>
+        `;
         return;
     }
 
-    if (!controls.onRender) {
-        if (!controls.renderLoop) {
-            throw new Error("generateControls() needs either onRender or renderLoop defined!");
-        }
-        controls.onRender = () =>
-            startRenderLoop(
-                state => controls.renderLoop(glContext, state, elements),
-                state,
-                elements
-            );
-    }
-    controls.onRender();
+    const {seeker} = createMainControlBar(elements, state, controls);
+    state.play.actions = seeker.do;
 
-    elements.iTime = addFreeRow({
-        parent: elements.controlBar.time.frame,
-        label: "iTime",
-        id: "iTime",
-        valuePrefix: "=",
-        content: [
-            createDiv("", "full-spacer"),
-            ...createClipboardButtons(elements, state),
-            createDiv("", "spacer"),
-            createResetAllButton(elements, state, controls)
-        ]
-    });
-
-    controls.toggles ??= [];
-    elements.toggles = [];
-    for (const control of controls.toggles) {
-        const toggleIndex = elements.toggles.length;
-        elements.toggles.push(
+    for (const control of controls.toggles ?? []) {
+        elements.controlBar.buttons.push(
             addButton({
                 title: control.label(),
                 style: control.style,
-                onClick: async () => {
-                    await control.onClick();
-                    const self = elements.toggles[toggleIndex];
-                    self.textContent = control.label();
-                }
+                onClick: async (event) => {
+                    if (!control.onClick) {
+                        return;
+                    }
+                    await control.onClick(event.target);
+                    event.target.textContent = control.label();
+                },
+                onRightClick: async (event) => {
+                    if (!control.onRightClick) {
+                        return;
+                    }
+                    await control.onRightClick(event.target);
+                    event.target.textContent = control.label();
+                },
             })
         );
     }
-    if (elements.toggles.length > 0) {
-        elements.toggleButtons = addFreeRow({
-            parent: elements.controlBar.main,
-            label: "",
-            content: elements.toggles,
+    if (elements.controlBar.buttons.length > 0) {
+        addFreeRow({
+            parent: elements.controlBar.frame,
+            content: elements.controlBar.buttons,
+            className: "toggle-buttons"
         });
     }
-    elements.customData = addFreeRow({
-        parent: elements.controlBar.main,
-    });
+    elements.controlBar.customArea =
+        addFreeRow({
+            parent: elements.controlBar.frame,
+        });
 
-    controls.uniforms ??= [];
+    let printNextKey;
+    document.addEventListener("keydown", event => {
+        if (printNextKey) {
+            console.log("Key:", event.key, event.code);
+            printNextKey = false;
+        }
+        if (document.activeElement !== document.body) {
+            return;
+        }
+        let preventBrowserBehaviour = true;
+        // cf. playback.js for how the state variables work
+        const combinedKey = readableKeyCombinations(event);
+        // console.log(`[KEY COMBINATION] "${combinedKey}"`);
+        switch (combinedKey) {
+            case "Ctrl + Backspace":
+                state.play.signal.reset = true;
+                break;
+            case "Ctrl + Space":
+                seeker.do.toggle();
+                break;
+            case "Ctrl + ArrowLeft":
+                seeker.do.jump({delta: -1});
+                break;
+            case "Ctrl + ArrowRight":
+                seeker.do.jump({delta: +1});
+                break;
+            case "Ctrl + ArrowUp":
+                seeker.do.jump({delta: +0.05});
+                break;
+            case "Ctrl + ArrowDown":
+                seeker.do.jump({delta: -0.05});
+                break;
+            case "Ctrl + Home":
+                seeker.do.jump({to: 0});
+                break;
+            case "Ctrl + End":
+                seeker.do.jump({to: state.play.range.max});
+                break;
+            case "Ctrl + Insert":
+                promptForSecondToJump(seeker, state.time);
+                break;
+            case "Ctrl + I":
+                console.info(state, elements);
+                printNextKey = true;
+                break;
+            case "Ctrl + U":
+                openUniformInputHelper();
+                break;
+            case "Ctrl + Tab":
+                console.log("[JUST PRESSED AT]", state.time, state.track?.audio?.currentTime, state);
+                break;
+            case "MediaPlayPause":
+                if (state.track) {
+                    state.track.actions.togglePlay().then(() => {
+                        console.info("[AUDIO] Playing?", !state.track.audio.paused)
+                    });
+                } else {
+                    preventBrowserBehaviour = false;
+                }
+                break;
+            case "AudioVolumeMute":
+                if (state.track) {
+                    state.track.actions.toggleMuted();
+                    console.info("[AUDIO] Muted?", !state.track.audio.muted)
+                } else {
+                    preventBrowserBehaviour = false;
+                }
+                break;
+            default:
+                preventBrowserBehaviour = false;
+                break;
+        }
+        if (preventBrowserBehaviour) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    });
+};
+
+function readableKeyCombinations(event) {
+    const modifiers = [
+        event.ctrlKey ? "Ctrl" : "",
+        event.shiftKey ? "Shift" : "",
+        event.altKey ? "Alt" : "",
+    ].filter(Boolean);
+    let key = event.key;
+    if (key === " ") {
+        key = "Space";
+    }
+    if (key.length === 1) {
+        key = key.toUpperCase();
+    }
+    return [...modifiers, key].join(" + ");
+}
+
+export const addUniformControls = (elements, state, controls) => {
+    if (!state.program) {
+        return;
+    }
+
     const groups = collectGroups(controls);
 
     for (const control of controls.uniforms) {
 
+        if (elements[control.name] !== undefined) {
+            console.error("SKIP control", control, "- already defined!", elements[control.name]);
+            continue;
+        }
+
         if (control.type === "label") {
             if (elements[control.name] !== undefined) {
+                // skip overwriting one defined per default (i.e. iTime)
                 continue;
             }
-            // <-- skip overwriting one defined per default (i.e. iTime)
+
             elements[control.name] =
                 addFreeRow({
                     parent: elements.uniformControls,
@@ -222,7 +315,7 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
                 })
             continue;
         }
-        else if (control.type === "separator" || control.separator) {
+        else if (control.separator) {
             addFreeRow({
                 parent: elements.uniformControls,
                 content: createDiv(control.separator ?? control.title, "separator"),
@@ -233,6 +326,11 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
 
         if (control.group) {
             control.groupedControls = groups[control.group];
+        }
+
+        control.dim = 1;
+        if (control.type.startsWith("vec")) {
+            control.dim = +(control.type.slice(-1)[0]);
         }
 
         const input = createInputElements(state, control);
@@ -254,53 +352,6 @@ export const addControlsToPage = (elements, state, controls, glContext) => {
         }
         elements.uniforms[control.name] = input;
     }
-
-    document.addEventListener("keydown", event => {
-        // Some global time control features, by pressing Ctrl + something.
-        if (!event.ctrlKey) {
-            return;
-        }
-        if (document.activeElement !== document.body) {
-            return;
-        }
-        let preventBrowserBehaviour = true;
-        // cf. render.js for how the state variables work
-        switch (event.key) {
-            case "Backspace":
-                state.resetSignal = true;
-                break;
-            case " ":
-                if (state.timeRunning) {
-                    state.timeRunning = false;
-                } else {
-                    state.timeRunning = true;
-                    state.startTime = null;
-                }
-                break;
-            case "ArrowLeft":
-                shiftTime(state, -1);
-                break;
-            case "ArrowRight":
-                shiftTime(state, +1);
-                break;
-            case "ArrowUp":
-                shiftTime(state, +0.05);
-                break;
-            case "ArrowDown":
-                shiftTime(state, -0.05);
-                break;
-            case "u":
-                openUniformInputHelper();
-                break;
-            default:
-                preventBrowserBehaviour = false;
-                break;
-        }
-        if (preventBrowserBehaviour) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-    });
 };
 
 function renderErrorConsole(state) {
@@ -361,7 +412,8 @@ function addDisplayControls(elements, state, glContext) {
     elements.displayControls.appendChild(fontControls);
     appendButton(fontControls, CHAR.ARROW_UP, pageFontResize(1.05));
     appendButton(fontControls, CHAR.ARROW_DOWN, pageFontResize(0.95));
-    appendElement(fontControls, "font", "label");
+    const fontLabel = appendElement(fontControls, "font", "label");
+    fontLabel.addEventListener("dblclick", () => setPageFontFactor(1));
     pageFontInitialize();
 
     const info = appendElement(elements.displayControls, "", "div", "fps-box");
@@ -401,9 +453,13 @@ function addDisplayControls(elements, state, glContext) {
         return () => {
             const currentFactor = JSON.parse(localStorage.getItem(PAGE_FONT.storageKey) ?? "1");
             const newFactor = Math.max(0.1, currentFactor * relativeFactor).toFixed(3);
-            document.documentElement.style.setProperty(PAGE_FONT.cssProperty, newFactor);
-            localStorage.setItem(PAGE_FONT.storageKey, newFactor);
+            setPageFontFactor(newFactor);
         };
+    }
+
+    function setPageFontFactor(value) {
+        document.documentElement.style.setProperty(PAGE_FONT.cssProperty, value);
+        localStorage.setItem(PAGE_FONT.storageKey, value);
     }
 
     function pageFontInitialize() {

@@ -34,7 +34,7 @@ import showcase10 from "./showcases/10_RayTracingWithMultipass.js"
 import showcase11Unfinished from "./showcases/11_FluidSimulation.js";
 import showcaseVideo from "./showcases/12_Video_TestLab.js";
 import showcasePerformance from "./showcases/13_PerformancePlayground.js";
-import showcaseDrown210 from "./showcases/D210_Drown.js";
+import showcaseDream210 from "./showcases/D210_Dream.js";
 import showcaseNoise210 from "./showcases/Z_Noise210.js";
 
 const defaultShowcase = showcase8x;
@@ -100,7 +100,7 @@ const MAP_PATH = {
     "golZ": golPlayground,
     "gol3d": golTorus3D,
 
-    "210": showcaseDrown210,
+    "d210": showcaseDream210,
     "noise210": showcaseNoise210,
 };
 

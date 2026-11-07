@@ -187,7 +187,7 @@ const toggles = (state, elements) => [{
     label: () =>
         "Measure Rendering?",
     onClick: () => {
-        writeValues(elements.customData.container, [
+        writeValues(elements.controlBar.customArea.container, [
             ["Prepare     ", state.measure.millisec.prepare],
             ["drawArrays()", state.measure.millisec.drawArrays],
             ["readPixels()", state.measure.millisec.readPixels],

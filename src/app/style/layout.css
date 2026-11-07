@@ -105,7 +105,7 @@
         min-height: min(100%, 400px);
     }
 }
-^
+
 #control-frame {
     grid-area: controls;
     display: flex;
@@ -191,15 +191,21 @@ button.render-button {
 .free-row button {
     padding: 0.25rem 0.5rem;
     flex: 1;
+    font-size: 0.9em;
 }
 
-.free-row .full-spacer {
+.full-spacer {
     flex: 1;
+    min-width: 0.5rem;
 }
 
-.free-row .spacer {
+.spacer {
     flex: 0;
     min-width: 1rem;
+}
+
+.spacer.half {
+    min-width: 0.5rem;
 }
 
 .free-row .right-align {
@@ -221,7 +227,8 @@ button.render-button {
 #display-controls {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: space-around;
+    margin-left: auto;
     height: 100%;
 }
 
@@ -229,6 +236,7 @@ button.render-button {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    text-align: center;
     gap: 0.25rem;
 }
 
@@ -236,6 +244,18 @@ button.render-button {
     padding: 0.2rem 0.5rem;
     font-size: x-large;
     font-family: monospace;
+}
+
+#display-controls button.icon-word {
+    padding: 0.2rem;
+    font-size: revert;
+    text-align: left;
+}
+
+#display-controls button.icon-word::first-letter {
+    padding: 0;
+    font-weight: bold;
+    text-align: left;
 }
 
 #display-controls label {
@@ -274,7 +294,40 @@ button.render-button {
     white-space: nowrap;
 }
 
-#shader-controls > .separator-row:has(+ .separator-row),
-#shader-controls > .separator-row:last-child {
+#uniform-controls > .separator-row:has(+ .separator-row),
+#uniform-controls > .separator-row:last-child {
     display: none;
+}
+
+
+svg text.clickable {
+    font-weight: bold;
+    cursor: pointer;
+    text-anchor: middle;
+    user-select: none;
+}
+
+svg text.clickable.icon {
+    font-size: larger;
+    stroke-width: 1px;
+    stroke: currentcolor;
+    stroke-opacity: 0.34;
+}
+
+svg text.clickable:hover {
+    transform: translate(-1px, -1px);
+    stroke: purple;
+    text-shadow: 0 0 1px #ff00bb22;
+}
+
+svg text.clickable.icon:hover {
+    stroke: purple;
+    fill: blueviolet;
+    text-shadow: 0 0 1px #ff00bb44;
+}
+
+svg text.clickable:active {
+    stroke: #747bff;
+    text-shadow: 0 0 1px #747bff55;
+    transform: none;
 }

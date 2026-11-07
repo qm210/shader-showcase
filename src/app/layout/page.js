@@ -37,7 +37,8 @@ export default function initLayout(rootId) {
                 update: void 0,
                 seeker: emptyDiv({id: "time-seek"}),
                 bookmarks: emptyDiv({id: "time-bookmarks"}),
-            }
+            },
+            customArea: emptyDiv({id: "custom-area-to-be-replaced"}),
         },
         buttons: {},
         uniformControls: document.getElementById("uniform-controls"),

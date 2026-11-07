@@ -54,6 +54,32 @@ export function findParentOfClass(element, className) {
     return result;
 }
 
+export function addButton({parent, onClick, onRightClick, title = "", className = "", style}) {
+    const button = document.createElement("button");
+    button.textContent = title;
+    if (className) {
+        button.className = className;
+    }
+    if (style) {
+        for (const key in style) {
+            button.style[key] = style[key];
+        }
+    }
+    if (onClick) {
+        button.addEventListener("click", onClick);
+    }
+    if (onRightClick) {
+        button.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            onRightClick(event);
+        });
+    }
+    if (parent) {
+        parent.appendChild(button);
+    }
+    return button;
+}
+
 export function appendButton(parent, text, onClickHandler) {
     const button = document.createElement("button");
     button.textContent = text;

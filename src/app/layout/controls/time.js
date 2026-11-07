@@ -415,10 +415,18 @@ function applyStateDependantStyling(el, state) {
 function withRect(element, rect) {
     element.setAttribute("x", rect.x ?? 0);
     element.setAttribute("y", rect.y ?? 0);
-    element.setAttribute("width", rect.width ?? 1);
-    element.setAttribute("height", rect.height ?? 1);
+    element.setAttribute("width", mightWarn(rect.width));
+    element.setAttribute("height", mightWarn(rect.height));
     element.setAttribute("rx", rect.rx ?? 0);
     return element;
+
+    function mightWarn(value) {
+        if (value < 0) {
+            console.error("Negative size?", rect, element);
+            return 1;
+        }
+        return value ?? 1;
+    }
 }
 
 function addDocumentListeners(el, state) {

@@ -2144,25 +2144,25 @@ function createUniforms() {
         }, {
             type: "vec4",
             name: "colFree0",
-            defaultValue: 0,
+            defaultValue: [0,0,0,0],
             min: 0,
             max: 2,
         }, {
             type: "vec4",
             name: "colFree1",
-            defaultValue: 0,
+            defaultValue: [0,0,0,0],
             min: 0,
             max: 2,
         }, {
             type: "vec4",
             name: "colFree2",
-            defaultValue: 0,
+            defaultValue: [0,0,0,0],
             min: 0,
             max: 2,
         }, {
             type: "vec4",
             name: "colFree3",
-            defaultValue: 0,
+            defaultValue: [0,0,0,0],
             min: 0,
             max: 2,
         }

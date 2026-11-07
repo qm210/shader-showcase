@@ -51,6 +51,7 @@ function unpackBundle(state, json) {
             continue;
         }
         const uniformKey = uniformNameMap[uniform.name] ?? uniform.name;
+        console.log("wird hier etwa geladen?", uniformKey, uniform, loaded[uniform.name]);
         state[uniformKey] = loaded[uniform.name].value;
     }
 }
