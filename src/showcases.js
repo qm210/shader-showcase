@@ -37,7 +37,7 @@ import showcasePerformance from "./showcases/13_PerformancePlayground.js";
 import showcaseDream210 from "./showcases/D210_Dream.js";
 import showcaseNoise210 from "./showcases/Z_Noise210.js";
 
-const defaultShowcase = showcase8x;
+const defaultShowcase = showcaseDream210;
 
 const MAP_PATH = {
     // Zum Anfang mal... ein Anfang.
