@@ -402,7 +402,6 @@
     color: #fff;
 }
 
-/* Collapsed state */
 #timeline-overlay.collapsed .track-list,
 #timeline-overlay.collapsed .timeline-controls,
 #timeline-overlay.collapsed .overlay-footer {
@@ -414,7 +413,6 @@
     min-width: 120px;
 }
 
-/* Value preview */
 .value-preview {
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 10px;
@@ -439,4 +437,132 @@
 
 .value-preview .val-num {
     color: #7a7;
+}
+
+.randomizer-panel {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.15);
+}
+
+.randomizer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.randomizer-title {
+    font-weight: 600;
+    color: #f9a;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.randomizer-title::before {
+    content: '🎲';
+    font-size: 14px;
+}
+
+.randomizer-toggle {
+    font-size: 10px;
+    opacity: 0.5;
+    transition: transform 0.2s;
+}
+
+.randomizer-panel.expanded .randomizer-toggle {
+    transform: rotate(180deg);
+}
+
+.randomizer-body {
+    display: none;
+    margin-top: 8px;
+}
+
+.randomizer-panel.expanded .randomizer-body {
+    display: block;
+}
+
+.set-selector {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid rgba(255,150,170,0.3);
+    background: rgba(0,0,0,0.3);
+    color: #fca;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.set-selector:focus {
+    outline: none;
+    border-color: rgba(255,150,170,0.6);
+}
+
+.intensity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.intensity-label {
+    font-size: 10px;
+    color: #fca;
+    min-width: 60px;
+}
+
+.intensity-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255,150,170,0.2);
+    border-radius: 2px;
+    outline: none;
+}
+
+.intensity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #f9a;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(255,150,170,0.5);
+}
+
+.intensity-value {
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    color: #fca;
+    min-width: 30px;
+    text-align: right;
+}
+
+.randomize-btn {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid rgba(255,150,170,0.4);
+    background: linear-gradient(135deg, rgba(255,100,130,0.3), rgba(255,150,170,0.2));
+    color: #fca;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.randomize-btn:hover {
+    background: linear-gradient(135deg, rgba(255,100,130,0.5), rgba(255,150,170,0.4));
+    border-color: rgba(255,150,170,0.6);
+    box-shadow: 0 0 12px rgba(255,150,170,0.3);
+}
+
+.randomize-btn:active {
+    transform: scale(0.98);
 }

@@ -1,5 +1,6 @@
 import {TimelineEngine} from "./timeline-engine.js";
 import STYLESHEET from './timeline-overlay.css?inline';
+import {getUniformRandomizer} from "./uniform-randomizer.js";
 
 export class TimelineOverlay {
     constructor(timelineEngine) {
@@ -45,6 +46,21 @@ export class TimelineOverlay {
                    </div>
                </div>
                <div class="track-list"></div>
+               <div class="randomizer-panel">
+                   <div class="randomizer-header">
+                       <span class="randomizer-title">Randomize</span>
+                       <span class="randomizer-toggle">▼</span>
+                   </div>
+                   <div class="randomizer-body">
+                       <select class="set-selector" title="Select uniform set to randomize"></select>
+                       <div class="intensity-control">
+                           <span class="intensity-label">Intensity:</span>
+                           <input type="range" class="intensity-slider" min="0" max="1" step="0.01" value="1">
+                           <span class="intensity-value">1.0</span>
+                       </div>
+                       <button class="randomize-btn">🎲 Randomize</button>
+                   </div>
+               </div>
                <div class="overlay-footer">
                    <button class="add-track-btn">+ Track</button>
                    <button class="export-btn">Export</button>
@@ -356,6 +372,62 @@ export class TimelineOverlay {
                 }
             }
         });
+
+        this._initRandomizer();
+    }
+
+    _initRandomizer() {
+        const randomizerPanel = this.element.querySelector('.randomizer-panel');
+        const header = randomizerPanel.querySelector('.randomizer-header');
+        const setSelector = randomizerPanel.querySelector('.set-selector');
+        const intensitySlider = randomizerPanel.querySelector('.intensity-slider');
+        const intensityValue = randomizerPanel.querySelector('.intensity-value');
+        const randomizeBtn = randomizerPanel.querySelector('.randomize-btn');
+
+        // Toggle panel expansion
+        header.addEventListener('click', () => {
+            randomizerPanel.classList.toggle('expanded');
+        });
+
+        // Load sets into selector
+        this._updateSetSelector(setSelector);
+
+        // Intensity slider
+        intensitySlider.addEventListener('input', () => {
+            const val = parseFloat(intensitySlider.value);
+            intensityValue.textContent = val.toFixed(2);
+        });
+
+        // Randomize button
+        randomizeBtn.addEventListener('click', () => {
+            const selectedSet = setSelector.value;
+            if (!selectedSet) return;
+
+            const intensity = parseFloat(intensitySlider.value);
+            const randomizer = getUniformRandomizer();
+
+            // Apply randomization to engine
+            randomizer.randomizeSet(selectedSet, intensity, this.engine);
+
+            // Visual feedback
+            randomizeBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                randomizeBtn.style.transform = '';
+            }, 100);
+        });
+    }
+
+    _updateSetSelector(setSelector) {
+        setSelector.innerHTML = '';
+        const randomizer = getUniformRandomizer();
+        const sets = randomizer.getAllSets();
+
+        for (const [name] of sets) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            setSelector.appendChild(option);
+        }
     }
 
     syncUI() {
@@ -505,15 +577,15 @@ export class TimelineOverlay {
             const displayVal = Array.isArray(val) ? `[${val.map(v => v.toFixed(3)).join(', ')}]` : val.toFixed(4);
             return `<div class="val-line"><span class="val-name">${name}</span><span class="val-num">${displayVal}</span></div>`;
         });
-        preview.innerHTML = lines.length > 0 ? lines.join('') : '<div style="opacity:0.4">No active tracks</div>';
+        preview.innerHTML = lines.length > 0
+            ? lines.join('')
+            : '<div style="opacity:0.8">No active tracks</div>';
     }
 
-    /** Get current uniform values for shader binding */
     getUniformValues() {
         return this.engine.getAllUniformValues();
     }
 
-    /** Update engine time by delta (call from render loop) */
     update(dt) {
         this.engine.update(dt);
         // Periodically re-render to update playhead and value preview
@@ -522,7 +594,6 @@ export class TimelineOverlay {
         }
     }
 
-    /** Helper: bind all current values to WebGL state */
     syncToShader(gl, state) {
         const values = this.getUniformValues();
         for (const [name, value] of Object.entries(values)) {
@@ -553,14 +624,19 @@ export class TimelineOverlay {
         }
     }
 
-    /** Show/hide the overlay */
     setVisible(visible) {
         this.element.style.display = visible ? 'flex' : 'none';
     }
 
-    /** Toggle visibility */
     toggle() {
         this.setVisible(!this.element.hidden);
+    }
+
+    refreshRandomizerSets() {
+        const setSelector = this.element.querySelector('.set-selector');
+        if (setSelector) {
+            this._updateSetSelector(setSelector);
+        }
     }
 }
 

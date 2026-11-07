@@ -34,14 +34,15 @@ export default {
     })
 }
 
-let _lastTime = 0;
+let printDebug = false;
 
 function render(gl, state) {
-    if (state.timeline) {
-        const dt = state.time - _lastTime;
-        _lastTime = state.time;
-        state.timeline.update(dt);
+    if (printDebug) {
+        console.info("[DEBUG STATE]", state);
+        printDebug = false;
     }
+    state.timeline?.update(state.play.dt);
+
     gl.useProgram(state.program);
 
     gl.uniform1f(state.location.iTime, state.time);
