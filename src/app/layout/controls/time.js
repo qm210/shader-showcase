@@ -589,10 +589,10 @@ function addMouseInteraction(el, state) {
         }
     });
 
-    el.icons.audio.addEventListener("click", () => {
+    el.icons.audio?.addEventListener("click", () => {
         state.track.actions.toggleMuted();
     });
-    el.icons.audio.addEventListener("contextmenu", () => {
+    el.icons.audio?.addEventListener("contextmenu", () => {
         state.track.actions.toggleDisabled();
     });
 

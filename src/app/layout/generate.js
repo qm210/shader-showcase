@@ -434,13 +434,9 @@ function addDisplayControls(elements, state, glContext) {
         ...createClipboardButtons(elements, state),
         container: createDiv(),
     };
-    console.log("tjo", elements.clipboard);
     elements.clipboard.container.appendChild(elements.clipboard.copy);
-    console.log("du");
     elements.clipboard.container.appendChild(elements.clipboard.paste);
-    console.log("nun");
     elements.displayControls.appendChild(elements.clipboard.container);
-    console.log("dick");
 
     function canvasResize(factor) {
         return () => {
