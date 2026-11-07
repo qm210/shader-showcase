@@ -23,12 +23,13 @@ export default {
 
         initVertices(gl, state, "aPosition");
 
+        state.timeline = initTimeline(state);
+
         return state;
     },
     generateControls: () => ({
         renderLoop: render,
         uniforms: createUniforms(),
-        hasTimeline: true,
     })
 }
 
