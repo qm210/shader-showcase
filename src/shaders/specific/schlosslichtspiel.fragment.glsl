@@ -30,7 +30,7 @@ precision highp float;
 //  multi-pass framework; inside it, use the framework's centred uv
 //  (y in [-1,1]) instead of the gl_FragCoord line in main().
 //
-//  Debugging: compile with  #define DEBUG_VIEW n  (1 = fBm only,
+//  Debugging: set uDebugView to n (1 = fBm only,
 //  2 = marble stripes only, 3 = warp field, 4 = window SDF contours,
 //  5 = event layer only).
 // =====================================================================
@@ -108,38 +108,87 @@ uniform float iGlowRadius;             // 0.6    halo reach in W
 uniform float iGlowFlicker;            // 0.5    radioactive crackle 0..1
 uniform float iGlowHueCycle;           // 0.08   hue rotation of the glow (cycles/s)
 
+// ------------------------------------------------ fixed layout --------
+// Layout parameters as uniforms so they can be changed at runtime.
+uniform float uLayoutNCols;          // 8.     number of columns
+uniform float uLayoutNRows;          // 3.     number of rows
+uniform float uLayoutPanesX;         // 2.     panes per row
+uniform float uLayoutPanesY;         // 4.     panes per column
+uniform float uLayoutGapBottomMid;   // 0.5    gap bottom->middle (in window heights)
+uniform float uLayoutGapMidTop;      // 0.333  gap middle->top (in window heights)
+uniform float uLayoutMarginX;        // 1.0    wall left/right of block (in W)
+uniform float uLayoutMarginY;        // 0.75   wall above/below block (in W)
+uniform float uLayoutBlockShiftY;    // 0.12   shift window block up (in W)
+uniform float uLayoutFrameW;         // 0.07   window frame width (in W)
+uniform float uLayoutMullionW;       // 0.035  pane grid bar width (in W)
+uniform float uLayoutSillH;          // 0.09   window sill height (in W)
+uniform float uLayoutSillOverhang;   // 0.10   sill overhang per side (in W)
+uniform float uLayoutPlinthH;        // 0.55   plinth band height (in W)
+uniform float uLayoutCorniceH;       // 0.35   cornice band height (in W)
+uniform float uLayoutWrapSmooth;     // 0.25   smooth-min blending of window SDFs (in W)
+
+// ------------------------------------------------ layout colors in OKLCH ----
+// Each uniform is (Oklch L, Oklch C, Oklch H) — L = lightness [0..1],
+// C = chroma, H = hue [0..360].  Helper functions convert to sRGB.
+uniform vec3 uColPlaster;              // default: (0.86, 0.80, 0.70) in OKLCH
+uniform vec3 uColFrame;                // default: (0.93, 0.91, 0.86)
+uniform vec3 uColMullion;              // default: (0.90, 0.88, 0.84)
+uniform vec3 uColSill;                 // default: (0.78, 0.74, 0.68)
+uniform vec3 uColPlinth;               // default: (0.30, 0.30, 0.34)
+uniform vec3 uColCornice;              // default: (0.26, 0.24, 0.26)
+uniform vec3 uColGlassLo;              // default: (0.06, 0.09, 0.17)
+uniform vec3 uColGlassHi;              // default: (0.22, 0.34, 0.48)
+uniform vec3 uColLitLo;                // default: (0.95, 0.55, 0.20)
+uniform vec3 uColLitHi;                // default: (1.00, 0.85, 0.50)
+
+// ------------------------------------------------ debug view --------------
+uniform int   uDebugView;              // 0 = off, 1..5 = debug channels
+
 const vec4  c      = vec4(1, 0, -1, 0.5);
 const float pi     = 3.141593;
 const float twoPi  = 2. * pi;
 
-// ------------------------------------------------ fixed layout --------
-const float N_COLS        = 8.;
-const float N_ROWS        = 3.;
-const float PANES_X       = 2.;
-const float PANES_Y       = 4.;
-const float GAP_BOTTOM_MID = 0.5;      // in window heights
-const float GAP_MID_TOP    = 1. / 3.;  // in window heights
-const float MARGIN_X      = 1.0;       // wall left/right of the block, in W
-const float MARGIN_Y      = 0.75;      // wall above/below the block, in W
-const float BLOCK_SHIFT_Y = 0.12;      // shift the window block up, in W
-const float FRAME_W       = 0.07;      // window frame width, in W
-const float MULLION_W     = 0.035;     // pane grid bar width, in W
-const float SILL_H        = 0.09;      // window sill height, in W
-const float SILL_OVERHANG = 0.10;      // sill overhang per side, in W
-const float PLINTH_H      = 0.55;      // plinth band height, in W
-const float CORNICE_H     = 0.35;      // cornice band height, in W
-const float WRAP_SMOOTH   = 0.25;      // smooth-min blending of the window SDFs (in W)
+// ------------------------------------------------ OKLCH -> sRGB conversion ----
 
-const vec3 COL_PLASTER  = vec3(0.86, 0.80, 0.70);
-const vec3 COL_FRAME    = vec3(0.93, 0.91, 0.86);
-const vec3 COL_MULLION  = vec3(0.90, 0.88, 0.84);
-const vec3 COL_SILL     = vec3(0.78, 0.74, 0.68);
-const vec3 COL_PLINTH   = vec3(0.30, 0.30, 0.34);
-const vec3 COL_CORNICE  = vec3(0.26, 0.24, 0.26);
-const vec3 COL_GLASS_LO = vec3(0.06, 0.09, 0.17);
-const vec3 COL_GLASS_HI = vec3(0.22, 0.34, 0.48);
-const vec3 COL_LIT_LO   = vec3(0.95, 0.55, 0.20);
-const vec3 COL_LIT_HI   = vec3(1.00, 0.85, 0.50);
+// OKLab to linear sRGB (ICtCp matrix adapted for OKLab)
+vec3 oklab_to_linear_srgb(vec3 oklch) {
+    // LCh -> Lab
+    float l = oklch.x;
+    float c = oklch.y;
+    float h = oklch.z * pi / 180.0; // hue in radians
+    vec2 ab = c * vec2(cos(h), sin(h));
+
+    // OKLab -> linear sRGB (approximate matrix)
+    float l_ = l + 0.3963377774 * ab.x + 0.2158037573 * ab.y;
+    float m_ = l - 0.1055613458 * ab.x - 0.0638541728 * ab.y;
+    float s_ = l - 0.0894841775 * ab.x - 1.2914855480 * ab.y;
+
+    // linear sRGB
+    vec3 lin = vec3(
+        +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+        -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+        -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_
+    );
+    return lin;
+}
+
+vec3 oklch_to_srgb(vec3 oklch) {
+    vec3 lin = oklab_to_linear_srgb(oklch);
+    // linear -> sRGB gamma
+    return mix(12.92 * lin, 1.055 * pow(lin, vec3(1.0/2.4)) - 0.055, step(vec3(0.0031308), lin));
+}
+
+// Helper functions to get sRGB colors from OKLCH uniforms
+vec3 colPlaster() { return oklch_to_srgb(uColPlaster); }
+vec3 colFrame()   { return oklch_to_srgb(uColFrame); }
+vec3 colMullion() { return oklch_to_srgb(uColMullion); }
+vec3 colSill()    { return oklch_to_srgb(uColSill); }
+vec3 colPlinth()  { return oklch_to_srgb(uColPlinth); }
+vec3 colCornice() { return oklch_to_srgb(uColCornice); }
+vec3 colGlassLo() { return oklch_to_srgb(uColGlassLo); }
+vec3 colGlassHi() { return oklch_to_srgb(uColGlassHi); }
+vec3 colLitLo()   { return oklch_to_srgb(uColLitLo); }
+vec3 colLitHi()   { return oklch_to_srgb(uColLitHi); }
 
 // ------------------------------------------------ dream210 toolkit ----
 
@@ -279,28 +328,28 @@ struct Facade {
 
 Facade makeFacade(float asp) {
     Facade f;
-    float hInW = PANES_Y / PANES_X;                              // H = 2 W
-    float blockWInW = 2. * N_COLS - 1. + 2. * MARGIN_X;          // 17 W
-    float blockHInW = hInW * (N_ROWS + GAP_BOTTOM_MID + GAP_MID_TOP) + 2. * MARGIN_Y;
+    float hInW = uLayoutPanesY / uLayoutPanesX;                              // H = 2 W
+    float blockWInW = 2. * uLayoutNCols - 1. + 2. * uLayoutMarginX;          // 17 W
+    float blockHInW = hInW * (uLayoutNRows + uLayoutGapBottomMid + uLayoutGapMidTop) + 2. * uLayoutMarginY;
     f.W = min(2. * asp / blockWInW, 2. / blockHInW);
     f.H = hInW * f.W;
     f.halfSize = 0.5 * vec2(f.W, f.H);
-    float blockH = f.H * (N_ROWS + GAP_BOTTOM_MID + GAP_MID_TOP);
-    f.blockBottom = -0.5 * blockH + BLOCK_SHIFT_Y * f.W;
+    float blockH = f.H * (uLayoutNRows + uLayoutGapBottomMid + uLayoutGapMidTop);
+    f.blockBottom = -0.5 * blockH + uLayoutBlockShiftY * f.W;
     f.rowY[0] = f.blockBottom + 0.5 * f.H;
-    f.rowY[1] = f.rowY[0] + f.H * (1. + GAP_BOTTOM_MID);
-    f.rowY[2] = f.rowY[1] + f.H * (1. + GAP_MID_TOP);
+    f.rowY[1] = f.rowY[0] + f.H * (1. + uLayoutGapBottomMid);
+    f.rowY[2] = f.rowY[1] + f.H * (1. + uLayoutGapMidTop);
     f.blockTop = f.rowY[2] + 0.5 * f.H;
     return f;
 }
 
 float colCenterX(Facade f, float j) {
-    return (2. * j - (N_COLS - 1.)) * f.W;
+    return (2. * j - (uLayoutNCols - 1.)) * f.W;
 }
 
 // nearest window: exact SDF (positive outside), local coords and (col,row) index
 float sdNearestWindow(Facade f, vec2 p, out vec2 local, out vec2 idx) {
-    float j = clamp(floor(p.x / (2. * f.W) + 0.5 * N_COLS), 0., N_COLS - 1.);
+    float j = clamp(floor(p.x / (2. * f.W) + 0.5 * uLayoutNCols), 0., uLayoutNCols - 1.);
     float dx = p.x - colCenterX(f, j);
     float dy = p.y - f.rowY[0];
     float row = 0.;
@@ -398,11 +447,11 @@ void obstacleField(Facade f, vec2 p, out float dSmooth, out vec2 push, out float
     push = vec2(0.);
     streamK = 0.;
     streamKL = 0.;
-    float kSmooth = WRAP_SMOOTH * f.W;
+    float kSmooth = uLayoutWrapSmooth * f.W;
     float flowR = max(iFlowRadius, 1e-3);
     float wrapR = max(iWrapRadius, 1e-3) * f.W;
     for (int r = 0; r < 3; r++) {
-        for (int jj = 0; jj < int(N_COLS); jj++) {
+        for (int jj = 0; jj < int(uLayoutNCols); jj++) {
             vec2 centre = vec2(colCenterX(f, float(jj)), f.rowY[r]);
             vec2 q = p - centre;
             addObstacle(q, f.halfSize, sdRect(q, f.halfSize), centre, 1.,
@@ -445,7 +494,7 @@ vec3 wallColor(Facade f, vec2 uv, float dSmooth, vec2 push, float streamK, float
     t = iColorCycle != 0. ? fract(t) : clamp(t, 0., 1.);
     vec3 structure = mix(vec3(t), palette(t * iColorStrength), iColorStrength);
 
-    vec3 col = mix(COL_PLASTER * (0.8 + 0.4 * total), structure, iStructureOpacity);
+    vec3 col = mix(colPlaster() * (0.8 + 0.4 * total), structure, iStructureOpacity);
     // darkening next to the openings
     col *= 1. - iWallAO * exp(-max(dSmooth, 0.) / (max(iWallAORadius, 1e-3) * f.W));
     return col;
@@ -465,14 +514,14 @@ float litState(vec2 idx, float t) {
 
 vec3 glassColor(Facade f, vec2 local, vec2 idx, vec2 pane) {
     vec2 n = local / f.halfSize;  // -1..1 inside the window
-    vec3 dark = mix(COL_GLASS_LO, COL_GLASS_HI, smoothstep(-1., 1., n.y * 0.8 + 0.3 * n.x));
+    vec3 dark = mix(colGlassLo(), colGlassHi(), smoothstep(-1., 1., n.y * 0.8 + 0.3 * n.x));
     // soft moving reflection streak
     float refl = 0.6 * n.x - 0.8 * n.y + 0.25 * sin(0.3 * iTime + idx.x * 1.7 + idx.y * 2.3);
     dark += iGlassReflect * exp(-6. * refl * refl);
     // slight per-pane variation (old glass)
     dark *= 0.9 + 0.2 * hash12(idx * 3.1 + pane * 0.71 + 0.11);
 
-    vec3 lit = mix(COL_LIT_LO, COL_LIT_HI, smoothstep(-1.2, 1.0, n.y + 0.4 * sin(1.3 * n.x)));
+    vec3 lit = mix(colLitLo(), colLitHi(), smoothstep(-1.2, 1.0, n.y + 0.4 * sin(1.3 * n.x)));
     lit *= 0.9 + 0.1 * sin(2.0 * iTime + idx.x * 2.1 + idx.y * 0.9); // faint flicker
     return mix(dark, lit, litState(idx, iTime));
 }
@@ -540,64 +589,51 @@ void main() {
     vec3 glow;
     vec4 flyerCol = flyerLayer(f, aa, glow);
 
-    #ifdef DEBUG_VIEW
-    {
-        vec2 p = (uv + push + iWallDrift * iTime) * iOverallScale + iOverallNoiseShift;
-        float stripe = (dot(p, iMarbleSqueeze) + streamKL) / (1. + streamK) - iMarbleDrift * iTime;
-        if (DEBUG_VIEW == 1) col = vec3(noiseStack(p));
-        if (DEBUG_VIEW == 2) col = vec3(marbleNoise(p, stripe));
-        if (DEBUG_VIEW == 3) col = vec3(length(push) / f.W, 0.5 + 0.5 * push / f.W);
-        if (DEBUG_VIEW == 4) col = vec3(fract(dSmooth / f.W * 4.));
-        if (DEBUG_VIEW == 5) col = flyerCol.rgb * flyerCol.a + glow;
-        fragColor = vec4(col, 1.); return;
-    }
-    #endif
-
     // --- plinth and cornice bands
-    float plinthTop     = min(-1. + PLINTH_H * f.W,  f.blockBottom - 0.35 * f.W);
-    float corniceBottom = max(1. - CORNICE_H * f.W,  f.blockTop + 0.25 * f.W);
+    float plinthTop     = min(-1. + uLayoutPlinthH * f.W,  f.blockBottom - 0.35 * f.W);
+    float corniceBottom = max(1. - uLayoutCorniceH * f.W,  f.blockTop + 0.25 * f.W);
     float stone = 0.95 + 0.35 * modulatedPerlin2D(uv * 28., 0.) + 0.15 * modulatedPerlin2D(uv * 90., 0.);
-    vec3 plinth = COL_PLINTH * stone * (0.85 + 0.3 * smoothstep(-1., plinthTop, uv.y));
-    plinth = mix(plinth, COL_PLINTH * 1.6, 1. - smoothstep(0., 0.012, abs(uv.y - plinthTop + 0.012)));
+    vec3 plinth = colPlinth() * stone * (0.85 + 0.3 * smoothstep(-1., plinthTop, uv.y));
+    plinth = mix(plinth, colPlinth() * 1.6, 1. - smoothstep(0., 0.012, abs(uv.y - plinthTop + 0.012)));
     col = mix(col, plinth, 1. - smoothstep(plinthTop - aa, plinthTop + aa, uv.y));
-    vec3 cornice = COL_CORNICE * stone;
-    cornice = mix(cornice, COL_CORNICE * 1.7, 1. - smoothstep(0., 0.012, abs(uv.y - corniceBottom - 0.012)));
+    vec3 cornice = colCornice() * stone;
+    cornice = mix(cornice, colCornice() * 1.7, 1. - smoothstep(0., 0.012, abs(uv.y - corniceBottom - 0.012)));
     col = mix(col, cornice, smoothstep(corniceBottom - aa, corniceBottom + aa, uv.y));
 
     // --- flyers behind the windows
     col = mix(col, flyerCol.rgb, flyerCol.a * (1. - iEventOverWindows));
 
     // --- warm light spill of lit windows onto the wall
-    col += iLightSpill * litState(idx, iTime) * COL_LIT_LO * exp(-max(d, 0.) / (0.3 * f.W));
+    col += iLightSpill * litState(idx, iTime) * colLitLo() * exp(-max(d, 0.) / (0.3 * f.W));
 
     // --- window sill (ledge below each window)
-    vec2 sillCenter = vec2(0., -f.halfSize.y - 0.5 * SILL_H * f.W);
-    vec2 sillHalf = vec2(f.halfSize.x + (FRAME_W + SILL_OVERHANG) * f.W, 0.5 * SILL_H * f.W);
+    vec2 sillCenter = vec2(0., -f.halfSize.y - 0.5 * uLayoutSillH * f.W);
+    vec2 sillHalf = vec2(f.halfSize.x + (uLayoutFrameW + uLayoutSillOverhang) * f.W, 0.5 * uLayoutSillH * f.W);
     float dSill = sdRect(local - sillCenter, sillHalf);
-    vec3 sill = COL_SILL * (1. - 0.35 * smoothstep(0.5, -1., (local.y - sillCenter.y) / sillHalf.y));
+    vec3 sill = colSill() * (1. - 0.35 * smoothstep(0.5, -1., (local.y - sillCenter.y) / sillHalf.y));
     col = mix(col, sill, 1. - smoothstep(-aa, aa, dSill));
     // shadow under the sill
     col *= 1. - 0.25 * (1. - smoothstep(0., 0.04, dSill)) * smoothstep(0., -aa, dSill) * step(local.y, sillCenter.y);
 
     // --- window frame
-    float frameW = FRAME_W * f.W;
+    float frameW = uLayoutFrameW * f.W;
     float dFrame = d - frameW;   // < 0 inside frame band or window
-    vec3 frame = COL_FRAME * (1. - 0.3 * smoothstep(frameW, 0., d));   // inner bevel shade
+    vec3 frame = colFrame() * (1. - 0.3 * smoothstep(frameW, 0., d));   // inner bevel shade
     col = mix(col, frame, 1. - smoothstep(-aa, aa, dFrame));
 
     // --- glass + pane grid (2 x 4 squares)
-    vec2 paneSize = vec2(f.W / PANES_X, f.H / PANES_Y);
+    vec2 paneSize = vec2(f.W / uLayoutPanesX, f.H / uLayoutPanesY);
     vec2 q = (local + f.halfSize) / paneSize;          // 0..PANES
-    vec2 pane = floor(clamp(q, vec2(0.), vec2(PANES_X, PANES_Y) - 1.));
+    vec2 pane = floor(clamp(q, vec2(0.), vec2(uLayoutPanesX, uLayoutPanesY) - 1.));
     vec2 cf = fract(q);
     vec2 distLine = min(cf, 1. - cf) * paneSize;         // distance to nearest grid line
     float dl = min(distLine.x, distLine.y);
-    float mullionW = 0.5 * MULLION_W * f.W;
+    float mullionW = 0.5 * uLayoutMullionW * f.W;
 
     vec3 glass = glassColor(f, local, idx, pane);
     // inner shadow of the glass towards the bars
     glass *= 0.75 + 0.25 * smoothstep(mullionW, mullionW + 0.08 * f.W, dl);
-    vec3 inside = mix(glass, COL_MULLION, 1. - smoothstep(mullionW - aa, mullionW + aa, dl));
+    vec3 inside = mix(glass, colMullion(), 1. - smoothstep(mullionW - aa, mullionW + aa, dl));
     col = mix(col, inside, 1. - smoothstep(-aa, aa, d));
 
     // --- flyers in front of the windows + neon halo over everything
@@ -608,6 +644,17 @@ void main() {
     vec2 v = uv / vec2(asp, 1.);
     col *= 1. - iVignetteStrength * dot(v, v) * dot(v, v);
     col = pow(max(col, 0.), vec3(1. / max(iGamma, 1e-3)));
+
+    // --- debug view output (replaces #ifdef DEBUG_VIEW)
+    if (uDebugView > 0) {
+        vec2 p = (uv + push + iWallDrift * iTime) * iOverallScale + iOverallNoiseShift;
+        float stripe = (dot(p, iMarbleSqueeze) + streamKL) / (1. + streamK) - iMarbleDrift * iTime;
+        if (uDebugView == 1) col = vec3(noiseStack(p));
+        if (uDebugView == 2) col = vec3(marbleNoise(p, stripe));
+        if (uDebugView == 3) col = vec3(length(push) / f.W, 0.5 + 0.5 * push / f.W);
+        if (uDebugView == 4) col = vec3(fract(dSmooth / f.W * 4.));
+        if (uDebugView == 5) col = flyerCol.rgb * flyerCol.a + glow;
+    }
 
     fragColor = vec4(col, 1.);
 }

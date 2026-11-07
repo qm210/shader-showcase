@@ -6,6 +6,7 @@ import {
 
 import vertexShaderSource from "../../shaders/vertex.basic.glsl";
 import fragmentShaderSource from "../../shaders/specific/schlosslichtspiel.fragment.glsl";
+import {initTimeline} from "../../experimental/timeline-integration.js";
 
 export default {
     title: "Schlosslichtspiel",
@@ -23,6 +24,8 @@ export default {
 
         initVertices(gl, state, "aPosition");
 
+        state.timeline = initTimeline(state);
+
         return state;
     },
     generateControls: () => ({
@@ -31,7 +34,14 @@ export default {
     })
 }
 
+let _lastTime = 0;
+
 function render(gl, state) {
+    if (state.timeline) {
+        const dt = state.time - _lastTime;
+        _lastTime = state.time;
+        state.timeline.update(dt);
+    }
     gl.useProgram(state.program);
 
     gl.uniform1f(state.location.iTime, state.time);
@@ -50,7 +60,6 @@ function render(gl, state) {
     gl.uniform1f(state.location.iMarbleRange, state.iMarbleRange);
     gl.uniform1f(state.location.iMarbleDrift, state.iMarbleDrift);
 
-    // Pattern: placement, mixing and palette.
     gl.uniform1f(state.location.iOverallScale, state.iOverallScale);
     gl.uniform2fv(state.location.iOverallNoiseShift, state.iOverallNoiseShift);
     gl.uniform2fv(state.location.iWallDrift, state.iWallDrift);
@@ -66,7 +75,6 @@ function render(gl, state) {
     gl.uniform3fv(state.location.iColorCosinePhase, state.iColorCosinePhase);
     gl.uniform1f(state.location.iStructureOpacity, state.iStructureOpacity);
 
-    // Pattern: flow around openings, windows and post.
     gl.uniform1f(state.location.iFlowPush, state.iFlowPush);
     gl.uniform1f(state.location.iFlowRadius, state.iFlowRadius);
     gl.uniform1f(state.location.iWrapRadius, state.iWrapRadius);
@@ -79,7 +87,6 @@ function render(gl, state) {
     gl.uniform1f(state.location.iVignetteStrength, state.iVignetteStrength);
     gl.uniform1f(state.location.iGamma, state.iGamma);
 
-    // Events: x = circle, y = square, z = triangle, w = hexagon.
     gl.uniform4fv(state.location.iEventStart, state.iEventStart);
     gl.uniform4fv(state.location.iEventPathY, state.iEventPathY);
     gl.uniform4fv(state.location.iEventDirection, state.iEventDirection);
@@ -94,7 +101,6 @@ function render(gl, state) {
     gl.uniform1f(state.location.iEventWarp, state.iEventWarp);
     gl.uniform1f(state.location.iEventOverWindows, state.iEventOverWindows);
 
-    // Events: delayed neon / radioactive glow.
     gl.uniform1f(state.location.iGlowStart, state.iGlowStart);
     gl.uniform1f(state.location.iGlowRamp, state.iGlowRamp);
     gl.uniform3fv(state.location.iGlowColor, state.iGlowColor);
@@ -102,6 +108,39 @@ function render(gl, state) {
     gl.uniform1f(state.location.iGlowRadius, state.iGlowRadius);
     gl.uniform1f(state.location.iGlowFlicker, state.iGlowFlicker);
     gl.uniform1f(state.location.iGlowHueCycle, state.iGlowHueCycle);
+
+    gl.uniform1f(state.location.uLayoutNCols, state.uLayoutNCols);
+    gl.uniform1f(state.location.uLayoutNRows, state.uLayoutNRows);
+    gl.uniform1f(state.location.uLayoutPanesX, state.uLayoutPanesX);
+    gl.uniform1f(state.location.uLayoutPanesY, state.uLayoutPanesY);
+    gl.uniform1f(state.location.uLayoutGapBottomMid, state.uLayoutGapBottomMid);
+    gl.uniform1f(state.location.uLayoutGapMidTop, state.uLayoutGapMidTop);
+    gl.uniform1f(state.location.uLayoutMarginX, state.uLayoutMarginX);
+    gl.uniform1f(state.location.uLayoutMarginY, state.uLayoutMarginY);
+    gl.uniform1f(state.location.uLayoutBlockShiftY, state.uLayoutBlockShiftY);
+    gl.uniform1f(state.location.uLayoutFrameW, state.uLayoutFrameW);
+    gl.uniform1f(state.location.uLayoutMullionW, state.uLayoutMullionW);
+    gl.uniform1f(state.location.uLayoutSillH, state.uLayoutSillH);
+    gl.uniform1f(state.location.uLayoutSillOverhang, state.uLayoutSillOverhang);
+    gl.uniform1f(state.location.uLayoutPlinthH, state.uLayoutPlinthH);
+    gl.uniform1f(state.location.uLayoutCorniceH, state.uLayoutCorniceH);
+    gl.uniform1f(state.location.uLayoutWrapSmooth, state.uLayoutWrapSmooth);
+
+    gl.uniform3fv(state.location.uColPlaster, state.uColPlaster);
+    gl.uniform3fv(state.location.uColFrame, state.uColFrame);
+    gl.uniform3fv(state.location.uColMullion, state.uColMullion);
+    gl.uniform3fv(state.location.uColSill, state.uColSill);
+    gl.uniform3fv(state.location.uColPlinth, state.uColPlinth);
+    gl.uniform3fv(state.location.uColCornice, state.uColCornice);
+    gl.uniform3fv(state.location.uColGlassLo, state.uColGlassLo);
+    gl.uniform3fv(state.location.uColGlassHi, state.uColGlassHi);
+    gl.uniform3fv(state.location.uColLitLo, state.uColLitLo);
+    gl.uniform3fv(state.location.uColLitHi, state.uColLitHi);
+
+    // Debugging
+    gl.uniform1i(state.location.uDebugView, state.uDebugView || 0);
+
+    state.timeline?.syncToShader(gl, state);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
@@ -184,4 +223,37 @@ const createUniforms = () => [
     { type: "float", name: "iGlowRadius", defaultValue: 0.6, min: 0.01, max: 3, step: 0.01 },
     { type: "float", name: "iGlowFlicker", defaultValue: 0.5, min: 0, max: 1, step: 0.01 },
     { type: "float", name: "iGlowHueCycle", defaultValue: 0.08, min: -1, max: 1, step: 0.001 },
+
+    { separator: "Layout dimensions (uniforms)" },
+    { type: "float", name: "uLayoutNCols", defaultValue: 8.0, min: 1, max: 20, step: 1 },
+    { type: "float", name: "uLayoutNRows", defaultValue: 3.0, min: 1, max: 10, step: 1 },
+    { type: "float", name: "uLayoutPanesX", defaultValue: 2.0, min: 1, max: 8, step: 1 },
+    { type: "float", name: "uLayoutPanesY", defaultValue: 4.0, min: 1, max: 12, step: 1 },
+    { type: "float", name: "uLayoutGapBottomMid", defaultValue: 0.5, min: 0, max: 3, step: 0.01 },
+    { type: "float", name: "uLayoutGapMidTop", defaultValue: 0.333, min: 0, max: 3, step: 0.01 },
+    { type: "float", name: "uLayoutMarginX", defaultValue: 1.0, min: 0, max: 5, step: 0.01 },
+    { type: "float", name: "uLayoutMarginY", defaultValue: 0.75, min: 0, max: 5, step: 0.01 },
+    { type: "float", name: "uLayoutBlockShiftY", defaultValue: 0.12, min: -2, max: 2, step: 0.01 },
+    { type: "float", name: "uLayoutFrameW", defaultValue: 0.07, min: 0, max: 0.5, step: 0.001 },
+    { type: "float", name: "uLayoutMullionW", defaultValue: 0.035, min: 0, max: 0.2, step: 0.001 },
+    { type: "float", name: "uLayoutSillH", defaultValue: 0.09, min: 0, max: 0.5, step: 0.001 },
+    { type: "float", name: "uLayoutSillOverhang", defaultValue: 0.10, min: 0, max: 1, step: 0.001 },
+    { type: "float", name: "uLayoutPlinthH", defaultValue: 0.55, min: 0, max: 2, step: 0.01 },
+    { type: "float", name: "uLayoutCorniceH", defaultValue: 0.35, min: 0, max: 2, step: 0.01 },
+    { type: "float", name: "uLayoutWrapSmooth", defaultValue: 0.25, min: 0.01, max: 2, step: 0.01 },
+
+    { separator: "Layout colors in OKLCH (L, C, H)" },
+    { type: "vec3", name: "uColPlaster", defaultValue: [0.86, 0.80, 0.70], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColFrame", defaultValue: [0.93, 0.91, 0.86], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColMullion", defaultValue: [0.90, 0.88, 0.84], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColSill", defaultValue: [0.78, 0.74, 0.68], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColPlinth", defaultValue: [0.30, 0.30, 0.34], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColCornice", defaultValue: [0.26, 0.24, 0.26], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColGlassLo", defaultValue: [0.06, 0.09, 0.17], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColGlassHi", defaultValue: [0.22, 0.34, 0.48], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColLitLo", defaultValue: [0.95, 0.55, 0.20], min: 0, max: 1, step: 0.01 },
+    { type: "vec3", name: "uColLitHi", defaultValue: [1.00, 0.85, 0.50], min: 0, max: 1, step: 0.01 },
+
+    { separator: "Debug" },
+    { type: "int", name: "uDebugView", defaultValue: 0, min: 0, max: 5, step: 1 },
 ];

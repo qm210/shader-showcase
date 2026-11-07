@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import glslImport from "./plugin/vite-plugin-glsl";
+import glslImport from "./plugin/vite-plugin-glsl/index.js";
 
 const HOST_LOCAL_NETWORK = true;
 
