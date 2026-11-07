@@ -92,11 +92,6 @@ function runLoop(renderFunction, state, elements, timestamp) {
     requestAnimationFrame(state.animation);
 }
 
-export function shiftTime(state, seconds) {
-    state.time += seconds;
-    state.startTime -= 1000 * seconds;
-}
-
 function resetLoop(state) {
     // trigger via state.resetSignal in runLoop, not directly
     state.startTime = null;

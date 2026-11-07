@@ -2,12 +2,12 @@ import {registerShaderCode} from "./shaderCode.js";
 import {appendButton, appendElement, createDiv, createElement} from "./dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
 import {deferExtendedAnalysis} from "../../glslCode/deferredAnalysis.js";
-import {shiftTime, startRenderLoop} from "../../webgl/render.js";
+import {startRenderLoop} from "../../webgl/render.js";
 import {setCanvasResolution} from "../../webgl/setup.js";
 import {addCanvasMouseInteraction} from "../mouse.js";
 import {createClipboardButtons, createPresetSelector, refreshPresets} from "../exchange.js";
 import {initializePresetStore} from "../database.js";
-import {addButton, addFreeRow, createInputElements, createResetAllButton} from "./controls/uniforms.js";
+import {addButton, addFreeRow, createInputElements} from "./controls/uniforms.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
 import {createMainControlBar} from "./controls/bar.js";
 import {promptForSecondToJump} from "./controls/time.js";
@@ -68,7 +68,8 @@ const generatePage = (glContext, elements, state, controls) => {
 
     addCanvasMouseInteraction(elements, state);
     addVideoElement(elements, state);
-    addMainControls(elements, state, controls);
+    sanitizeControl(elements, state, controls, glContext);
+    addMainControls(elements, state, controls, glContext);
     addUniformControls(elements, state, controls);
     addDisplayControls(elements, state, glContext);
 
@@ -548,4 +549,20 @@ function collectGroups(controls) {
         result[control.group].push(control);
     }
     return result;
+}
+
+function sanitizeControl(elements, state, controls, glContext) {
+    // TODO: lost & found, move when some place looks suited (:
+
+    if (!controls.onRender) {
+        if (!controls.renderLoop) {
+            throw new Error("generateControls() needs either onRender or renderLoop defined!");
+        }
+        controls.onRender = () =>
+            startRenderLoop(
+                state => controls.renderLoop(glContext, state, elements),
+                state,
+                elements
+            );
+    }
 }
