@@ -11,7 +11,7 @@ import {createMainControlBar} from "./elements/bar.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
 import {addVideoElement} from "./elements/webcam.js";
 import {addKeyboardShortcuts} from "../keyboard.js";
-import {createUniformPlayground} from "../../experimental/uniform-playground.js";
+import {createUniformPlayground} from "../../playground/playground.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {

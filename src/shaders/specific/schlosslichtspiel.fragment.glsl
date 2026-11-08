@@ -606,15 +606,6 @@ void main() {
     // --- warm light spill of lit windows onto the wall
     col += iLightSpill * litState(idx, iTime) * colLitLo() * exp(-max(d, 0.) / (0.3 * f.W));
 
-    // --- window sill (ledge below each window)
-    vec2 sillCenter = vec2(0., -f.halfSize.y - 0.5 * uLayoutSillH * f.W);
-    vec2 sillHalf = vec2(f.halfSize.x + (uLayoutFrameW + uLayoutSillOverhang) * f.W, 0.5 * uLayoutSillH * f.W);
-    float dSill = sdRect(local - sillCenter, sillHalf);
-    vec3 sill = colSill() * (1. - 0.35 * smoothstep(0.5, -1., (local.y - sillCenter.y) / sillHalf.y));
-    col = mix(col, sill, 1. - smoothstep(-aa, aa, dSill));
-    // shadow under the sill
-    col *= 1. - 0.25 * (1. - smoothstep(0., 0.04, dSill)) * smoothstep(0., -aa, dSill) * step(local.y, sillCenter.y);
-
     // --- window frame
     float frameW = uLayoutFrameW * f.W;
     float dFrame = d - frameW;   // < 0 inside frame band or window

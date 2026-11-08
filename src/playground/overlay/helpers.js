@@ -1,0 +1,44 @@
+export function injectGlobalCss(stylesheet, elementId) {
+    if (document.getElementById(elementId)) {
+        console.warn("Will not injectGlobalCss() because element already exists", elementId, stylesheet);
+        return;
+    }
+    const element = document.createElement('style');
+    element.id = elementId;
+    element.textContent = stylesheet;
+    document.head.appendChild(element);
+}
+
+export function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+export function formatRange(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return Array.isArray(value) ? value.join(', ') : String(value);
+}
+
+export function parseRangeInput(text) {
+    const trimmed = text.trim();
+    if (trimmed === '') {
+        return null;
+    }
+    const parts = trimmed.split(/[\s,;]+/).filter(Boolean).map(Number);
+    if (parts.length === 0 || !parts.every(Number.isFinite)) {
+        return undefined;
+    }
+    return parts.length === 1 ? parts[0] : parts;
+}
+
+export function isTypingTarget(target) {
+    return Boolean(
+        target?.closest?.('input, select, textarea, button, [contenteditable="true"]')
+    );
+}

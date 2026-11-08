@@ -1,70 +1,4 @@
-/**
- * Timeline Engine — drives uniform values from keyframe tracks.
- *
- * Each track has:
- *   - name (human label)
- *   - targets: [{ uniformName, minValue, maxValue, enabled }]
- *   - keyframes: [{ time, value, transition }]
- *
- * Interpolation supports: 'step', 'linear', 'smoothstep'
- */
-
-// ─── Interpolation helpers ────────────────────────────────────────
-
-function lerp(a, b, t) {
-    return a + (b - a) * Math.max(0, Math.min(1, t));
-}
-
-function smoothstep(a, b, t) {
-    const x = Math.max(0, Math.min(1, (t - a) / (b - a)));
-    return x * x * (3 - 2 * x);
-}
-
-/**
- * Interpolate between two keyframe values.
- * Handles scalar and vec3 arrays.
- */
-function interpolateKeyframes(from, to, t, transition) {
-    if (transition === 'step') {
-        return from.value; // hold until next keyframe
-    }
-
-    const easedT = transition === 'smoothstep' ? smoothstep(0, 1, t) : t;
-
-    if (Array.isArray(from.value)) {
-        return from.value.map((v, i) => lerp(v, to.value[i], easedT));
-    }
-    return lerp(from.value, to.value, easedT);
-}
-
-/**
- * Find the two keyframes surrounding a given time within a track.
- */
-function findSurroundingKeyframes(keyframes, time) {
-    if (keyframes.length === 0) return null;
-    if (keyframes.length === 1) return { prev: keyframes[0], next: keyframes[0], t: 0 };
-
-    // Before first keyframe
-    if (time <= keyframes[0].time) {
-        return { prev: keyframes[0], next: keyframes[1] || keyframes[0], t: 0 };
-    }
-
-    // After last keyframe
-    if (time >= keyframes[keyframes.length - 1].time) {
-        const last = keyframes[keyframes.length - 1];
-        return { prev: keyframes[keyframes.length - 2], next: last, t: 1 };
-    }
-
-    // Between keyframes
-    for (let i = 0; i < keyframes.length - 1; i++) {
-        if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
-            const dur = keyframes[i + 1].time - keyframes[i].time || 0.001;
-            return { prev: keyframes[i], next: keyframes[i + 1], t: (time - keyframes[i].time) / dur };
-        }
-    }
-
-    return { prev: keyframes[keyframes.length - 2], next: keyframes[keyframes.length - 1], t: 1 };
-}
+import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 
 // ─── Track class ──────────────────────────────────────────────────
 
@@ -211,7 +145,6 @@ export class TimelineEngine {
         this._overrides = {};
     }
 
-    /** Clear all tracks, overrides and playback state. */
     reset() {
         this.tracks.clear();
         this.currentTime = 0;
@@ -221,29 +154,24 @@ export class TimelineEngine {
         this._overrides = {};
     }
 
-    /** Add a track by name */
     addTrack(name) {
         const track = new TimelineTrack(name);
         this.tracks.set(track.id, track);
         return track;
     }
 
-    /** Remove a track by id */
     removeTrack(id) {
         this.tracks.delete(id);
     }
 
-    /** Get a track by id */
     getTrack(id) {
         return this.tracks.get(id);
     }
 
-    /** Get all tracks as an array */
     getAllTracks() {
         return Array.from(this.tracks.values());
     }
 
-    /** Update engine time by delta seconds */
     update(dt) {
         if (!this.playing) return;
         this.currentTime += dt * this.speed;
@@ -258,7 +186,6 @@ export class TimelineEngine {
         if (this.onUpdate) this.onUpdate(this);
     }
 
-    /** Get all uniform values across all tracks at current time */
     getUniformValues() {
         const result = {};
         for (const track of this.tracks.values()) {
@@ -268,27 +195,22 @@ export class TimelineEngine {
         return result;
     }
 
-    /** Set a single uniform value directly (bypasses timeline) */
     setUniformValue(uniformName, value) {
         this._overrides[uniformName] = value;
     }
 
-    /** Get a copy of the manual overrides */
     getOverrides() {
         return { ...this._overrides };
     }
 
-    /** Get all uniform values including overrides */
     getAllUniformValues() {
         return Object.assign(this.getUniformValues(), this._overrides);
     }
 
-    /** Clear manual overrides */
     clearOverrides() {
         this._overrides = {};
     }
 
-    /** Serialize entire timeline to JSON */
     toJSON() {
         const tracks = [];
         for (const track of this.tracks.values()) {
@@ -303,7 +225,6 @@ export class TimelineEngine {
         };
     }
 
-    /** Replace this engine's state with serialized data (keeps the instance). */
     loadJSON(json) {
         this.reset();
         this.currentTime = Number(json?.currentTime) || 0;
@@ -317,7 +238,6 @@ export class TimelineEngine {
         return this;
     }
 
-    /** Deserialize timeline from JSON */
     static fromJSON(json) {
         return new TimelineEngine().loadJSON(json);
     }

@@ -1,6 +1,6 @@
-import { TimelineEngine } from './timeline-engine.js';
-import { PlaygroundOverlay } from './playground-overlay.js';
-import { getUniformRandomizer } from './uniform-randomizer.js';
+import {TimelineEngine} from './engine/timeline.js';
+import {Overlay} from './overlay/overlay.js';
+import {getUniformRandomizer} from './engine/randomizer.js';
 
 const pg = {
     engine: null,
@@ -13,7 +13,7 @@ export function createUniformPlayground(state, controls) {
         pg.engine = new TimelineEngine();
         // The randomizer needs the controls before the overlay renders its sets.
         pg.randomizer = getUniformRandomizer(controls.uniforms);
-        pg.overlay = new PlaygroundOverlay(pg.engine, { randomizer: pg.randomizer });
+        pg.overlay = new Overlay(pg.engine, pg.randomizer);
 
         for (const control of controls.uniforms) {
             // Only initialize scalar/vector uniforms that don't have a value yet

@@ -1,18 +1,3 @@
-/**
- * Uniform Randomizer — defines uniform sets and randomizes their values
- * with intensity control.
- *
- * There are two kinds of sets:
- *   - Auto sets are derived from the control definitions (one per separator)
- *     and are rebuilt whenever the controls are set. They are not persisted.
- *   - Custom sets are created in the overlay ("+ Set" / "+ Uniform").
- *     Each entry may overwrite the min and max values of its control.
- *     Persistence is handled by the overlay via toJSON() / loadJSON().
- *
- * A uniform entry is { name, min, max }, where min/max are either
- * null (use the control's range), a number, or an array (per component).
- */
-
 const FALLBACK_MIN = -1;
 const FALLBACK_MAX = 1;
 
@@ -33,7 +18,7 @@ function randomBetween(min, max, intensity) {
     return min + Math.random() * (max - min) * intensity;
 }
 
-export class UniformSet {
+export class UniformBatch {
     constructor(name, { id = null, custom = false } = {}) {
         this.id = id ?? createId(custom ? 'custom' : 'auto');
         this.name = name;
@@ -68,31 +53,31 @@ export class UniformSet {
     }
 
     static fromJSON(json) {
-        const set = new UniformSet(String(json.name ?? 'Set'), {
+        const batch = new UniformBatch(String(json.name ?? 'Batch'), {
             id: json.id ?? null,
             custom: true,
         });
         for (const entry of json.uniforms ?? []) {
-            set.addUniform(
+            batch.addUniform(
                 String(entry.name ?? ''),
                 isRangeValue(entry.min) ? entry.min : null,
                 isRangeValue(entry.max) ? entry.max : null,
             );
         }
-        return set;
+        return batch;
     }
 }
 
-export class UniformRandomizer {
+export class Randomizer {
     constructor() {
         this.controls = new Map(); // uniform name -> { min, max, defaultValue }
-        this.autoSets = [];
-        this.customSets = [];
+        this.autoBatches = [];
+        this.customBatches = [];
     }
 
     /**
-     * Rebuild the control lookup and the auto sets from the control definitions.
-     * Custom sets are kept.
+     * Rebuild the control lookup and the auto batches from the control definitions.
+     * Custom batches are kept.
      * @param {Array|{uniforms: Array}} controls
      */
     setControls(controls) {
@@ -102,13 +87,13 @@ export class UniformRandomizer {
         }
 
         this.controls.clear();
-        this.autoSets = [];
-        let currentSet = null;
+        this.autoBatches = [];
+        let currentBatch = null;
 
         for (const control of list) {
             if (control.separator) {
-                currentSet = new UniformSet(control.separator, { id: `auto:${control.separator}` });
-                this.autoSets.push(currentSet);
+                currentBatch = new UniformBatch(control.separator, { id: `auto:${control.separator}` });
+                this.autoBatches.push(currentBatch);
                 continue;
             }
             const isNumeric = control.type && !control.boolean
@@ -120,16 +105,17 @@ export class UniformRandomizer {
                 min: control.min,
                 max: control.max,
                 defaultValue: control.defaultValue,
+                type: control.type ?? 'float',
             });
-            if (!currentSet) {
-                currentSet = new UniformSet('General', { id: 'auto:General' });
-                this.autoSets.push(currentSet);
+            if (!currentBatch) {
+                currentBatch = new UniformBatch('General', { id: 'auto:General' });
+                this.autoBatches.push(currentBatch);
             }
-            currentSet.addUniform(control.name);
+            currentBatch.addUniform(control.name);
         }
 
         // Separators without any numeric uniform are not useful for randomizing.
-        this.autoSets = this.autoSets.filter(set => set.uniforms.length > 0);
+        this.autoBatches = this.autoBatches.filter(batch => batch.uniforms.length > 0);
     }
 
     /** Names of all uniforms known from the controls. */
@@ -142,25 +128,31 @@ export class UniformRandomizer {
         return {
             min: control?.min ?? FALLBACK_MIN,
             max: control?.max ?? FALLBACK_MAX,
+            type: control?.type ?? 'float',
         };
     }
 
-    addSet(name) {
-        const set = new UniformSet(name, { custom: true });
-        this.customSets.push(set);
-        return set;
+    getControlType(uniformName) {
+        const control = this.controls.get(uniformName);
+        return control?.type ?? 'float';
     }
 
-    removeSet(id) {
-        this.customSets = this.customSets.filter(set => set.id !== id);
+    addBatch(name) {
+        const batch = new UniformBatch(name, { custom: true });
+        this.customBatches.push(batch);
+        return batch;
     }
 
-    getSet(id) {
-        return this.getAllSets().find(set => set.id === id);
+    removeBatch(id) {
+        this.customBatches = this.customBatches.filter(batch => batch.id !== id);
     }
 
-    getAllSets() {
-        return [...this.customSets, ...this.autoSets];
+    getBatch(id) {
+        return this.getAllBatches().find(batch => batch.id === id);
+    }
+
+    getAllBatches() {
+        return [...this.customBatches, ...this.autoBatches];
     }
 
     /** Resolve the effective range of an entry: overwrite → control → fallback. */
@@ -175,15 +167,15 @@ export class UniformRandomizer {
         return { min, max, components };
     }
 
-    /** Random values for a set, keyed by uniform name. */
-    getSetRandomValues(id, intensity) {
-        const set = this.getSet(id);
+    /** Random values for a batch, keyed by uniform name. */
+    getBatchRandomValues(id, intensity) {
+        const batch = this.getBatch(id);
         const result = {};
-        if (!set) {
+        if (!batch) {
             return result;
         }
 
-        for (const entry of set.uniforms) {
+        for (const entry of batch.uniforms) {
             if (!entry.name) {
                 continue;
             }
@@ -197,32 +189,32 @@ export class UniformRandomizer {
     }
 
     /**
-     * Randomize uniforms in a set and apply them to the engine as overrides.
+     * Randomize uniforms in a batch and apply them to the engine as overrides.
      * @param {string} id
      * @param {number} intensity 0..1
      * @param {TimelineEngine} engine
      */
-    randomizeSet(id, intensity, engine) {
-        const values = this.getSetRandomValues(id, intensity);
+    randomizeBatch(id, intensity, engine) {
+        const values = this.getBatchRandomValues(id, intensity);
         for (const [name, value] of Object.entries(values)) {
             engine.setUniformValue(name, value);
         }
         return values;
     }
 
-    /** Only custom sets are persisted; auto sets come from the controls. */
+    /** Only custom batches are persisted; auto batches come from the controls. */
     toJSON() {
-        return this.customSets.map(set => set.toJSON());
+        return this.customBatches.map(batch => batch.toJSON());
     }
 
     loadJSON(json) {
-        this.customSets = Array.isArray(json)
-            ? json.map(setJson => UniformSet.fromJSON(setJson))
+        this.customBatches = Array.isArray(json)
+            ? json.map(batchJson => UniformBatch.fromJSON(batchJson))
             : [];
     }
 
-    clearCustomSets() {
-        this.customSets = [];
+    clearCustomBatches() {
+        this.customBatches = [];
     }
 }
 
@@ -231,7 +223,7 @@ let _randomizer = null;
 
 export function getUniformRandomizer(controls) {
     if (!_randomizer) {
-        _randomizer = new UniformRandomizer();
+        _randomizer = new Randomizer();
     }
     if (controls) {
         _randomizer.setControls(controls);
