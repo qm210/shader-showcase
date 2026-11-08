@@ -1,5 +1,5 @@
 import {REGEX, SymbolType} from "./definitions.js";
-import {createSpan} from "../app/layout/dom.js";
+import {createSpan} from "../app/dom/dom.js";
 
 export function withGlslHighlighting(code) {
     return code

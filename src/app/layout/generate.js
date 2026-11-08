@@ -1,6 +1,6 @@
 import {addFreeRow, createInputElements} from "./elements/uniforms.js";
 import {createShaderCodeRegister} from "./shaderCode.js";
-import {addButton, appendButton, appendElement, createDiv, createElement} from "./dom.js";
+import {addButton, appendButton, appendElement, createDiv, createElement} from "../dom/dom.js";
 import {createScrollStackOn, scrollToFirstInterestingLine} from "../events.js";
 import {deferExtendedAnalysis} from "../../glslCode/deferredAnalysis.js";
 import {setCanvasResolution} from "../../webgl/setup.js";
@@ -11,7 +11,7 @@ import {createMainControlBar} from "./elements/bar.js";
 import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
 import {addVideoElement} from "./elements/webcam.js";
 import {addKeyboardShortcuts} from "../keyboard.js";
-import {createUniformPlayground} from "../../playground/playground.js";
+import {createUniformPlayground} from "../../playground/context.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -48,7 +48,12 @@ const generatePage = (glContext, elements, state, controls) => {
         printDebug: () => console.info(state, elements)
     });
 
-    elements.pageLoadingMs = performance.now() - elements.initialMs;
+    elements.measured.startupMs = (
+        performance.now() - elements.measured.initialMs
+    );
+    console.info(
+        "Page took", elements.measured.startupMs.toFixed(2), "ms to generate."
+    );
 };
 
 export default generatePage;

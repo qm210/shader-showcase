@@ -1,4 +1,4 @@
-import {MIN_TIMELINE_SPAN} from "../overlay/overlay-dom.js";
+import {MIN_TIMELINE_SPAN} from "../overlay/overlay.dom.js";
 
 export function timelineSpan(engine, factor = 1) {
     const tracks = engine.getAllTracks();
@@ -25,3 +25,4 @@ export function smoothstep(a, b, t) {
     const x = Math.max(0, Math.min(1, (t - a) / (b - a)));
     return x * x * (3 - 2 * x);
 }
+

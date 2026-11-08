@@ -41,3 +41,10 @@ function collectGroups(controls) {
     }
     return result;
 }
+
+export function isNumeric(control) {
+    return control.type
+        && !control.boolean
+        && control.min !== undefined
+        && control.max !== undefined;
+}

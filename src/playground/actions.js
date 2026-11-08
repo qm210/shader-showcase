@@ -16,7 +16,7 @@ export const ACTION = Object.freeze({
     ADD_KEYFRAME: 'add-keyframe',
     ADD_BATCH: 'add-batch',
     REMOVE_BATCH: 'remove-batch',
-    CLEAR_SELECTION: 'clear-selection',
+    DESELECT_BATCHES: 'deselect-batches',
     ADD_UNIFORM: 'add-uniform',
     REMOVE_UNIFORM: 'remove-uniform',
     RANDOMIZE: 'randomize',
@@ -43,7 +43,7 @@ export function runAction(overlay, action, data) {
             const count = overlay.engine.getAllTracks().length + 1;
             const name = `Track ${count}`;
             overlay.engine.addTrack(name);
-            overlay.render();
+            overlay.renderTimeline();
             break;
         }
 
@@ -66,7 +66,7 @@ export function runAction(overlay, action, data) {
                 overlay.engine.removeTrack(data.trackId);
                 overlay.collapsedTrackIds.delete(data.trackId);
                 overlay.selectedKeyframe = null;
-                overlay.render();
+                overlay.renderTimeline();
             }
             break;
 
@@ -75,7 +75,7 @@ export function runAction(overlay, action, data) {
             if (track) {
                 // Add an empty target that the user can fill in
                 track.addTarget('', -1, 1);
-                overlay.render();
+                overlay.renderTimeline();
                 // Focus the new selector (last one added)
                 const selectors = overlay.ui.trackList.querySelectorAll('.target-selector');
                 const lastSelector = selectors[selectors.length - 1];
@@ -92,7 +92,7 @@ export function runAction(overlay, action, data) {
             const target = track?.targets[parseInt(data.targetIdx, 10)];
             if (target) {
                 track.removeTarget(target.uniformName);
-                overlay.render();
+                overlay.renderTimeline();
             }
             break;
         }
@@ -106,25 +106,25 @@ export function runAction(overlay, action, data) {
         }
 
         case ACTION.ADD_BATCH: {
-            const count = overlay.randomizer.customBatches.length + 1;
+            const count = overlay.ctx.customBatches.length + 1;
             const name = `Batch ${count}`;
-            const batch = overlay.randomizer.addBatch(name);
+            const batch = overlay.ctx.addBatch(name);
             overlay.selectedBatchId = batch.id;
-            overlay.renderRandomizer();
+            overlay.updateOnTargetsChanged();
             break;
         }
 
         case ACTION.REMOVE_BATCH: {
-            const batch = overlay.randomizer.getBatch(data.batchId);
+            const batch = overlay.ctx.getBatch(data.batchId);
             if (batch && confirm(`Delete the batch "${batch.name}"?`)) {
-                overlay.randomizer.removeBatch(batch.id);
-                overlay.renderRandomizer();
+                overlay.ctx.removeBatch(batch.id);
+                overlay.updateOnTargetsChanged();
                 overlay._scheduleSave();
             }
             break;
         }
 
-        case ACTION.CLEAR_SELECTION: {
+        case ACTION.DESELECT_BATCHES: {
             overlay.selectedBatchId = null;
             overlay._editingBatchId = null;
             overlay.renderUniformPanel();
@@ -132,21 +132,21 @@ export function runAction(overlay, action, data) {
         }
 
         case ACTION.ADD_UNIFORM: {
-            const batch = overlay.randomizer.getBatch(data.batchId);
+            const batch = overlay.ctx.getBatch(data.batchId);
             if (batch) {
                 batch.addUniform('');
                 overlay.selectedBatchId = batch.id;
-                overlay.renderRandomizer();
+                overlay.renderUniformPanel();
                 overlay.element
                     .querySelector(`.batch-card[data-batch-id="${CSS.escape(batch.id)}"] .batch-uniform-row:last-child .name`)
                     ?.focus();
-                overlay._scheduleSave();
+                overlay.updateOnTargetsChanged();
             }
             break;
         }
 
         case ACTION.REMOVE_UNIFORM: {
-            const batch = overlay.randomizer.getBatch(data.batchId);
+            const batch = overlay.ctx.getBatch(data.batchId);
             if (batch) {
                 const entry = batch.uniforms[parseInt(data.index, 10)];
                 if (entry) {
@@ -159,7 +159,7 @@ export function runAction(overlay, action, data) {
                         entry.min = null;
                         entry.max = null;
                     }
-                    overlay.renderRandomizer();
+                    overlay.renderUniformPanel();
                     overlay._scheduleSave();
                 }
             }
@@ -168,7 +168,7 @@ export function runAction(overlay, action, data) {
 
         case ACTION.RANDOMIZE:
             if (overlay.selectedBatchId) {
-                overlay.randomizer.randomizeBatch(overlay.selectedBatchId, overlay.intensity, overlay.engine);
+                overlay.ctx.randomizeBatch(overlay.selectedBatchId, overlay.randomIntensity, overlay.engine);
                 overlay._renderPreview();
                 overlay._scheduleSave();
             }
@@ -186,13 +186,13 @@ export function runAction(overlay, action, data) {
                 }
             }
             overlay._editingTrackId = null;
-            overlay.render();
+            overlay.renderTimeline();
             break;
         }
 
         case ACTION.CANCEL_TRACK_NAME:
             overlay._editingTrackId = null;
-            overlay.render();
+            overlay.renderTimeline();
             break;
     }
 }

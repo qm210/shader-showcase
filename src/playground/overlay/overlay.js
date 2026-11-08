@@ -1,45 +1,41 @@
-import STYLESHEET from './overlay.css?inline';
-import {isRangeValue} from "../engine/randomizer.js";
 import {
-    createPlaygroundOverlayDOM,
-    renderBatchListDOM as renderBatchList,
-    renderPlaybackDOM as renderPlayback,
-    renderPreviewDOM as renderPreview,
-    renderRandomizerPanelDOM as renderRandomizerPanel,
-    renderTracksDOM as renderTracks,
-    renderUniformListDOM as renderUniformList
-} from './overlay-dom.js';
+    createPlaygroundOverlay,
+    renderBatchList,
+    renderPlayback,
+    renderPreview,
+    renderRandomizerPanel,
+    renderTracks,
+    renderUniformList
+} from './overlay.dom.js';
 import {STORAGE_KEY} from "../../app/layout/generate.js";
-import {injectGlobalCss, isTypingTarget} from "./helpers.js";
-import {percentOfSpan, timelineSpan} from "../engine/math.js";
+import {isTypingTarget, parseRangeInput} from "./helpers.js";
+import {timelineSpan} from "../engine/math.js";
 import {runAction} from "../actions.js";
+import {injectGlobalCSS} from "../../app/dom/utils.js";
+import {isRangeValue} from "../engine/valueRanges.js";
+import {clamp} from "../../app/algorithms.js";
+import STYLESHEET from './overlay.css?inline';
 
-export {escapeHtml, formatRange, parseRangeInput} from './helpers.js';
+export {escapeHtml, formatRange} from './helpers.js';
 
-const STATE_VERSION = 1;
-const SAVE_DELAY_MS = 200;
-const DBL_CLICK_DELAY_MS = 350;
 
-function readStoredState() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY.PLAYGROUND_OVERLAY);
-        const state = raw ? JSON.parse(raw) : null;
-        return state?.version === STATE_VERSION ? state : null;
-    } catch (error) {
-        console.warn('Failed to read the playground overlay state:', error);
-        return null;
-    }
-}
+const STATE_VERSION = 2;
+
+const DELAY_MS = {
+    THROTTLE_SAVE: 150,
+    DOUBLECLICK: 350,
+};
 
 export class Overlay {
-    constructor(timelineEngine, randomizer) {
-        this.engine = timelineEngine;
-        this.randomizer = randomizer;
+    constructor(contextProvider) {
+        this.ctx = contextProvider;
+        this.engine = contextProvider.engine;
         this.element = null;
         this.selectedKeyframe = null;
         this.collapsedTrackIds = new Set();
         this.selectedBatchId = null;
-        this.intensity = 1;
+        this.selectedTrackId = null;
+        this.randomIntensity = 1;
         this.position = null;
 
         this.isDragging = false;
@@ -47,8 +43,8 @@ export class Overlay {
         this.dragStartY = 0;
         this.origLeft = 0;
         this.origTop = 0;
-        this._saveTimer = null;
-        this._dblClickTimer = null;
+        this._saveThrottle = null;
+        this._clickTimer = null;
 
         this._editingBatchId = null;
         this._editingTrackId = null;
@@ -57,17 +53,18 @@ export class Overlay {
     }
 
     init() {
-        injectGlobalCss(STYLESHEET, 'overlay-style');
+        injectGlobalCSS('overlay-style', STYLESHEET);
         this.createDOM();
         this.bindEvents();
         this.restoreState();
         this.syncUI();
-        this.render();
+        this.renderTimeline();
         this.renderRandomizer();
+        this.renderUniformPanel();
     }
 
     createDOM() {
-        const dom = createPlaygroundOverlayDOM();
+        const dom = createPlaygroundOverlay();
         this.element = dom.element;
         this.ui = dom.ui;
         document.body.append(this.element);
@@ -136,7 +133,7 @@ export class Overlay {
                 if (kf) {
                     track.removeKeyframe(kf.time);
                     this.selectedKeyframe = null;
-                    this.render();
+                    this.renderTimeline();
                 }
             }
         });
@@ -157,51 +154,69 @@ export class Overlay {
                 trackId: dot.dataset.trackId,
                 kfIndex: parseInt(dot.dataset.kfIndex, 10),
             };
-            this.render();
+            this.renderTimeline();
             return;
         }
 
-        // Click on strip background to add a keyframe
+        // Click on strip background to interpolate value from Y position
         const strip = e.target.closest('.keyframe-strip');
         if (strip) {
             const track = this.engine.getTrack(strip.dataset.trackId);
-            if (!track) return;
+            if (!track || !track.targets.length) return;
+            
+            // Find enabled target's min/max range
+            let minVal = 0, maxVal = 1;
+            for (const target of track.targets) {
+                if (target.enabled && target.uniformName) {
+                    const range = this.ctx.getControlRange(target.uniformName);
+                    const tMin = Array.isArray(range.min) ? -1 : range.min;
+                    const tMax = Array.isArray(range.max) ? 1 : range.max;
+                    minVal = Math.min(minVal, tMin);
+                    maxVal = Math.max(maxVal, tMax);
+                }
+            }
+            
+            // Interpolate value from Y position (inverted: top = max, bottom = min)
             const rect = strip.getBoundingClientRect();
+            const yRatio = 1 - (e.clientY - rect.top) / rect.height;
+            const interpolatedValue = minVal + yRatio * (maxVal - minVal);
+            
+            // Calculate time from X position
             const inset = parseFloat(getComputedStyle(strip).fontSize) * 0.5;
             const x = Math.min(1, Math.max(0, (e.clientX - rect.left - inset) / (rect.width - 2 * inset)));
-            this._promptKeyframe(track, timelineSpan(this.engine, x));
+            const time = timelineSpan(this.engine, x);
+            
+            // Add keyframe with interpolated value
+            track.addKeyframe(time, interpolatedValue);
+            this.selectedKeyframe = null;
+            this.renderTimeline();
             return;
         }
 
-        const trackHeader = e.target.closest('.track-header');
-        if (trackHeader) {
-            const trackItem = trackHeader.closest('.track-wrapper');
-            const id = trackItem.dataset.trackId;
-            this._editingTrackId = id;
-            clearTimeout(this._dblClickTimer);
-            this._dblClickTimer = setTimeout(() => {
-                this._dblClickTimer = null;
-                const collapsed = trackItem.classList.toggle('collapsed');
-                if (collapsed) {
-                    this.collapsedTrackIds.add(id);
-                } else {
-                    this.collapsedTrackIds.delete(id);
-                }
+        const trackName = e.target.closest(".track-name");
+        if (trackName) {
+            const trackRow = trackName.closest(".track-wrapper");
+            const id = trackRow.dataset.trackId;
+            this._ifSingleClick(() => {
+                this.selectedTrackId = id;
+                this.element.querySelectorAll(".track-wrapper.selected")
+                    .forEach(el => el.classList.remove("selected"));
+                trackRow.classList.add("selected");
                 this._scheduleSave();
-            }, DBL_CLICK_DELAY_MS);
+            });
             return;
         }
+
         const batchHeader = e.target.closest('.batch-card-header');
         if (batchHeader) {
-            this.selectedBatchId = batchHeader.closest('.batch-card').dataset.batchId;
-            this._dblClickTimer = setTimeout(() => {
-                this.renderRandomizer();
-                this._scheduleSave();
-            }, DBL_CLICK_DELAY_MS);
+            const batchId = batchHeader.closest('.batch-card').dataset.batchId;
+            this._ifSingleClick(() => {
+                this.selectedBatchId = batchId;
+                this.updateOnTargetsChanged();
+            });
             return;
         }
 
-        // Custom batch selector display.
         const selectorDisplay = e.target.closest('.target-selector-display');
         if (selectorDisplay) {
             const wrapper = selectorDisplay.closest('.target-selector-wrapper');
@@ -209,7 +224,6 @@ export class Overlay {
             const isOpen = !dropdown.hidden;
 
             if (!isOpen) {
-                // Position the fixed dropdown just below the display button.
                 const rect = selectorDisplay.getBoundingClientRect();
                 dropdown.style.top = `${rect.bottom + window.scrollY}px`;
                 dropdown.style.left = `${rect.left + window.scrollX}px`;
@@ -220,16 +234,13 @@ export class Overlay {
             return;
         }
 
-        // Selector item click.
         const selectorItem = e.target.closest('.selector-item');
         if (selectorItem) {
             this.selectedBatchId = selectorItem.dataset.targetId || null;
-            this.renderRandomizer();
-            this._scheduleSave();
+            this.updateOnTargetsChanged();
             return;
         }
 
-        // Close dropdown when clicking outside.
         const wrapper = e.target.closest('.target-selector-wrapper');
         if (!wrapper) {
             document.querySelectorAll('.target-selector-dropdown:not([hidden])').forEach(dd => {
@@ -244,8 +255,7 @@ export class Overlay {
     }
 
     _onDoubleClick(e) {
-        clearTimeout(this._dblClickTimer);
-        this._dblClickTimer = null;
+        this._resetClickTimer();
 
         // Edit keyframe value; cancelling the prompt removes the keyframe.
         const dot = e.target.closest('.keyframe-dot');
@@ -261,7 +271,7 @@ export class Overlay {
             } else if (!isNaN(parseFloat(newVal))) {
                 kf.value = parseFloat(newVal);
             }
-            this.render();
+            this.renderTimeline();
             return;
         }
 
@@ -271,29 +281,29 @@ export class Overlay {
             const newName = target && prompt('Uniform name:', target.uniformName);
             if (newName?.trim()) {
                 target.uniformName = newName.trim();
-                this.render();
+                this.renderTimeline();
             }
             return;
         }
 
-        const trackHeader = e.target.closest('.track-header');
-        if (trackHeader && !e.target.closest('button, input')) {
+        const actuallyTargeted = !e.target.closest("button, input");
+
+        const trackHeader = e.target.closest(".track-name");
+        if (trackHeader && actuallyTargeted) {
             const trackItem = trackHeader.closest('.track-wrapper');
             const id = trackItem.dataset.trackId;
-            console.log("clicked track id", id);
-            this._editingTrackId = id;
             requestAnimationFrame(() => {
-                this.element
-                    .querySelector(
-                        `.track-wrapper[data-track-id="${CSS.escape(id)}"] .name`
-                    )
-                    ?.focus();
+                this._editingTrackId = id;
+                this._renderTracks();
+                this.element.querySelector(
+                    `.track-wrapper[data-track-id="${CSS.escape(id)}"] .name`
+                )?.focus();
             });
             return;
         }
 
         const batchHeader = e.target.closest('.batch-card-header');
-        if (batchHeader && !e.target.closest('button, input')) {
+        if (batchHeader && actuallyTargeted) {
             const batchId = batchHeader.closest('.batch-card').dataset.batchId;
             this._editingBatchId = batchId;
             this.renderUniformPanel();
@@ -306,6 +316,19 @@ export class Overlay {
         }
     }
 
+    _ifSingleClick(callback) {
+        clearTimeout(this._clickTimer);
+        this._clickTimer = setTimeout(() => {
+            this._clickTimer = null;
+            callback();
+        }, DELAY_MS.DOUBLECLICK);
+    }
+
+    _resetClickTimer() {
+        clearTimeout(this._clickTimer);
+        this._clickTimer = null;
+    }
+
     _onKeyDown(e) {
         // Inline-edit track name: Enter to confirm, Escape to cancel.
         if (this._editingTrackId && e.target.classList.contains('name')) {
@@ -315,10 +338,10 @@ export class Overlay {
                     this.engine.getTrack(this._editingTrackId).name = newName;
                 }
                 this._editingTrackId = null;
-                this.render();
+                this.renderTimeline();
             } else if (e.code === 'Escape') {
                 this._editingTrackId = null;
-                this.render();
+                this.renderTimeline();
             }
             return;
         }
@@ -328,15 +351,16 @@ export class Overlay {
             if (e.code === 'Enter') {
                 const newName = e.target.value.trim();
                 if (newName) {
-                    const batch = this.randomizer.getBatch(this._editingBatchId);
-                    if (batch) batch.name = newName;
+                    const batch = this.ctx.getBatch(this._editingBatchId);
+                    if (batch) {
+                        batch.name = newName;
+                    }
                 }
                 this._editingBatchId = null;
-                this.renderRandomizer();
-                this._scheduleSave();
+                this.updateOnTargetsChanged();
             } else if (e.code === 'Escape') {
                 this._editingBatchId = null;
-                this.renderRandomizer();
+                this.renderUniformPanel();
             }
 
         // Handle target selector: Escape to remove empty targets (except the last placeholder)
@@ -353,7 +377,7 @@ export class Overlay {
                 const target = track.targets[targetIdx];
                 if (target && !target.uniformName.trim()) {
                     track.removeTarget(target.uniformName);
-                    this.render();
+                    this.renderTimeline();
                 }
             }
         }
@@ -367,16 +391,15 @@ export class Overlay {
                 this.engine.getTrack(this._editingTrackId).name = newName;
             }
             this._editingTrackId = null;
-            this.render();
+            this.renderTimeline();
         } else if (this._editingBatchId && e.target.classList.contains('name')) {
             const newName = e.target.value.trim();
             if (newName) {
-                const batch = this.randomizer.getBatch(this._editingBatchId);
+                const batch = this.ctx.getBatch(this._editingBatchId);
                 if (batch) batch.name = newName;
             }
             this._editingBatchId = null;
-            this.renderRandomizer();
-            this._scheduleSave();
+            this.updateOnTargetsChanged();
         } else if (e.target.classList.contains('target-selector')) {
             // Remove empty targets on blur (except the last placeholder row)
             const trackId = e.target.dataset.trackId;
@@ -390,7 +413,7 @@ export class Overlay {
             
             if (target && !target.uniformName.trim()) {
                 track.removeTarget(target.uniformName);
-                this.render();
+                this.renderTimeline();
             }
         }
     }
@@ -409,7 +432,7 @@ export class Overlay {
             const target = this.engine.getTrack(trackId)?.targets[parseInt(targetIdx, 10)];
             if (target) {
                 target.enabled = el.checked;
-                this.render();
+                this.renderTimeline();
             }
             return;
         }
@@ -441,7 +464,7 @@ export class Overlay {
             const kf = this.engine.getTrack(trackId)?.keyframes[parseInt(kfIndex, 10)];
             if (kf) {
                 kf.transition = el.value;
-                this.render();
+                this.renderTimeline();
             }
             return;
         }
@@ -456,7 +479,7 @@ export class Overlay {
             // When editing a batch, use that batch; otherwise use selectedBatchId.
             const batchId = this._editingBatchId || this.selectedBatchId;
             if (!batchId) return;
-            const batch = this.randomizer.getBatch(batchId);
+            const batch = this.ctx.getBatch(batchId);
             if (!batch) return;
             if (el.checked) {
                 // Add/activate uniform in batch.
@@ -465,7 +488,7 @@ export class Overlay {
                 // Deactivate uniform in batch (preserves values).
                 batch.toggleUniform(name, false);
             }
-            this.renderRandomizer();
+            this.renderUniformPanel();
             this._scheduleSave();
         }
 
@@ -473,7 +496,7 @@ export class Overlay {
             const name = el.dataset.uniformName;
             const isMin = el.classList.contains('uniform-min');
             // Find the uniform in any batch to update its min/max.
-            for (const batch of this.randomizer.getAllBatches()) {
+            for (const batch of this.ctx.getAllBatches()) {
                 const entry = batch.uniforms.find(u => u.name === name);
                 if (entry) {
                     const value = parseRangeInput(el.value);
@@ -499,8 +522,8 @@ export class Overlay {
         }
 
         if (el === this.ui.intensitySlider) {
-            this.intensity = parseFloat(el.value);
-            this.ui.intensityValue.textContent = this.intensity.toFixed(2);
+            this.randomIntensity = parseFloat(el.value);
+            this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
             this._scheduleSave();
             return;
         }
@@ -527,7 +550,7 @@ export class Overlay {
             // If this is the last row and it has a value, add it as a real target
             if (newName && targetIdx === track.targets.length) {
                 track.addTarget(newName, -1, 1);
-                this.render();
+                this.renderTimeline();
                 // Re-focus the newly added selector
                 const selectors = this.ui.trackList.querySelectorAll('.target-selector');
                 const lastSelector = selectors[selectors.length - 2]; // second to last (last is the new empty one)
@@ -548,7 +571,7 @@ export class Overlay {
                 }
                 target.uniformName = newName;
                 if (newName) {
-                    const range = this.randomizer.getControlRange(newName);
+                    const range = this.ctx.getControlRange(newName);
                     target.minValue = Array.isArray(range.min) ? -1 : range.min;
                     target.maxValue = Array.isArray(range.max) ? 1 : range.max;
                 } else {
@@ -561,7 +584,7 @@ export class Overlay {
     }
 
     _updateBatchUniformField(el) {
-        const batch = this.randomizer.getBatch(el.dataset.batchId);
+        const batch = this.ctx.getBatch(el.dataset.batchId);
         const index = parseInt(el.dataset.index, 10);
         if (!batch?.uniforms[index]) return;
 
@@ -569,7 +592,7 @@ export class Overlay {
             const name = el.value.trim();
             batch.updateUniform(index, {name});
             // Placeholders show the control's range; update them in place to keep focus/tab order.
-            const range = this.randomizer.getControlRange(name);
+            const range = this.ctx.getControlRange(name);
             const row = el.closest('.batch-uniform-row');
             row.querySelector('.min').placeholder = formatRange(range.min);
             row.querySelector('.max').placeholder = formatRange(range.max);
@@ -590,7 +613,9 @@ export class Overlay {
     }
 
     _syncPlayButton() {
-        if (!this.ui.playBtn) return;
+        if (!this.ui.playBtn) {
+            return;
+        }
         this.ui.playBtn.textContent = this.engine.playing ? '⏸' : '▶';
         this.ui.playBtn.title = this.engine.playing ? 'Pause (Space)' : 'Play (Space)';
     }
@@ -603,7 +628,7 @@ export class Overlay {
         const numVal = parseFloat(value);
         if (!isNaN(numVal)) {
             track.addKeyframe(time, numVal);
-            this.render();
+            this.renderTimeline();
         }
     }
 
@@ -632,7 +657,7 @@ export class Overlay {
                     this.engine.loadJSON(JSON.parse(ev.target.result));
                     this.selectedKeyframe = null;
                     this.syncUI();
-                    this.render();
+                    this.renderTimeline();
                 } catch (err) {
                     alert('Invalid timeline file: ' + err.message);
                 }
@@ -644,27 +669,28 @@ export class Overlay {
 
     /** Clear all values and the stored state, and restore the default layout. */
     reset() {
-        clearTimeout(this._saveTimer);
-        this._saveTimer = null;
+        clearTimeout(this._saveThrottle);
+        this._saveThrottle = null;
 
         this.engine.reset();
-        this.randomizer.clearCustomBatches();
         this.selectedKeyframe = null;
         this.collapsedTrackIds.clear();
         this.selectedBatchId = null;
-        this.intensity = 1;
+        this.randomIntensity = 1;
         this.position = null;
-        this.element.style.left = '';
-        this.element.style.top = '';
-        this.element.classList.remove('collapsed');
+        this.element.style.left = "";
+        this.element.style.top = "";
+        this.element.classList.remove("collapsed");
+        this.element.classList.remove("selected");
 
         this.syncUI();
-        this.render();
+        this.renderTimeline();
         this.renderRandomizer();
+        this.renderUniformPanel();
 
         // Rendering schedules a save; drop it so nothing is stored until the next change.
-        clearTimeout(this._saveTimer);
-        this._saveTimer = null;
+        clearTimeout(this._saveThrottle);
+        this._saveThrottle = null;
         try {
             localStorage.removeItem(STORAGE_KEY.PLAYGROUND_OVERLAY);
         } catch (error) {
@@ -678,37 +704,43 @@ export class Overlay {
         return {
             version: STATE_VERSION,
             position: this.position,
-            collapsed: this.element.classList.contains('collapsed'),
+            collapsed: this.element.classList.contains("collapsed"),
             collapsedTracks: [...this.collapsedTrackIds].filter(id => this.engine.getTrack(id)),
             timeline: {...this.engine.toJSON(), playing: false},
             overrides: this.engine.getOverrides(),
-            randomizer: {
-                selectedBatchId: this.selectedBatchId,
-                intensity: this.intensity,
-                customBatches: this.randomizer.toJSON(),
-            },
+            selectedTrackId: this.selectedTrackId,
+            selectedBatchId: this.selectedBatchId,
+            customBatches: this.ctx.customBatches.map(b => b.toJSON()),
+            randomIntensity: this.randomIntensity,
         };
     }
 
     saveState() {
-        clearTimeout(this._saveTimer);
-        this._saveTimer = null;
+        clearTimeout(this._saveThrottle);
+        this._saveThrottle = null;
         try {
-            localStorage.setItem(STORAGE_KEY.PLAYGROUND_OVERLAY, JSON.stringify(this._collectState()));
+            const json = JSON.stringify(this._collectState());
+            localStorage.setItem(STORAGE_KEY.PLAYGROUND_OVERLAY, json);
         } catch (error) {
             console.warn('Failed to store the playground overlay state:', error);
         }
     }
 
-    /** Throttled save: at most one write per SAVE_DELAY_MS, also during playback. */
     _scheduleSave() {
-        if (this._saveTimer) return;
-        this._saveTimer = setTimeout(() => this.saveState(), SAVE_DELAY_MS);
+        if (this._saveThrottle) {
+            return;
+        }
+        this._saveThrottle = setTimeout(() =>
+            this.saveState(),
+            DELAY_MS.THROTTLE_SAVE
+        );
     }
 
     restoreState() {
         const state = readStoredState();
-        if (!state) return;
+        if (!state) {
+            return;
+        }
 
         if (state.timeline) {
             this.engine.loadJSON(state.timeline);
@@ -719,12 +751,11 @@ export class Overlay {
                 this.engine.setUniformValue(name, value);
             }
         }
-
-        this.randomizer.loadJSON(state.randomizer?.customBatches);
-        this.selectedBatchId = state.randomizer?.selectedBatchId ?? null;
-        const intensity = Number(state.randomizer?.intensity);
-        this.intensity = Number.isFinite(intensity) ? Math.min(1, Math.max(0, intensity)) : 1;
-
+        this.ctx.loadCustomBatches(state.customBatches);
+        this.selectedBatchId = state.selectedBatchId ?? null;
+        const intensity = Number(state.randomIntensity);
+        this.randomIntensity = Number.isFinite(intensity) ? clamp(intensity, 0, 1) : 1;
+        this.selectedTrackId = state.selectedTrackId ?? null;
         this.collapsedTrackIds = new Set(state.collapsedTracks ?? []);
         this.element.classList.toggle('collapsed', Boolean(state.collapsed));
 
@@ -750,25 +781,25 @@ export class Overlay {
         this.ui.timeDisplay.textContent = `${this.engine.currentTime.toFixed(1)}s`;
         this.ui.speedInput.value = this.engine.speed;
         this._syncPlayButton();
-        this.ui.intensitySlider.value = this.intensity;
-        this.ui.intensityValue.textContent = this.intensity.toFixed(2);
-        this._syncPlayButton();
+        this.ui.intensitySlider.value = this.randomIntensity;
+        this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
     }
 
-    render() {
+    renderTimeline() {
+        this._renderTracks();
+        this._renderPlayback();
+        this._scheduleSave();
+    }
+
+    _renderTracks() {
         renderTracks(
             this.ui,
-            this.engine,
+            this.ctx,
+            this.selectedTrackId,
+            this._editingTrackId,
             this.collapsedTrackIds,
             this.selectedKeyframe,
-            this._editingTrackId,
-            timelineSpan,
-            percentOfSpan,
         );
-
-        // Playback update.
-        renderPlayback(this.ui, this.engine, timelineSpan, percentOfSpan);
-        this._scheduleSave();
     }
 
     _renderPreview() {
@@ -776,22 +807,29 @@ export class Overlay {
     }
 
     _renderPlayback() {
-        renderPlayback(this.ui, this.engine, timelineSpan, percentOfSpan);
+        renderPlayback(this.ui, this.engine);
     }
 
     renderRandomizer() {
-        const result = renderRandomizerPanel(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
+        const result = renderRandomizerPanel(
+            this.ui, this.ctx, this.selectedBatchId, this._editingBatchId
+        );
         if (result) {
             this.selectedBatchId = result.selectedBatchId;
         }
-
-        // NOTE: unclear whether needed, might be a legacy relic.
-        this.renderUniformPanel();
     }
 
     renderUniformPanel() {
-        renderBatchList(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
-        renderUniformList(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
+        renderBatchList(this.ui, this.ctx, this.selectedBatchId, this._editingBatchId);
+        renderUniformList(this.ui, this.ctx, this.selectedBatchId, this._editingBatchId);
+    }
+
+    updateOnTargetsChanged() {
+        // affects next to everything because of all the target selectors!
+        this.renderUniformPanel()
+        this.renderTimeline();
+        this.renderRandomizer();
+        this._scheduleSave();
     }
 
     // ─── Public API ─────────────────────────────────────────────
@@ -859,5 +897,16 @@ export class Overlay {
 
     toggle() {
         this.setVisible(this.element.hidden);
+    }
+}
+
+function readStoredState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY.PLAYGROUND_OVERLAY);
+        const state = raw ? JSON.parse(raw) : null;
+        return state?.version === STATE_VERSION ? state : null;
+    } catch (error) {
+        console.warn('Failed to read the playground overlay state:', error);
+        return null;
     }
 }

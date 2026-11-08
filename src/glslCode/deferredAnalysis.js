@@ -1,7 +1,7 @@
 import {extendAnalysis} from "./analysis.js";
 import {withGlslHighlighting, withSymbolsHighlighted} from "./highlighting.js";
 import {addShaderCodeEventListeners, addShaderControlsEventListeners, scrollToElementId} from "../app/events.js";
-import {createDiv} from "../app/layout/dom.js";
+import {createDiv} from "../app/dom/dom.js";
 import {idForLine} from "../app/layout/shaderCode.js";
 
 export function deferExtendedAnalysis(elements) {

@@ -1,13 +1,4 @@
-export function injectGlobalCss(stylesheet, elementId) {
-    if (document.getElementById(elementId)) {
-        console.warn("Will not injectGlobalCss() because element already exists", elementId, stylesheet);
-        return;
-    }
-    const element = document.createElement('style');
-    element.id = elementId;
-    element.textContent = stylesheet;
-    document.head.appendChild(element);
-}
+
 
 export function escapeHtml(value) {
     return String(value)

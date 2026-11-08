@@ -1,4 +1,4 @@
-import {createDiv, createElement, createSpan} from "../dom.js";
+import {createDiv, createElement, createSpan} from "../../dom/dom.js";
 import {initMouseState} from "../../mouse.js";
 
 export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator, className = ""}) => {

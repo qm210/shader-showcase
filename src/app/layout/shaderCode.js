@@ -1,4 +1,4 @@
-import {appendElement, createDiv} from "./dom.js";
+import {appendElement, createDiv} from "../dom/dom.js";
 import {analyzeShader} from "../../glslCode/analysis.js";
 
 export function createShaderCodeRegister(elements, state) {

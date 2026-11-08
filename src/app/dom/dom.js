@@ -34,26 +34,6 @@ export function createSpan({text, id, classes, title, data}) {
     return span;
 }
 
-export function assignGloballyUniqueClass(element, className) {
-    if (!element) {
-        return;
-    }
-    const selected = [...document.getElementsByClassName(className)];
-    for (const previous of selected) {
-        previous.classList.remove(className);
-    }
-    element.classList.add(className);
-}
-
-export function findParentOfClass(element, className) {
-    // (yeah. name not exactly right, the element itself can also match.)
-    let result = element;
-    while (result && !result.classList.contains(className)) {
-        result = result.parentElement;
-    }
-    return result;
-}
-
 export function addButton({parent, onClick, onRightClick, title = "", className = "", style}) {
     const button = document.createElement("button");
     button.textContent = title;

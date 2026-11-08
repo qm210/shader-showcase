@@ -1,5 +1,7 @@
 import {escapeHtml, formatRange} from './helpers.js';
 import {ACTION} from '../actions.js';
+import {percentOfSpan, timelineSpan} from "../engine/math.js";
+import {calcTrackValueRange} from "../engine/valueRanges.js";
 
 export const MIN_TIMELINE_SPAN = 60;
 
@@ -7,9 +9,12 @@ export const DATALIST = {
     UNIFORMS: 'playground-uniform-names'
 };
 
-// ─── Main Overlay Shell ──────────────────────────────────────────────
+const ICON = {
+    REMOVE: "🞬",
+    TIMES: "×",
+};
 
-export function createPlaygroundOverlayDOM() {
+export function createPlaygroundOverlay() {
     const overlay = document.createElement('div');
     overlay.id = 'playground-overlay';
     overlay.innerHTML = `
@@ -94,6 +99,12 @@ export function createPlaygroundOverlayDOM() {
              title="All known uniforms – check to include in the selected batch">
             <div class="uniform-list-header">
                 Uniforms
+                <button type="button"
+                        class="btn subtle clear-batch-btn"
+                        data-action="${ACTION.DESELECT_BATCHES}"
+                        title="Unselect all uniform batches">
+                    Unselect Batch
+                </button>
             </div>
             <div class="uniform-list-body"></div>
             <div class="uniform-batches">
@@ -165,12 +176,11 @@ export function createPlaygroundOverlayDOM() {
     }
 }
 
-// ─── Tracks DOM Generation ──────────────────────────────────────────
-
-export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe, _editingTrackId, timelineSpanFn, percentOfSpanFn) {
+export function renderTracks(ui, provider, selectedTrackId, editingTrackId, collapsedTrackIds, selectedKeyframe) {
     const { trackList } = ui;
+    const engine = provider.engine;
     trackList.innerHTML = '';
-    ui.timeSlider.max = timelineSpanFn(engine);
+    ui.timeSlider.max = timelineSpan(engine);
 
     for (const track of engine.getAllTracks()) {
         const id = escapeHtml(track.id);
@@ -181,6 +191,12 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
             const target = track.targets[i];
             targetRows.push(`
                 <div class="target-row">
+                    <input type="checkbox"
+                           class="target-enable"
+                           data-track-id="${id}"
+                           data-target-idx="${i}"
+                           ${target.enabled ? 'checked' : ''}
+                           title="Enable/disable">
                     <input type="text"
                            class="field target-selector"
                            list="${DATALIST.UNIFORMS}"
@@ -190,18 +206,12 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
                            data-target-idx="${i}"
                            spellcheck="false"
                            autocomplete="off">
-                    <input type="checkbox"
-                           class="target-enable"
-                           data-track-id="${id}"
-                           data-target-idx="${i}"
-                           ${target.enabled ? 'checked' : ''}
-                           title="Enable/disable">
                     <button type="button"
                             class="btn icon subtle"
                             data-action="${ACTION.REMOVE_TARGET}"
                             data-track-id="${id}"
                             data-target-idx="${i}"
-                            title="Remove target">×</button>
+                            title="Remove target">${ICON.TIMES}</button>
                 </div>
             `);
         }
@@ -209,6 +219,11 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
         const nextIdx = track.targets.length;
         targetRows.push(`
             <div class="target-row">
+                <input type="checkbox"
+                       class="target-enable"
+                       data-track-id="${id}"
+                       data-target-idx="${nextIdx}"
+                       title="Enable/disable">
                 <input type="text"
                        class="field target-selector"
                        list="${DATALIST.UNIFORMS}"
@@ -218,13 +233,10 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
                        data-target-idx="${nextIdx}"
                        spellcheck="false"
                        autocomplete="off">
-                <input type="checkbox"
-                       class="target-enable"
-                       data-track-id="${id}"
-                       data-target-idx="${nextIdx}"
-                       title="Enable/disable">
             </div>
         `);
+
+        let [trackMin, trackMax] = calcTrackValueRange(track, provider);
 
         const dots = track.keyframes.map((kf, i) => {
             const selected = selectedKeyframe?.trackId === track.id && selectedKeyframe.kfIndex === i;
@@ -233,13 +245,13 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
                 `<div class="keyframe-dot${selected ? ' selected' : ''}"
                       data-track-id="${id}"
                       data-kf-index="${i}"
-                      style="left:${percentOfSpanFn(kf.time, timelineSpanFn(engine))}"
+                      style="left:${percentOfSpan(kf.time, timelineSpan(engine))}"
                       title="${title}"
                 ></div>`
             );
         }).join('');
 
-        const nameCol = _editingTrackId === track.id
+        const nameCol = editingTrackId === track.id
             ? `<input class="field name"
                       value="${escapeHtml(track.name)}"
                       data-track-id="${id}"
@@ -266,11 +278,14 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
             <div class="track-widget">
                 <div class="keyframe-strip"
                      data-track-id="${id}"
-                     title="Click to add a keyframe">
+                     title="Click to set value from Y position">
                     <div class="strip-bg"></div>
                     ${dots}
                     <div class="playhead"
-                         style="left:${percentOfSpanFn(engine.currentTime, timelineSpanFn(engine))}"></div>
+                         style="left:${percentOfSpan(engine.currentTime, timelineSpan(engine))}"></div>
+                    <span class="range-label max-label">${escapeHtml(trackMax.toFixed(2))}</span>
+                    <span class="zero-marker">0</span>
+                    <span class="range-label min-label">${escapeHtml(trackMin.toFixed(2))}</span>
                 </div>
             </div>
             <div class="track-actions-col">
@@ -279,20 +294,26 @@ export function renderTracksDOM(ui, engine, collapsedTrackIds, selectedKeyframe,
                         data-action="${ACTION.DELETE_TRACK}"
                         data-track-id="${id}"
                         title="Delete track">
-                    ×
+                    ${ICON.REMOVE}
                 </button>
             </div>
         `;
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'track-wrapper' + (collapsedTrackIds.has(track.id) ? ' collapsed' : '');
+        wrapper.className = "track-wrapper";
+        wrapper.classList.toggle(
+            "selected", selectedTrackId === track.id)
+        ;
+        wrapper.classList.toggle(
+            "collapsed", collapsedTrackIds.has(track.id)
+        );
         wrapper.dataset.trackId = track.id;
         wrapper.innerHTML = cols;
         trackList.appendChild(wrapper);
     }
 }
 
-export function renderPreviewDOM(ui, engine) {
+export function renderPreview(ui, engine) {
     const lines = Object.entries(engine.getAllUniformValues()).map(([name, val]) => {
         const displayVal = Array.isArray(val)
             ? `[${val.map(v => v.toFixed(3)).join(', ')}]`
@@ -307,64 +328,64 @@ export function renderPreviewDOM(ui, engine) {
         : '<div class="val-empty">No active tracks</div>';
 }
 
-export function keyframeDotHtml(kf, i, trackId, selectedKeyframe, timelineSpanFn, percentOfSpanFn) {
-    const id = escapeHtml(trackId);
-    const selected = selectedKeyframe?.trackId === trackId && selectedKeyframe.kfIndex === i;
-    const title = escapeHtml(`t=${kf.time.toFixed(1)}s, val=${kf.value}, ${kf.transition}`);
-    return `<div class="keyframe-dot${selected ? ' selected' : ''}"
-                 data-track-id="${id}"
-                 data-kf-index="${i}"
-                 style="left:${percentOfSpanFn(kf.time, timelineSpanFn)}"
-                 title="${title}"></div>`;
-}
-
 // ─── Batch List DOM Generation ──────────────────────────────────────
 
-export function renderBatchListDOM(ui, randomizer, selectedBatchId, _editingBatchId) {
+export function renderBatchList(ui, controlsProvider, selectedBatchId, _editingBatchId) {
     const { batchList } = ui;
-    const { customBatches } = randomizer;
+    const { customBatches } = controlsProvider;
 
     batchList.innerHTML = customBatches.map(batch => {
         const batchId = escapeHtml(batch.id);
         const rows = batch.uniforms.map((entry, index) => {
-            const range = randomizer.getControlRange(entry.name);
+            const range = controlsProvider.getControlRange(entry.name);
             return `
                 <div class="batch-uniform-row">
                     <input class="field name"
                            list="${DATALIST.UNIFORMS}"
-                           placeholder="uniform"
+                           placeholder="uniform..."
                            value="${escapeHtml(entry.name)}"
                            data-batch-id="${batchId}"
                            data-index="${index}"
                            spellcheck="false"
                            autocomplete="off">
-                    <input class="field factor"
-                           placeholder="factor"
-                           value="${escapeHtml(entry.factor ?? 1)}"
-                           data-batch-id="${batchId}"
-                           data-index="${index}"
-                           title="Factor multiplier (default 1)"
-                           inputmode="decimal">
-                    <input class="field min"
-                           placeholder="${escapeHtml(formatRange(range.min))}"
-                           value="${escapeHtml(formatRange(entry.min))}"
-                           data-batch-id="${batchId}"
-                           data-index="${index}"
-                           title="Min overwrite (empty = control default)"
-                           inputmode="decimal">
-                    <input class="field max"
-                           placeholder="${escapeHtml(formatRange(range.max))}"
-                           value="${escapeHtml(formatRange(entry.max))}"
-                           data-batch-id="${batchId}"
-                           data-index="${index}"
-                           title="Max overwrite (empty = control default)"
-                           inputmode="decimal">
+                    <div>
+                        <span>${ICON.TIMES}</span>
+                        <drag-number step="0.01">
+                            <input class="field factor"
+                                   placeholder="factor"
+                                   value="${escapeHtml(entry.factor ?? 1)}"
+                                   data-batch-id="${batchId}"
+                                   data-index="${index}"
+                                   title="Factor multiplier (default 1)"
+                                   inputmode="decimal">
+                        </drag-number>
+                    </div>
+                    <div>
+                        <span>[</span>
+                        <input class="field min"
+                               placeholder="${escapeHtml(formatRange(range.min))}"
+                               value="${escapeHtml(formatDisplayValue(entry.min))}"
+                               data-batch-id="${batchId}"
+                               data-index="${index}"
+                               title="Min overwrite (empty = control default)"
+                               inputmode="decimal">
+                    </div>
+                    <div>
+                        <input class="field max"
+                               placeholder="${escapeHtml(formatRange(range.max))}"
+                               value="${escapeHtml(formatDisplayMax(entry.max))}"
+                               data-batch-id="${batchId}"
+                               data-index="${index}"
+                               title="Max overwrite (empty = control default)"
+                               inputmode="decimal">
+                        <span>]</span>
+                    </div>
                     <button type="button"
                             class="btn icon subtle"
                             data-action="${ACTION.REMOVE_UNIFORM}"
                             data-batch-id="${batchId}"
                             data-index="${index}"
-                            title="Remove uniform">×</button>
+                            title="Remove uniform">${ICON.REMOVE}</button>
                 </div>
             `;
         }).join('');
@@ -389,7 +410,7 @@ export function renderBatchListDOM(ui, randomizer, selectedBatchId, _editingBatc
                     ${selectedBatchId === batch.id ? `
                         <button type="button"
                                 class="btn subtle clear-batch-btn"
-                                data-action="${ACTION.CLEAR_SELECTION}"
+                                data-action="${ACTION.DESELECT_BATCHES}"
                                 title="Deselect this batch">
                             Deselect
                         </button>
@@ -407,7 +428,7 @@ export function renderBatchListDOM(ui, randomizer, selectedBatchId, _editingBatc
                             data-action="${ACTION.REMOVE_BATCH}"
                             data-batch-id="${batchId}"
                             title="Delete batch">
-                        ×
+                        ${ICON.REMOVE}
                     </button>
                 </div>
                 <div class="batch-uniforms">${rows}</div>
@@ -418,12 +439,12 @@ export function renderBatchListDOM(ui, randomizer, selectedBatchId, _editingBatc
 
 // ─── Randomizer Panel DOM Generation ────────────────────────────────
 
-export function renderRandomizerPanelDOM(ui, randomizer, selectedBatchId, _editingBatchId) {
+export function renderRandomizerPanel(ui, provider, selectedBatchId, _editingBatchId) {
     const { batchSelectorDisplay, batchSelectorDropdown, randomizeBtn, uniformNames } = ui;
-    const { customBatches, autoBatches } = randomizer;
+    const { customBatches, autoBatches } = provider;
 
     // Default to first available batch.
-    if (!randomizer.getBatch(selectedBatchId)) {
+    if (!provider.getBatch(selectedBatchId)) {
         return { selectedBatchId: customBatches[0]?.id ?? autoBatches[0]?.id ?? null };
     }
 
@@ -435,7 +456,7 @@ export function renderRandomizerPanelDOM(ui, randomizer, selectedBatchId, _editi
     for (const batch of autoBatches) {
         allTargets.push({ id: batch.id, name: batch.name, type: 'batch' });
     }
-    const knownNames = randomizer.getKnownUniformNames();
+    const knownNames = provider.getKnownUniformNames();
     for (const name of knownNames) {
         if (!allTargets.some(t => t.id === `uniform:${name}`)) {
             allTargets.push({ id: `uniform:${name}`, name, type: 'uniform' });
@@ -467,54 +488,52 @@ export function renderRandomizerPanelDOM(ui, randomizer, selectedBatchId, _editi
     randomizeBtn.disabled = !selectedBatchId;
 
     // Uniform name suggestions.
-    uniformNames.innerHTML = randomizer.getKnownUniformNames()
+    uniformNames.innerHTML = provider.getKnownUniformNames()
         .map(name => `<option value="${escapeHtml(name)}"></option>`)
         .join('');
 
     return { selectedBatchId };
 }
 
-// ─── Uniform List DOM Generation ────────────────────────────────────
-
-/** Format a value for display: scalar as-is, vector → component min. */
 function formatDisplayValue(value) {
-    if (value == null) return '';
+    if (value == null) {
+        return '';
+    }
     if (Array.isArray(value)) {
         return Math.min(...value).toFixed(2);
     }
     return String(value);
 }
 
-/** Format a value for display: scalar or vector component min/max. */
 function formatDisplayMax(value) {
-    if (value == null) return '';
+    if (value == null) {
+        return '';
+    }
     if (Array.isArray(value)) {
         return Math.max(...value).toFixed(2);
     }
     return String(value);
 }
 
-/** Render the uniform list panel on the right side of the randomizer. */
-export function renderUniformListDOM(ui, randomizer, selectedBatchId, _editingBatchId) {
+export function renderUniformList(ui, provider, selectedBatchId, _editingBatchId) {
     const { uniformListBody } = ui;
     if (!uniformListBody) return;
 
-    // Group uniforms by their auto-batch (separator label from controls).
     const groups = new Map();
-    for (const batch of randomizer.autoBatches) {
+    for (const batch of provider.autoBatches) {
         for (const entry of batch.uniforms) {
             if (!groups.has(batch.name)) groups.set(batch.name, []);
             groups.get(batch.name).push(entry);
         }
     }
 
-    const selectedBatch = selectedBatchId ? randomizer.getBatch(selectedBatchId) : null;
+    const selectedBatch = selectedBatchId ? provider.getBatch(selectedBatchId) : null;
     const selectedNames = selectedBatch ? new Set(
         selectedBatch.uniforms.filter(u => u.active !== false).map(u => u.name)
     ) : null;
 
     // When editing a batch, show all uniforms with checkboxes reflecting their state in that batch.
-    const editingBatch = _editingBatchId ? randomizer.getBatch(_editingBatchId) : null;
+    const editingBatch = _editingBatchId ? provider.getBatch(_editingBatchId) : null;
 
     if (!groups.size) {
         uniformListBody.innerHTML = '<div class="uniform-empty">No uniforms known yet</div>';
@@ -523,7 +542,7 @@ export function renderUniformListDOM(ui, randomizer, selectedBatchId, _editingBa
 
     // Collect selected entries for the "Selected" section (only when not editing).
     const selectedEntries = [];
-    for (const batch of randomizer.autoBatches) {
+    for (const batch of provider.autoBatches) {
         for (const entry of batch.uniforms) {
             if (selectedNames && selectedNames.has(entry.name)) {
                 selectedEntries.push({ name: entry.name, min: entry.min, max: entry.max });
@@ -531,19 +550,28 @@ export function renderUniformListDOM(ui, randomizer, selectedBatchId, _editingBa
         }
     }
 
+    const tableHeader = () => `
+        <thead><tr>
+            <th></th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Min</th>
+            <th>Max</th>
+        </tr></thead>        
+    `;
     let html = '';
 
-    // Show "Selected" section only when not editing a batch.
-    if (selectedEntries.length && !editingBatch) {
+    // Show "Selected" section only when no batch selected
+    if (selectedEntries.length && !selectedBatchId) {
         html += `
             <div class="uniform-section selected-section">
                 <div class="section-header">Selected</div>
                 <table class="uniform-table">
-                    <thead><tr><th></th><th>Name</th><th>Type</th><th>Min</th><th>Max</th></tr></thead>
+                    ${tableHeader()}
                     <tbody>
         `;
         for (const entry of selectedEntries) {
-            const range = randomizer.getControlRange(entry.name);
+            const range = provider.getControlRange(entry.name);
             const type = range.type || 'float';
             html += `
                         <tr class="uniform-row">
@@ -592,11 +620,11 @@ export function renderUniformListDOM(ui, randomizer, selectedBatchId, _editingBa
                     <span class="uniform-group-count">(${entries.length})</span>
                 </div>
                 <table class="uniform-table group-body">
-                    <thead><tr><th></th><th>Name</th><th>Type</th><th>Min</th><th>Max</th></tr></thead>
+                    ${tableHeader()}
                     <tbody>
         `;
         for (const entry of entries) {
-            const range = randomizer.getControlRange(entry.name);
+            const range = provider.getControlRange(entry.name);
             const type = range.type || 'float';
             // Determine checkbox state based on editing context.
             let checked = '';
@@ -649,14 +677,13 @@ export function renderUniformListDOM(ui, randomizer, selectedBatchId, _editingBa
     uniformListBody.innerHTML = html;
 }
 
-// ─── Playback DOM Update (no HTML generation, just updates) ─────────
-
-export function renderPlaybackDOM(ui, engine, timelineSpanFn, percentOfSpanFn) {
+export function renderPlayback(ui, engine) {
     const time = engine.currentTime;
     ui.timeSlider.value = time;
     ui.timeDisplay.textContent = `${time.toFixed(1)}s`;
-    const left = percentOfSpanFn(time, timelineSpanFn(engine));
-    for (const playhead of ui.trackList.querySelectorAll('.playhead')) {
+    const left = percentOfSpan(time, timelineSpan(engine));
+    const playheads = ui.trackList.querySelectorAll('.playhead');
+    for (const playhead of playheads) {
         playhead.style.left = left;
     }
 }

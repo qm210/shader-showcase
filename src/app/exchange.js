@@ -1,5 +1,5 @@
 import {createPreset, deletePreset, loadPresets} from "./database.js";
-import {createDiv, createSmallButton} from "./layout/dom.js";
+import {createDiv, createSmallButton} from "./dom/dom.js";
 
 const HEADER = {
     IDENTIFIER: "qm210.uniforms",

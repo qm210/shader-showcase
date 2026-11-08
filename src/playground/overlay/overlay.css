@@ -3,6 +3,7 @@
     --overlay-pink: #f9a;
     --overlay-pink-soft: #fca;
     --overlay-text: #e8e8f0;
+    --overlay-bg: rgb(50, 55, 75);
     --overlay-border: rgba(140, 170, 255, 0.35);
     --overlay-divider: rgba(255, 255, 255, 0.1);
     --overlay-field: rgba(255, 255, 255, 0.08);
@@ -27,7 +28,7 @@
     overflow: hidden;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius);
-    background: rgba(50, 55, 75, 0.95);
+    background: rgb(from var(--overlay-bg) r g b / 95%);
     box-shadow: 0 0.3em 1.5em rgba(0, 0, 0, 0.4);
     color: var(--overlay-text);
     font-family: "Segoe UI", system-ui, sans-serif;
@@ -298,13 +299,12 @@
 #playground-overlay .track-wrapper.collapsed .track-targets-col,
 #playground-overlay .track-wrapper.collapsed .track-actions-col,
 #playground-overlay .track-wrapper.collapsed .track-widget {
-    display: none;
+    visibility: collapse;
 }
 
 #playground-overlay .track-name-col {
     min-width: 6em;
     padding: 0.5em 0.65em;
-    border-right: 1px solid var(--overlay-divider);
     display: flex;
     align-items: center;
     gap: 0.3em;
@@ -325,7 +325,6 @@
     color: inherit;
     font-weight: 600;
     font-size: inherit;
-    border-color: transparent;
     background: transparent;
     padding: 0.2em 0.3em;
 }
@@ -338,15 +337,13 @@
 
 #playground-overlay .track-name-col .btn {
     flex: 0 0 auto;
-    padding: 0.15em 0.35em;
     font-size: 0.85em;
 }
 
 #playground-overlay .track-targets-col {
     min-width: 10em;
     max-width: 35em;
-    padding: 0.5em 0.65em;
-    border-right: 1px solid var(--overlay-divider);
+    border: 1px solid var(--overlay-divider);
     display: flex;
     flex-direction: column;
     gap: 0.25em;
@@ -362,8 +359,7 @@
 }
 
 #playground-overlay .track-actions-col {
-    padding: 0.5em 0.65em;
-    border-right: 1px solid var(--overlay-divider);
+    align-self: flex-start;
     display: flex;
     flex-direction: column;
     gap: 0.35em;
@@ -377,7 +373,7 @@
 
 #playground-overlay .track-widget {
     min-width: 15em;
-    padding: 0.5em 0.65em;
+    padding: 0.1em 0.5em 0.1em 2em;
     display: flex;
     align-items: stretch;
 }
@@ -385,24 +381,15 @@
 #playground-overlay .track-widget .keyframe-strip {
     flex: 1;
     margin-top: 0;
+    position: relative;
     height: 100%;
-    min-height: 2.5em;
+    min-height: 0;
+    transition: min-height 400ms cubic-bezier(0.23, 1, 0.37, 1);
 }
 
-/* Keep track-header and track-body for backward compatibility but hide them */
-#playground-overlay .track-header,
-#playground-overlay .track-body {
-    display: none !important;
-}
-
-/* Legacy rules kept for reference but hidden */
-#playground-overlay .track-header {
-    background: rgba(80, 90, 130, 0.25);
-    cursor: pointer;
-}
-
-#playground-overlay .track-header:hover {
-    background: rgba(90, 100, 150, 0.35);
+#playground-overlay .track-wrapper.selected .track-widget .keyframe-strip {
+    background-color: var(--overlay-bg);
+    min-height: 200px;
 }
 
 #playground-overlay .track-name {
@@ -411,9 +398,18 @@
     font-weight: 600;
     overflow-wrap: anywhere;
     cursor: pointer;
+    opacity: 0.85;
 }
 
-#playground-overlay .track-header .field.name,
+#playground-overlay .track-wrapper.selected .track-name {
+    color: #acf;
+}
+
+#playground-overlay .track-name:hover {
+    opacity: 1;
+}
+
+#playground-overlay .track-name .field.name,
 #playground-overlay .batch-card-header .field.name {
     color: inherit;
     font-weight: 600;
@@ -423,7 +419,7 @@
     padding: 0;
 }
 
-#playground-overlay .track-header .field.name:focus,
+#playground-overlay .track-name .field.name:focus,
 #playground-overlay .batch-card-header .field.name:focus {
     border-color: var(--overlay-border);
     background: var(--overlay-field);
@@ -460,7 +456,6 @@
     margin-bottom: 0.35em;
     padding: 0.3em 0.4em;
     border-radius: var(--overlay-radius-sm);
-    background: rgba(255, 255, 255, 0.04);
 }
 
 #playground-overlay .target-row .target-selector {
@@ -502,9 +497,9 @@
 
 #playground-overlay .keyframe-strip {
     position: relative;
-    height: 2em;
-    margin-top: 0.5em;
-    overflow: hidden;
+    height: 100%;
+    margin-top: 0;
+    overflow: visible;
     border-radius: var(--overlay-radius-sm);
     background: rgba(255, 255, 255, 0.06);
     cursor: copy;
@@ -520,6 +515,36 @@
         rgba(255, 255, 255, 0.03) calc(100% / 20 - 1px),
         rgba(255, 255, 255, 0.03) calc(100% / 20)
     );
+}
+
+/* Range labels on the left edge */
+#playground-overlay .keyframe-strip .range-label {
+    position: absolute;
+    left: -4em;
+    font-size: 0.7em;
+    font-family: var(--overlay-mono), monospace;
+    color: rgba(200, 220, 255, 0.6);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#playground-overlay .keyframe-strip .range-label.max-label {
+    top: 0.1em;
+}
+
+#playground-overlay .keyframe-strip .range-label.min-label {
+    bottom: 0.1em;
+}
+
+#playground-overlay .keyframe-strip .zero-marker {
+    position: absolute;
+    left: -3.5em;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65em;
+    font-family: var(--overlay-mono), monospace;
+    color: rgba(200, 220, 255, 0.4);
+    pointer-events: none;
 }
 
 #playground-overlay .keyframe-dot {
@@ -888,7 +913,6 @@
 #playground-overlay .batch-uniforms {
     display: flex;
     flex-direction: column;
-    gap: 0.25em;
     padding: 0 0.4em 0.4em;
 }
 
@@ -898,18 +922,30 @@
 
 #playground-overlay .batch-uniform-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) 3em repeat(2, 4em) auto;
+    grid-template-columns: minmax(0, 1.5fr) repeat(3, 3.5em) auto;
     align-items: center;
     gap: 0.3em;
+}
+
+#playground-overlay .batch-uniform-row > div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.2em;
+}
+
+#playground-overlay .batch-uniform-row > div > span {
+    font-size: 0.8em;
 }
 
 #playground-overlay .batch-uniform-row .field {
     font-family: var(--overlay-mono), monospace;
     padding: 1px 0.2em;
+    font-size: 0.8em;
 }
 
 #playground-overlay .batch-uniform-row .field.factor {
     text-align: center;
+    font-size: 1.0em;
 }
 
 #playground-overlay .batch-uniform-row .field:not(.name):not(.factor) {
@@ -980,9 +1016,6 @@
 }
 
 #playground-overlay .selected-section {
-    /* might have become unnötig */
-    display: none;
-
     margin-bottom: 0.4em;
     padding-bottom: 0.3em;
     border-bottom: 1px solid rgba(255, 150, 170, 0.15);
@@ -1003,12 +1036,13 @@
 }
 
 #playground-overlay .uniform-table th {
-    text-align: left;
+    text-align: center;
+    font-size: 0.8em;
     font-weight: 600;
+    text-transform: lowercase;
     color: #bcd;
     padding: 0.15em 0.3em;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: 0.85em;
 }
 
 #playground-overlay .uniform-table td {
@@ -1030,6 +1064,7 @@
     font-size: 0.8em;
     color: #adf;
     white-space: nowrap;
+    text-align: center;
 }
 
 #playground-overlay .cell-check input[type="checkbox"] {
@@ -1083,7 +1118,6 @@
 #playground-overlay .track-list-export {
     margin-left: 1rem;
     display: flex;
-    border-top: 1px solid var(--overlay-divider);
 }
 
 #playground-overlay .panel-header .btn.danger.reset-btn {

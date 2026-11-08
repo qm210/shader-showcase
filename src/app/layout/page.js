@@ -46,7 +46,7 @@ export default function initLayout(rootId) {
         db: undefined,
         measured: {
             initialMs: performance.now(),
-            pageLoadingMs: null,
+            startupMs: null,
         }
     };
 

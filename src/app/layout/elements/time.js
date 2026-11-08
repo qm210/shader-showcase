@@ -1,5 +1,5 @@
 import {binarySearchInsert, clamp} from "../../algorithms.js";
-import {createDiv} from "../dom.js";
+import {createDiv} from "../../dom/dom.js";
 
 export function createTimeSeeker(parent, state, bookmarkElement) {
     parent.innerHTML =

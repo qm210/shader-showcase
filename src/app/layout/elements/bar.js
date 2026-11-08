@@ -1,5 +1,5 @@
 import {initMouseState} from "../../mouse.js";
-import {createDiv, createSmallButton} from "../dom.js";
+import {createDiv, createSmallButton} from "../../dom/dom.js";
 import {sessionStoreControlState, updateVecLabel} from "./uniforms.js";
 import {createTimeSeeker} from "./time.js";
 

@@ -1,5 +1,5 @@
-import {assignGloballyUniqueClass, findParentOfClass} from "./layout/dom.js";
 import {idForLine} from "./layout/shaderCode.js";
+import {assignGloballyUniqueClass, findFirstAncestorOfClass} from "./dom/utils.js";
 
 
 export function createScrollStackOn(parent) {
@@ -114,7 +114,7 @@ export function scrollToElementId(id, sourceElement, scrollStack) {
 }
 
 function selectContainingLine(element) {
-    const lineParent = findParentOfClass(element, "line");
+    const lineParent = findFirstAncestorOfClass(element, "line");
     assignGloballyUniqueClass(lineParent, "selected");
 
     if (lineParent?.id) {
