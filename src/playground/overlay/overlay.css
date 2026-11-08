@@ -210,7 +210,7 @@
 
 #playground-overlay input[type="range"] {
     --slider-color: var(--overlay-accent);
-    flex: 1 1 6em;
+    flex: 1 1 10em;
     min-width: 0;
     height: 0.3em;
     margin: 0.5em 0;
@@ -260,7 +260,7 @@
 #playground-overlay .track-list {
     grid-area: tracks;
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, max-content) minmax(0, 1fr) max-content;
     grid-auto-rows: max-content;
     align-content: start;
     gap: 0.5em;
@@ -302,8 +302,7 @@
 }
 
 #playground-overlay .track-name-col {
-    grid-column: 1;
-    min-width: 12em;
+    min-width: 6em;
     padding: 0.5em 0.65em;
     border-right: 1px solid var(--overlay-divider);
     display: flex;
@@ -344,8 +343,7 @@
 }
 
 #playground-overlay .track-targets-col {
-    grid-column: 2;
-    min-width: 20em;
+    min-width: 10em;
     max-width: 35em;
     padding: 0.5em 0.65em;
     border-right: 1px solid var(--overlay-divider);
@@ -354,13 +352,16 @@
     gap: 0.25em;
 }
 
+#playground-overlay .track-targets-col .add-target-btn {
+    margin-top: auto;
+    width: 100%;
+}
+
 #playground-overlay .track-targets-col .target-row {
     margin-bottom: 0;
 }
 
 #playground-overlay .track-actions-col {
-    grid-column: 3;
-    min-width: 8em;
     padding: 0.5em 0.65em;
     border-right: 1px solid var(--overlay-divider);
     display: flex;
@@ -375,7 +376,6 @@
 }
 
 #playground-overlay .track-widget {
-    grid-column: 4;
     min-width: 15em;
     padding: 0.5em 0.65em;
     display: flex;
@@ -393,12 +393,6 @@
 #playground-overlay .track-header,
 #playground-overlay .track-body {
     display: none !important;
-}
-
-/* Exception for new-track-pending which uses old structure */
-#playground-overlay .track-item.new-track-pending .track-header,
-#playground-overlay .track-item.new-track-pending .track-body {
-    display: flex !important;
 }
 
 /* Legacy rules kept for reference but hidden */
@@ -467,6 +461,12 @@
     padding: 0.3em 0.4em;
     border-radius: var(--overlay-radius-sm);
     background: rgba(255, 255, 255, 0.04);
+}
+
+#playground-overlay .target-row .target-selector {
+    min-width: 0;
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.875em;
 }
 
 #playground-overlay .target-name {
@@ -575,18 +575,6 @@
     flex: 1 1 auto;
 }
 
-#playground-overlay .track-item.new-track-pending {
-    display: flex;
-    flex-direction: column;
-    border-color: var(--overlay-accent);
-    background: rgba(60, 140, 255, 0.08);
-}
-
-#playground-overlay .batch-card.new-batch-pending {
-    border-color: var(--overlay-pink);
-    background: rgba(255, 100, 130, 0.08);
-}
-
 /* Value preview */
 
 #playground-overlay .value-preview {
@@ -673,6 +661,7 @@
 #playground-overlay .randomizer-run {
     display: flex;
     gap: var(--overlay-gap);
+    align-items: center;
 }
 
 #playground-overlay .target-selector-wrapper {
@@ -816,15 +805,15 @@
 }
 
 #playground-overlay .uniform-batches {
-    padding: 0.2em;
-    border-top: 1px solid #ffffff44;
+    padding: 0 var(--overlay-gap) var(--overlay-gap) 0;
+    border-top: 1px solid #ffffff77;
 }
+
 #playground-overlay .batch-list {
     display: flex;
     flex-direction: column;
-    gap: 0.4em;
-    margin-top: 1em;
-    padding-top: 0.8em;
+    gap: 0.3em;
+    margin: var(--overlay-gap) 0;
     border-top: 1px solid var(--overlay-divider);
 }
 
@@ -848,6 +837,19 @@
     display: none;
 }
 
+#playground-overlay .clear-batch-btn {
+    font-size: 0.75em;
+    padding: 0.1em 0.3em;
+    margin-left: 0.2em;
+    background: rgba(255, 150, 170, 0.1);
+    border-color: rgba(255, 150, 170, 0.3);
+}
+
+#playground-overlay .clear-batch-btn:hover {
+    background: rgba(255, 150, 170, 0.25);
+    border-color: rgba(255, 150, 170, 0.6);
+}
+
 #playground-overlay .batch-card {
     border: 1px solid rgba(255, 150, 170, 0.2);
     border-radius: var(--overlay-radius);
@@ -856,6 +858,11 @@
 
 #playground-overlay .batch-card.selected {
     border-color: rgba(255, 150, 170, 0.5);
+}
+
+#playground-overlay .batch-card.editing {
+    border-color: var(--overlay-accent);
+    box-shadow: 0 0 0.5em rgba(120, 200, 255, 0.3);
 }
 
 #playground-overlay .batch-card-header {
@@ -878,12 +885,6 @@
     cursor: pointer;
 }
 
-#playground-overlay .batch-count {
-    color: var(--overlay-pink-soft);
-    font-size: 0.8em;
-    opacity: 0.6;
-}
-
 #playground-overlay .batch-uniforms {
     display: flex;
     flex-direction: column;
@@ -897,16 +898,21 @@
 
 #playground-overlay .batch-uniform-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 4.5em 4.5em auto;
+    grid-template-columns: minmax(0, 1.5fr) 3em repeat(2, 4em) auto;
     align-items: center;
     gap: 0.3em;
 }
 
-#playground-overlay .batch-uniform-row .field.name {
+#playground-overlay .batch-uniform-row .field {
     font-family: var(--overlay-mono), monospace;
+    padding: 1px 0.2em;
 }
 
-#playground-overlay .batch-uniform-row .field:not(.name) {
+#playground-overlay .batch-uniform-row .field.factor {
+    text-align: center;
+}
+
+#playground-overlay .batch-uniform-row .field:not(.name):not(.factor) {
     text-align: center;
 }
 
@@ -973,9 +979,10 @@
     content: "▶";
 }
 
-/* Selected uniforms section (always visible) */
-
 #playground-overlay .selected-section {
+    /* might have become unnötig */
+    display: none;
+
     margin-bottom: 0.4em;
     padding-bottom: 0.3em;
     border-bottom: 1px solid rgba(255, 150, 170, 0.15);

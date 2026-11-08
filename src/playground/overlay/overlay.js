@@ -10,13 +10,15 @@ import {
     renderUniformListDOM as renderUniformList
 } from './overlay-dom.js';
 import {STORAGE_KEY} from "../../app/layout/generate.js";
-import {injectGlobalCss} from "./helpers.js";
+import {injectGlobalCss, isTypingTarget} from "./helpers.js";
 import {percentOfSpan, timelineSpan} from "../engine/math.js";
+import {runAction} from "../actions.js";
 
-export {escapeHtml, formatRange, parseRangeInput, isTypingTarget} from './helpers.js';
+export {escapeHtml, formatRange, parseRangeInput} from './helpers.js';
 
 const STATE_VERSION = 1;
-const SAVE_DELAY_MS = 300;
+const SAVE_DELAY_MS = 200;
+const DBL_CLICK_DELAY_MS = 350;
 
 function readStoredState() {
     try {
@@ -46,14 +48,10 @@ export class Overlay {
         this.origLeft = 0;
         this.origTop = 0;
         this._saveTimer = null;
+        this._dblClickTimer = null;
 
-        // Pending new-item names (inline input replaces prompt).
-        this._newTrackName = null;
-        this._newBatchName = null;
-
-        // Inline-editing state for renaming.
-        this._editingBatchId = null; // batch id being edited
-        this._editingTrackId = null; // track id being edited
+        this._editingBatchId = null;
+        this._editingTrackId = null;
 
         this.init();
     }
@@ -132,10 +130,6 @@ export class Overlay {
                 e.preventDefault();
                 this.togglePlaying();
             }
-            if (this._newTrackName || this._newBatchName) {
-                this._onKeyDown(e);
-                return;
-            }
             if (e.code === 'Delete' && this.selectedKeyframe) {
                 const track = this.engine.getTrack(this.selectedKeyframe.trackId);
                 const kf = track?.keyframes[this.selectedKeyframe.kfIndex];
@@ -181,49 +175,29 @@ export class Overlay {
 
         const trackHeader = e.target.closest('.track-header');
         if (trackHeader) {
-            // Check if clicking on the track name span for inline editing.
-            const trackNameSpan = e.target.closest('.track-name');
-            if (trackNameSpan) {
-                const id = trackNameSpan.dataset.trackId;
-                this._editingTrackId = id;
-                this.render();
-                requestAnimationFrame(() => {
-                    this.element
-                        .querySelector(`.track-wrapper[data-track-id="${CSS.escape(id)}"] .name`)
-                        ?.focus();
-                });
-                return;
-            }
             const trackItem = trackHeader.closest('.track-wrapper');
             const id = trackItem.dataset.trackId;
-            const collapsed = trackItem.classList.toggle('collapsed');
-            if (collapsed) {
-                this.collapsedTrackIds.add(id);
-            } else {
-                this.collapsedTrackIds.delete(id);
-            }
-            this._scheduleSave();
+            this._editingTrackId = id;
+            clearTimeout(this._dblClickTimer);
+            this._dblClickTimer = setTimeout(() => {
+                this._dblClickTimer = null;
+                const collapsed = trackItem.classList.toggle('collapsed');
+                if (collapsed) {
+                    this.collapsedTrackIds.add(id);
+                } else {
+                    this.collapsedTrackIds.delete(id);
+                }
+                this._scheduleSave();
+            }, DBL_CLICK_DELAY_MS);
             return;
         }
-
         const batchHeader = e.target.closest('.batch-card-header');
         if (batchHeader) {
-            // Check if clicking on the batch name span for inline editing.
-            const batchNameSpan = e.target.closest('.batch-name');
-            if (batchNameSpan) {
-                const id = batchNameSpan.dataset.batchId;
-                this._editingBatchId = id;
-                this.renderRandomizer();
-                requestAnimationFrame(() => {
-                    this.element
-                        .querySelector(`.batch-card[data-batch-id="${CSS.escape(id)}"] .name`)
-                        ?.focus();
-                });
-                return;
-            }
             this.selectedBatchId = batchHeader.closest('.batch-card').dataset.batchId;
-            this.renderRandomizer();
-            this._scheduleSave();
+            this._dblClickTimer = setTimeout(() => {
+                this.renderRandomizer();
+                this._scheduleSave();
+            }, DBL_CLICK_DELAY_MS);
             return;
         }
 
@@ -270,6 +244,9 @@ export class Overlay {
     }
 
     _onDoubleClick(e) {
+        clearTimeout(this._dblClickTimer);
+        this._dblClickTimer = null;
+
         // Edit keyframe value; cancelling the prompt removes the keyframe.
         const dot = e.target.closest('.keyframe-dot');
         if (dot) {
@@ -299,58 +276,37 @@ export class Overlay {
             return;
         }
 
-        const batchName = e.target.closest('.batch-name');
-        if (batchName) {
-            const batch = this.randomizer.getBatch(batchName.closest('.batch-card').dataset.batchId);
-            const newName = batch && prompt('Batch name:', batch.name);
-            if (newName?.trim()) {
-                batch.name = newName.trim();
-                this.renderRandomizer();
-                this._scheduleSave();
-            }
+        const trackHeader = e.target.closest('.track-header');
+        if (trackHeader && !e.target.closest('button, input')) {
+            const trackItem = trackHeader.closest('.track-wrapper');
+            const id = trackItem.dataset.trackId;
+            console.log("clicked track id", id);
+            this._editingTrackId = id;
+            requestAnimationFrame(() => {
+                this.element
+                    .querySelector(
+                        `.track-wrapper[data-track-id="${CSS.escape(id)}"] .name`
+                    )
+                    ?.focus();
+            });
+            return;
+        }
+
+        const batchHeader = e.target.closest('.batch-card-header');
+        if (batchHeader && !e.target.closest('button, input')) {
+            const batchId = batchHeader.closest('.batch-card').dataset.batchId;
+            this._editingBatchId = batchId;
+            this.renderUniformPanel();
+            requestAnimationFrame(() => {
+                this.element
+                    .querySelector(`.batch-card[data-batch-id="${CSS.escape(batchId)}"] .name`)
+                    ?.focus();
+            });
+            return;
         }
     }
 
     _onKeyDown(e) {
-        // Confirm pending new track on Enter.
-        if (this._newTrackName && e.code === 'Enter' && e.target === this.ui.newTrackInput) {
-            const name = e.target.value.trim();
-            if (name) {
-                this.engine.addTrack(name);
-            }
-            this._newTrackName = null;
-            this.render();
-            return;
-        }
-
-        // Confirm pending new batch on Enter.
-        if (this._newBatchName && e.code === 'Enter' && e.target === this.ui.newBatchInput) {
-            const name = e.target.value.trim();
-            if (name) {
-                const batch = this.randomizer.addBatch(name);
-                this.selectedBatchId = batch.id;
-            }
-            this._newBatchName = null;
-            this.renderRandomizer();
-            this._scheduleSave();
-            return;
-        }
-
-        // Cancel pending new track on Escape.
-        if (this._newTrackName && e.code === 'Escape' && e.target === this.ui.newTrackInput) {
-            this._newTrackName = null;
-            this.render();
-            return;
-        }
-
-        // Cancel pending new batch on Escape.
-        if (this._newBatchName && e.code === 'Escape' && e.target === this.ui.newBatchInput) {
-            this._newBatchName = null;
-            this.renderRandomizer();
-            this._scheduleSave();
-            return;
-        }
-
         // Inline-edit track name: Enter to confirm, Escape to cancel.
         if (this._editingTrackId && e.target.classList.contains('name')) {
             if (e.code === 'Enter') {
@@ -383,6 +339,23 @@ export class Overlay {
                 this.renderRandomizer();
             }
 
+        // Handle target selector: Escape to remove empty targets (except the last placeholder)
+        } else if (e.target.classList.contains('target-selector')) {
+            const trackId = e.target.dataset.trackId;
+            const targetIdx = parseInt(e.target.dataset.targetIdx, 10);
+            const track = this.engine.getTrack(trackId);
+            if (!track) return;
+            
+            // Don't remove the last placeholder row
+            if (targetIdx === track.targets.length - 1) return;
+            
+            if (e.code === 'Escape') {
+                const target = track.targets[targetIdx];
+                if (target && !target.uniformName.trim()) {
+                    track.removeTarget(target.uniformName);
+                    this.render();
+                }
+            }
         }
     }
 
@@ -404,6 +377,21 @@ export class Overlay {
             this._editingBatchId = null;
             this.renderRandomizer();
             this._scheduleSave();
+        } else if (e.target.classList.contains('target-selector')) {
+            // Remove empty targets on blur (except the last placeholder row)
+            const trackId = e.target.dataset.trackId;
+            const targetIdx = parseInt(e.target.dataset.targetIdx, 10);
+            const track = this.engine.getTrack(trackId);
+            if (!track) return;
+            
+            const target = track.targets[targetIdx];
+            // Don't remove the last placeholder row
+            if (targetIdx === track.targets.length - 1) return;
+            
+            if (target && !target.uniformName.trim()) {
+                track.removeTarget(target.uniformName);
+                this.render();
+            }
         }
     }
 
@@ -465,17 +453,17 @@ export class Overlay {
 
         if (el.classList.contains('uniform-checkbox')) {
             const name = el.dataset.uniformName;
-            if (!this.selectedBatchId) return;
-            const batch = this.randomizer.getBatch(this.selectedBatchId);
+            // When editing a batch, use that batch; otherwise use selectedBatchId.
+            const batchId = this._editingBatchId || this.selectedBatchId;
+            if (!batchId) return;
+            const batch = this.randomizer.getBatch(batchId);
             if (!batch) return;
             if (el.checked) {
-                // Add uniform to batch if not already present.
-                if (!batch.uniforms.some(u => u.name === name)) {
-                    batch.uniforms.push({ name, min: '', max: '' });
-                }
+                // Add/activate uniform in batch.
+                batch.toggleUniform(name, true);
             } else {
-                // Remove uniform from batch.
-                batch.uniforms = batch.uniforms.filter(u => u.name !== name);
+                // Deactivate uniform in batch (preserves values).
+                batch.toggleUniform(name, false);
             }
             this.renderRandomizer();
             this._scheduleSave();
@@ -525,6 +513,50 @@ export class Overlay {
         // Validate uniform-list min/max inputs.
         if (el.classList.contains('uniform-min') || el.classList.contains('uniform-max')) {
             el.classList.toggle('invalid', parseRangeInput(el.value) === undefined);
+        }
+
+        // Handle target selector input - update ranges when name changes
+        if (el.classList.contains('target-selector')) {
+            const trackId = el.dataset.trackId;
+            const targetIdx = parseInt(el.dataset.targetIdx, 10);
+            const track = this.engine.getTrack(trackId);
+            if (!track) return;
+            
+            const newName = el.value.trim();
+            
+            // If this is the last row and it has a value, add it as a real target
+            if (newName && targetIdx === track.targets.length) {
+                track.addTarget(newName, -1, 1);
+                this.render();
+                // Re-focus the newly added selector
+                const selectors = this.ui.trackList.querySelectorAll('.target-selector');
+                const lastSelector = selectors[selectors.length - 2]; // second to last (last is the new empty one)
+                if (lastSelector) {
+                    lastSelector.focus();
+                    lastSelector.select();
+                }
+                return;
+            }
+            
+            const target = track.targets[targetIdx];
+            if (!target) return;
+            
+            if (newName !== target.uniformName) {
+                // Rename the target
+                if (target.uniformName) {
+                    track.removeTarget(target.uniformName);
+                }
+                target.uniformName = newName;
+                if (newName) {
+                    const range = this.randomizer.getControlRange(newName);
+                    target.minValue = Array.isArray(range.min) ? -1 : range.min;
+                    target.maxValue = Array.isArray(range.max) ? 1 : range.max;
+                } else {
+                    target.minValue = -1;
+                    target.maxValue = 1;
+                }
+                this._scheduleSave();
+            }
         }
     }
 
@@ -622,8 +654,6 @@ export class Overlay {
         this.selectedBatchId = null;
         this.intensity = 1;
         this.position = null;
-        this._newTrackName = null;
-        this._newBatchName = null;
         this.element.style.left = '';
         this.element.style.top = '';
         this.element.classList.remove('collapsed');
@@ -732,7 +762,6 @@ export class Overlay {
             this.collapsedTrackIds,
             this.selectedKeyframe,
             this._editingTrackId,
-            this._newTrackName,
             timelineSpan,
             percentOfSpan,
         );
@@ -751,14 +780,18 @@ export class Overlay {
     }
 
     renderRandomizer() {
-        const result = renderRandomizerPanel(this.ui, this.randomizer, this.selectedBatchId);
-        if (result) this.selectedBatchId = result.selectedBatchId;
+        const result = renderRandomizerPanel(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
+        if (result) {
+            this.selectedBatchId = result.selectedBatchId;
+        }
 
-        // Render batch list.
-        renderBatchList(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId, this._newBatchName);
+        // NOTE: unclear whether needed, might be a legacy relic.
+        this.renderUniformPanel();
+    }
 
-        // Render uniform list panel.
-        renderUniformList(this.ui, this.randomizer, this.selectedBatchId);
+    renderUniformPanel() {
+        renderBatchList(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
+        renderUniformList(this.ui, this.randomizer, this.selectedBatchId, this._editingBatchId);
     }
 
     // ─── Public API ─────────────────────────────────────────────

@@ -26,8 +26,8 @@ export class UniformBatch {
         this.uniforms = []; // [{ name, min, max }]
     }
 
-    addUniform(name = '', min = null, max = null) {
-        const entry = { name, min, max };
+    addUniform(name = '', min = null, max = null, active = true) {
+        const entry = { name, factor: 1, min, max, active };
         this.uniforms.push(entry);
         return entry;
     }
@@ -40,6 +40,20 @@ export class UniformBatch {
         return entry;
     }
 
+    /** Toggle a uniform's active state in this batch. Returns the entry or null. */
+    toggleUniform(name, active) {
+        const existing = this.uniforms.find(u => u.name === name);
+        if (existing) {
+            existing.active = active;
+            return existing;
+        }
+        if (active) {
+            return this.addUniform(name);
+        }
+        return null;
+    }
+
+    /** Remove a uniform from this batch entirely. */
     removeUniform(index) {
         this.uniforms.splice(index, 1);
     }
@@ -48,7 +62,9 @@ export class UniformBatch {
         return {
             id: this.id,
             name: this.name,
-            uniforms: this.uniforms.map(({ name, min, max }) => ({ name, min, max })),
+            uniforms: this.uniforms.map(({ name, factor, min, max, active }) => ({
+                name, factor, min, max, active
+            })),
         };
     }
 
@@ -62,7 +78,11 @@ export class UniformBatch {
                 String(entry.name ?? ''),
                 isRangeValue(entry.min) ? entry.min : null,
                 isRangeValue(entry.max) ? entry.max : null,
+                entry.active != null ? entry.active : true,
             );
+            if (entry.factor != null) {
+                batch.uniforms[batch.uniforms.length - 1].factor = Number(entry.factor);
+            }
         }
         return batch;
     }
@@ -176,14 +196,15 @@ export class Randomizer {
         }
 
         for (const entry of batch.uniforms) {
-            if (!entry.name) {
+            if (!entry.name || entry.active === false) {
                 continue;
             }
             const { min, max, components } = this.resolveRange(entry);
+            const factor = entry.factor ?? 1;
             result[entry.name] = components === null
-                ? randomBetween(componentOf(min, 0), componentOf(max, 0), intensity)
+                ? randomBetween(componentOf(min, 0), componentOf(max, 0), intensity) * factor
                 : Array.from({ length: components }, (_, i) =>
-                    randomBetween(componentOf(min, i), componentOf(max, i), intensity));
+                    randomBetween(componentOf(min, i), componentOf(max, i), intensity) * factor);
         }
         return result;
     }

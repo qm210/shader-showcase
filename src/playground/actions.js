@@ -16,12 +16,9 @@ export const ACTION = Object.freeze({
     ADD_KEYFRAME: 'add-keyframe',
     ADD_BATCH: 'add-batch',
     REMOVE_BATCH: 'remove-batch',
+    CLEAR_SELECTION: 'clear-selection',
     ADD_UNIFORM: 'add-uniform',
     REMOVE_UNIFORM: 'remove-uniform',
-    CONFIRM_NEW_TRACK: 'confirm-new-track',
-    CONFIRM_NEW_BATCH: 'confirm-new-batch',
-    CANCEL_NEW_TRACK: 'cancel-new-track',
-    CANCEL_NEW_BATCH: 'cancel-new-batch',
     RANDOMIZE: 'randomize',
     CONFIRM_TRACK_NAME: 'confirm-track-name',
     CANCEL_TRACK_NAME: 'cancel-track-name',
@@ -75,11 +72,17 @@ export function runAction(overlay, action, data) {
 
         case ACTION.ADD_TARGET: {
             const track = overlay.engine.getTrack(data.trackId);
-            const name = track && prompt('Uniform name:', '');
-            if (name?.trim()) {
-                const {min, max} = overlay.randomizer.getControlRange(name.trim());
-                track.addTarget(name.trim(), Array.isArray(min) ? -1 : min, Array.isArray(max) ? 1 : max);
+            if (track) {
+                // Add an empty target that the user can fill in
+                track.addTarget('', -1, 1);
                 overlay.render();
+                // Focus the new selector (last one added)
+                const selectors = overlay.ui.trackList.querySelectorAll('.target-selector');
+                const lastSelector = selectors[selectors.length - 1];
+                if (lastSelector) {
+                    lastSelector.focus();
+                    lastSelector.select();
+                }
             }
             break;
         }
@@ -121,6 +124,13 @@ export function runAction(overlay, action, data) {
             break;
         }
 
+        case ACTION.CLEAR_SELECTION: {
+            overlay.selectedBatchId = null;
+            overlay._editingBatchId = null;
+            overlay.renderUniformPanel();
+            break;
+        }
+
         case ACTION.ADD_UNIFORM: {
             const batch = overlay.randomizer.getBatch(data.batchId);
             if (batch) {
@@ -138,51 +148,21 @@ export function runAction(overlay, action, data) {
         case ACTION.REMOVE_UNIFORM: {
             const batch = overlay.randomizer.getBatch(data.batchId);
             if (batch) {
-                batch.removeUniform(parseInt(data.index, 10));
-                overlay.renderRandomizer();
-                overlay._scheduleSave();
-            }
-            break;
-        }
-
-        case ACTION.CONFIRM_NEW_TRACK: {
-            const input = overlay.ui.newTrackInput;
-            if (input) {
-                const name = input.value.trim();
-                if (name) {
-                    overlay.engine.addTrack(name);
+                const entry = batch.uniforms[parseInt(data.index, 10)];
+                if (entry) {
+                    if (!entry.name || !entry.name.trim()) {
+                        // Second click: actually remove the row
+                        batch.removeUniform(parseInt(data.index, 10));
+                    } else {
+                        // First click: clear the name and associated overrides
+                        entry.name = '';
+                        entry.min = null;
+                        entry.max = null;
+                    }
+                    overlay.renderRandomizer();
+                    overlay._scheduleSave();
                 }
             }
-            overlay._newTrackName = null;
-            overlay.render();
-            break;
-        }
-
-        case ACTION.CONFIRM_NEW_BATCH: {
-            const input = overlay.ui.newBatchInput;
-            if (input) {
-                const name = input.value.trim();
-                if (name) {
-                    const batch = overlay.randomizer.addBatch(name);
-                    overlay.selectedBatchId = batch.id;
-                }
-            }
-            overlay._newBatchName = null;
-            overlay.renderRandomizer();
-            overlay._scheduleSave();
-            break;
-        }
-
-        case ACTION.CANCEL_NEW_TRACK: {
-            overlay._newTrackName = null;
-            overlay.render();
-            break;
-        }
-
-        case ACTION.CANCEL_NEW_BATCH: {
-            overlay._newBatchName = null;
-            overlay.renderRandomizer();
-            overlay._scheduleSave();
             break;
         }
 
