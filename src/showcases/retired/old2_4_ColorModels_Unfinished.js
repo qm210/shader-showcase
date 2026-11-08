@@ -53,20 +53,20 @@ export default {
         }, {
             type: "bool",
             name: "demoHsvHsl",
-            group: "demo",
+            radio: "demo",
             description: "Hue = Polarwinkel, S & V/L über entsprechende Uniforms",
             defaultValue: true,
         }, {
             type: "bool",
             name: "demoHsvOklch",
-            group: "demo",
+            radio: "demo",
             description: "Analog zu demoHsvHsl mit OKLCh. Chroma ist ähnlich Sättigung " +
                 "(referenziert den \"Farbgehalt\" vgl. zu Weiß), über ca. 0.37 meist durch Monitor limitiert",
             defaultValue: false,
         }, {
             type: "bool",
             name: "demoToneMapping",
-            group: "demo",
+            radio: "demo",
             description: "2x HSV (S = Radius), Rechts inkl. ACES-Tonemap & Gammakorrektur",
             defaultValue: false,
         }, {
@@ -85,7 +85,7 @@ export default {
         }, {
             type: "bool",
             name: "demoCosinePalette",
-            group: "demo",
+            radio: "demo",
             description: "die Palette wird dann durch die 12 Einträge in palA...palD gebildet.\n" +
                 " Links direkt, Rechts wieder mit Tone Mapping + Gammakorrektur.",
             defaultValue: false,

@@ -1,9 +1,4 @@
-import {
-    compile,
-    initVertices,
-    createStaticVertexBuffer,
-    createTextureFromImage,
-} from "./index.js";
+import {compile, createStaticVertexBuffer, createTextureFromImage, initVertices,} from "./index.js";
 
 import fragmentShaderSource from "../shaders/3b_colorModelPlayground.glsl";
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
@@ -84,25 +79,25 @@ export default {
         }, {
             type: "bool",
             name: "transformHSV",
-            group: "colorModel",
+            radio: "colorModel",
             description: "HSV-Modell transformieren",
             defaultValue: true,
         }, {
             type: "bool",
             name: "transformHSL",
-            group: "colorModel",
+            radio: "colorModel",
             description: "HSL-Modell transformieren",
             defaultValue: false,
         }, {
             type: "bool",
             name: "transformYCh",
-            group: "colorModel",
+            radio: "colorModel",
             description: "YCh-Modell transformieren",
             defaultValue: false,
         }, {
             type: "bool",
             name: "transformOKLCh",
-            group: "colorModel",
+            radio: "colorModel",
             description: "OKLCh-Modell transformieren",
             defaultValue: false,
         }, {

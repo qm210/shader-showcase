@@ -12,6 +12,7 @@ import {updateResolutionInState} from "../../webgl/helpers/resolution.js";
 import {addVideoElement} from "./elements/webcam.js";
 import {addKeyboardShortcuts} from "../keyboard.js";
 import {createUniformPlayground} from "../../playground/context.js";
+import {CHAR, STORAGE_KEY} from "../constants.js";
 
 
 const generatePage = (glContext, elements, state, controls) => {
@@ -33,7 +34,7 @@ const generatePage = (glContext, elements, state, controls) => {
     addMainControls(elements, state, controls, glContext);
     addUniformControls(elements, state, controls);
     addDisplayControls(elements, state, glContext);
-    state.playground = createUniformPlayground(state, controls);
+    state.playground = createUniformPlayground(state, controls, elements);
 
     state.selectedPreset = null;
     elements.db = undefined;
@@ -220,22 +221,9 @@ function renderCompileStepStatus(title, error, successMessage) {
     `;
 }
 
-export const STORAGE_KEY = {
-    FONT_FACTOR: "qm.fontsize.factor",
-    NO_CODE: "qm.no-code",
-    PLAYGROUND_OVERLAY: "qm.playground.overlay",
-};
-
 const PAGE_FONT = {
     cssProperty: "--font-size-factor",
     storageKey: STORAGE_KEY.FONT_FACTOR,
-};
-
-const CHAR = {
-    PLUS: "+",
-    MINUS: "\u2013",
-    ARROW_UP: "\u2191",
-    ARROW_DOWN: "\u2193",
 };
 
 function addDisplayControls(elements, state, glContext) {

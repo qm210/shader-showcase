@@ -1,5 +1,6 @@
 import {createPreset, deletePreset, loadPresets} from "./database.js";
 import {createDiv, createSmallButton} from "./dom/dom.js";
+import {CHAR, DELAY_MS} from './constants.js';
 
 const HEADER = {
     IDENTIFIER: "qm210.uniforms",
@@ -185,8 +186,6 @@ export function refreshPresets(elements, state) {
     void refreshPresetsFor(elements.db, state, elements.presets.selector);
 }
 
-const SHOW_CLIPBOARD_MESSAGE_FOR_MS = 2000;
-
 export function createClipboardButtons(elements, state) {
     const copyButton = createSmallButton("\u21C9\u2009Copy", "icon-word");
     const pasteButton = createSmallButton("\u21C7\u2009Paste", "icon-word");
@@ -199,14 +198,14 @@ export function createClipboardButtons(elements, state) {
                 JSON.stringify(json, null, 4)
             );
             console.info("Copied to Clipboard", json);
-            copyButton.textContent = "✔ copied";
+            copyButton.textContent = CHAR.CHECK + " copied";
         } catch (error) {
             console.error(error);
             copyButton.textContent = "✘ failed";
         }
         setTimeout(() => {
             copyButton.textContent = originalContent;
-        }, SHOW_CLIPBOARD_MESSAGE_FOR_MS);
+        }, DELAY_MS.SHOW_QUICK_MESSAGE);
     });
 
     pasteButton.addEventListener("click", async () => {
@@ -216,7 +215,7 @@ export function createClipboardButtons(elements, state) {
             const text = await navigator.clipboard.readText();
             const json = JSON.parse(text);
             updateFromBundle(json, state, elements);
-            pasteButton.textContent = "✔ pasted";
+            pasteButton.textContent = CHAR.CHECK + " pasted";
         } catch (error) {
             console.error(error);
             state = {...originalState};
@@ -228,7 +227,7 @@ export function createClipboardButtons(elements, state) {
             pasteButton.textContent = originalContent;
             pasteButton.style.color = "";
             pasteButton.style.outlineColor = "";
-        }, SHOW_CLIPBOARD_MESSAGE_FOR_MS);
+        }, DELAY_MS.SHOW_QUICK_MESSAGE);
     });
 
     return {copy: copyButton, paste: pasteButton};

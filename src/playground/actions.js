@@ -3,6 +3,8 @@
  * All `data-action` attributes should reference these constants to avoid magic strings.
  */
 
+import {timelineSpan} from "./engine/math.js";
+
 export const ACTION = Object.freeze({
     MINIMIZE: 'minimize',
     PLAY: 'play',
@@ -22,6 +24,11 @@ export const ACTION = Object.freeze({
     RANDOMIZE: 'randomize',
     CONFIRM_TRACK_NAME: 'confirm-track-name',
     CANCEL_TRACK_NAME: 'cancel-track-name',
+    CLEAR_TRACK: 'clear-track',
+    RESCALE_TRACK: 'rescale-track',
+    COPY_TRACK: 'copy-track',
+    PASTE_TRACK: 'paste-track',
+    LOAD_SNAPSHOT: 'load-snapshot',
 });
 
 /**
@@ -99,14 +106,51 @@ export function runAction(overlay, action, data) {
 
         case ACTION.ADD_KEYFRAME: {
             const track = overlay.engine.getTrack(data.trackId);
-            if (track) {
-                overlay._promptKeyframe(track, overlay.engine.currentTime);
+            if (!track) return;
+
+            // If no targets, add a default one so we can place keyframes
+            if (!track.targets.length) {
+                track.addTarget('default', -1, 1);
             }
+
+            // Use prompt for X (time) and Y (value) coordinates per user override.
+            const span = timelineSpan(overlay.engine);
+            const defaultTime = overlay.engine.currentTime.toFixed(1);
+            const timeStr = prompt('Keyframe time (s):', defaultTime);
+            if (timeStr === null) return;
+            const time = parseFloat(timeStr);
+            if (isNaN(time)) return;
+
+            // Find enabled target's min/max range for Y value
+            let minVal = 0, maxVal = 1;
+            for (const target of track.targets) {
+                if (target.enabled && target.uniformName) {
+                    const range = overlay.ctx.getControlRange(target.uniformName);
+                    const tMin = Array.isArray(range.min) ? -1 : range.min;
+                    const tMax = Array.isArray(range.max) ? 1 : range.max;
+                    minVal = Math.min(minVal, tMin);
+                    maxVal = Math.max(maxVal, tMax);
+                }
+            }
+            const defaultVal = ((minVal + maxVal) / 2).toFixed(3);
+            const valStr = prompt('Keyframe value:', defaultVal);
+            if (valStr === null) return;
+            const value = parseFloat(valStr);
+            if (isNaN(value)) return;
+
+            // If this is the first keyframe and time > 0, prepend a (0, value) keyframe
+            if (track.keyframes.length === 0 && time > 0.01) {
+                track.addKeyframe(0, value);
+            }
+
+            track.addKeyframe(time, value);
+            overlay.selectedKeyframe = null;
+            overlay.renderTimeline();
             break;
         }
 
         case ACTION.ADD_BATCH: {
-            const count = overlay.ctx.customBatches.length + 1;
+            const count = overlay.ctx.batches.custom.length + 1;
             const name = `Batch ${count}`;
             const batch = overlay.ctx.addBatch(name);
             overlay.selectedBatchId = batch.id;
@@ -194,5 +238,77 @@ export function runAction(overlay, action, data) {
             overlay._editingTrackId = null;
             overlay.renderTimeline();
             break;
+
+        case ACTION.CLEAR_TRACK: {
+            const track = overlay.engine.getTrack(data.trackId);
+            if (track && confirm('Clear all keyframes from this track?')) {
+                track.keyframes = [];
+                track.updateDuration();
+                overlay.selectedKeyframe = null;
+                overlay.renderTimeline();
+            }
+            break;
+        }
+
+        case ACTION.RESCALE_TRACK: {
+            const track = overlay.engine.getTrack(data.trackId);
+            if (!track || !track.keyframes.length) return;
+            const oldStart = track.keyframes[0].time;
+            const oldEnd = track.keyframes[track.keyframes.length - 1].time;
+            const range = oldEnd - oldStart;
+            if (range <= 0) return;
+
+            // Use a small inline prompt-like input via the overlay itself to avoid window.prompt
+            const newStartStr = prompt('New start time:', oldStart.toFixed(1));
+            const newEndStr = prompt('New end time:', oldEnd.toFixed(1));
+            if (newStartStr === null || newEndStr === null) return;
+
+            const s = parseFloat(newStartStr);
+            const e = parseFloat(newEndStr);
+            if (isNaN(s) || isNaN(e) || e <= s) return;
+
+            const factor = (e - s) / range;
+            for (const kf of track.keyframes) {
+                kf.time = s + (kf.time - oldStart) * factor;
+            }
+            track.updateDuration();
+            overlay.renderTimeline();
+            break;
+        }
+
+        case ACTION.COPY_TRACK: {
+            const track = overlay.engine.getTrack(data.trackId);
+            if (track && track.keyframes.length) {
+                overlay._copiedTrack = JSON.parse(JSON.stringify(track.keyframes));
+                alert('Keyframes copied! Use the paste button on another track.');
+            }
+            break;
+        }
+
+        case ACTION.PASTE_TRACK: {
+            if (!overlay._copiedTrack || !overlay._copiedTrack.length) return;
+            const track = overlay.engine.getTrack(data.trackId);
+            if (track) {
+                track.keyframes = JSON.parse(JSON.stringify(overlay._copiedTrack));
+                track.updateDuration();
+                overlay.renderTimeline();
+            }
+            break;
+        }
+
+        case ACTION.LOAD_SNAPSHOT: {
+            // Load current uniform values from the main page's state.uni into the engine overrides
+            overlay.ctx.loadSnapshotFromState();
+            const snapshot = overlay.ctx.getSnapshot();
+            if (!snapshot) {
+                console.warn('[PLAYGROUND] No snapshot available. Click Load Snapshot again.');
+                return;
+            }
+            for (const [name, value] of Object.entries(snapshot)) {
+                overlay.engine.setUniformValue(name, value);
+            }
+            overlay.renderTimeline();
+            break;
+        }
     }
 }

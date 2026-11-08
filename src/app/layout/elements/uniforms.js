@@ -500,8 +500,8 @@ export function updateVecLabel(labelElement, state, control) {
 
 export const asBoolInput = (elements, state, control) => {
     elements.control.type = "checkbox";
-    if (control.group) {
-        elements.control.name = control.group;
+    if (control.radio) {
+        elements.control.name = control.radio;
         elements.control.dataset.name = control.name;
     }
     elements.control.id = `check.${control.name}`;
@@ -512,7 +512,7 @@ export const asBoolInput = (elements, state, control) => {
     control.defaultValue ??= false;
     control.onToggle ??= () => {};
     elements.reset.textContent = `reset`;
-    if (control.group && !control.defaultValue) {
+    if (control.radio && !control.defaultValue) {
         elements.description.classList.add("extra-column");
         delete elements.reset;
     }
@@ -543,14 +543,14 @@ export const asBoolInput = (elements, state, control) => {
         elements.control.checked = value;
         elements.value.textContent = `= ${value}`;
 
-        if (control.group && manuallyChanged) {
+        if (control.radio && manuallyChanged) {
             updateOthersInGroup();
         }
     }
 
     function updateOthersInGroup() {
         const others = document.querySelectorAll(
-            `input[name="${control.group}"]`
+            `input[name="${control.radio}"]`
         )
         for (const input of others) {
             if (input.dataset.name === control.name) {
@@ -564,11 +564,12 @@ export const asBoolInput = (elements, state, control) => {
             }
             valueLabel.textContent = `= ${input.checked}`;
         }
-        for (const otherControl of control.groupedControls) {
-            if (otherControl.name !== control.name) {
-                state.uni[otherControl.name] = false;
-                sessionStoreControlState(state, otherControl);
+        for (const otherControl of control.radioSet) {
+            if (otherControl.name === control.name) {
+                continue;
             }
+            state.uni[otherControl.name] = false;
+            sessionStoreControlState(state, otherControl);
         }
     }
 };
@@ -600,4 +601,16 @@ export function createResetAllButton(elements, state, controls) {
         event.target.blur();
     });
     return button;
+}
+
+/** Update all slider elements to reflect current state.uni values. */
+export function updateAllSliders(elements, state, controls) {
+    if (!controls?.uniforms) return;
+    for (const control of controls.uniforms) {
+        if (control.separator || control.boolean || !elements.uniforms[control.name]) continue;
+        const input = elements.uniforms[control.name];
+        if (input.updateValue) {
+            input.updateValue(state.uni[control.name]);
+        }
+    }
 }

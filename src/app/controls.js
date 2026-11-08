@@ -18,26 +18,26 @@ export function createControls(showcase, glContext, state, elements) {
     controls.uniforms ??= [];
     controls.toggles ??= [];
 
-    const groups = collectGroups(controls);
+    const radioSets = collectRadioSets(controls);
     for (const control of controls.uniforms) {
-        if (control.group) {
-            control.groupedControls = groups[control.group];
+        if (control.radio) {
+            control.radioSet = radioSets[control.radio];
         }
     }
 
     return controls;
 }
 
-function collectGroups(controls) {
+function collectRadioSets(controls) {
     const result = {};
     for (const control of controls.uniforms) {
-        if (!control.group) {
+        if (!control.radio) {
             continue;
         }
-        if (!result[control.group]) {
-            result[control.group] = [];
+        if (!result[control.radio]) {
+            result[control.radio] = [];
         }
-        result[control.group].push(control);
+        result[control.radio].push(control);
     }
     return result;
 }

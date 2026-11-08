@@ -1,8 +1,4 @@
-import {
-    startRenderLoop,
-    createFramebufferWithTexture,
-    initBasicState,
-} from "./index.js";
+import {createFramebufferWithTexture, initBasicState, startRenderLoop,} from "./index.js";
 import fragmentShaderSource from "../shaders/performancePlayground.glsl";
 
 export default {
@@ -68,13 +64,13 @@ export default {
             name: "onlyPassA",
             defaultValue: false,
             description: "Nur Fall \"A\" berechnen",
-            group: "onePass"
+            radio: "onePass"
         }, {
             type: "bool",
             name: "onlyPassB",
             defaultValue: false,
             description: "Nur Fall \"B\" berechnen",
-            group: "onePass"
+            radio: "onePass"
         }, {
             type: "int",
             name: "nMarchingSteps",

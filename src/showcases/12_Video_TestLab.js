@@ -1,9 +1,4 @@
-import {
-    initBasicState,
-    createFramebufferWithTexture,
-    createTextureFromImage,
-    updateResolution,
-} from "./index.js";
+import {createFramebufferWithTexture, createTextureFromImage, initBasicState, updateResolution,} from "./index.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl"
 import fragmentShaderSource from "../shaders/12_video_TestLab.glsl";
@@ -282,19 +277,19 @@ const uniforms = [{
 }, {
     type: "boolean",
     name: "useReinhardMapping",
-    group: "tonemapping",
+    radio: "tonemapping",
     defaultValue: false,
     description: "apply the (most simple) \"Reinhard\" Tone Mapping",
 }, {
     type: "boolean",
     name: "useACESMapping",
-    group: "tonemapping",
+    radio: "tonemapping",
     defaultValue: false,
     description: "... or the \"ACES\" Tone Mapping",
 }, {
     type: "boolean",
     name: "useHableMapping",
-    group: "tonemapping",
+    radio: "tonemapping",
     defaultValue: false,
     description: "... or the \"John Hable / Uncharted 2\" Tone Mapping",
 }, {

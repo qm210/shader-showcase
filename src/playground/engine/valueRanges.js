@@ -4,14 +4,24 @@ export const FALLBACK_RANGE = {
 };
 
 export function isRangeValue(value) {
+    return typeof value === "number"
+        ? Number.isFinite(value)
+        : isFiniteArray(value);
+}
+
+export function isFiniteArray(value) {
     return (
-        typeof value === "number" &&
-        Number.isFinite(value)
-    ) || (
         Array.isArray(value) &&
         value.length > 0 &&
         value.every(Number.isFinite)
     );
+}
+
+export function aggregateIfArray(value, func, fallback = undefined) {
+    if (isFiniteArray(value)) {
+        return func(...value);
+    }
+    return value ?? fallback;
 }
 
 export function calcTrackValueRange(track, provider) {

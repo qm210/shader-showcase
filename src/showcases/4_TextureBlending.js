@@ -1,9 +1,4 @@
-import {
-    compile,
-    initVertices,
-    createStaticVertexBuffer,
-    createTextureFromImage,
-} from "./index.js";
+import {compile, createStaticVertexBuffer, createTextureFromImage, initVertices,} from "./index.js";
 
 import vertexShaderSource from "../shaders/vertex.basic.glsl";
 import fragmentShaderSource from "../shaders/4_textureBlending.glsl";
@@ -82,13 +77,13 @@ export default {
         }, {
             type: "bool",
             name: "decodeSRGB",
-            group: "srgb",
+            radio: "srgb",
             description: "",
             defaultValue: true,
         }, {
             type: "bool",
             name: "compareDecodeSRGB",
-            group: "srgb",
+            radio: "srgb",
             description: "",
             defaultValue: false,
         }, {
@@ -96,55 +91,55 @@ export default {
         }, {
             type: "bool",
             name: "blendMixHalf",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: true,
         }, {
             type: "bool",
             name: "blendMixByLumi",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendMultiply",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendMinimum",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendMaximum",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendScreen",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendOverlay",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendAdditive",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {
             type: "bool",
             name: "blendSoftLight",
-            group: "blendMode",
+            radio: "blendMode",
             description: "",
             defaultValue: false,
         }, {

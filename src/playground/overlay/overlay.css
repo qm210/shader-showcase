@@ -110,6 +110,11 @@
     gap: var(--overlay-gap);
 }
 
+#playground-overlay .panel-header-actions {
+    display: flex;
+    gap: 1ch;
+}
+
 #playground-overlay .action-bar {
     grid-area: actions;
     display: flex;
@@ -127,15 +132,13 @@
     font-weight: 600;
 }
 
-/* Shared buttons and fields */
-
 #playground-overlay .btn {
-    padding: 0.3em 0.65em;
+    padding: 0.1em 0.1em 0.2em;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: rgba(60, 80, 180, 0.3);
     color: #cde;
-    font-size: 0.875em;
+    font-size: 1em;
     line-height: 1.3;
     white-space: nowrap;
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
@@ -164,6 +167,12 @@
 
 #playground-overlay .btn.subtle:hover {
     opacity: 1;
+}
+
+#playground-overlay .btn.danger {
+    border-color: rgba(255, 100, 100, 0.4);
+    background: rgba(255, 80, 80, 0.1);
+    color: #faa;
 }
 
 #playground-overlay .btn.danger:hover {
@@ -362,13 +371,22 @@
     align-self: flex-start;
     display: flex;
     flex-direction: column;
-    gap: 0.35em;
+    gap: 0.25em;
     justify-content: center;
 }
 
 #playground-overlay .track-actions-col .btn {
     width: 100%;
     text-align: center;
+    font-size: 0.95em;
+    padding: 0.1em 0.15em 0.2em;
+}
+
+/* Hide Copy, Rescale and Clear buttons when track is not selected */
+#playground-overlay .track-wrapper:not(.selected) .track-actions-col .btn[data-action="copy-track"],
+#playground-overlay .track-wrapper:not(.selected) .track-actions-col .btn[data-action="rescale-track"],
+#playground-overlay .track-wrapper:not(.selected) .track-actions-col .btn[data-action="clear-track"] {
+    display: none;
 }
 
 #playground-overlay .track-widget {
@@ -493,6 +511,22 @@
     accent-color: var(--overlay-accent);
 }
 
+/* Invalid target styling */
+#playground-overlay .target-row.invalid-target {
+    background: rgba(255, 80, 80, 0.1);
+}
+
+#playground-overlay .target-row.invalid-target .target-selector {
+    color: #f99;
+    text-decoration: line-through;
+    border-color: rgba(255, 80, 80, 0.4);
+}
+
+#playground-overlay .target-row.invalid-target .target-enable {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
 /* Keyframes */
 
 #playground-overlay .keyframe-strip {
@@ -573,6 +607,12 @@
     box-shadow: 0 0 0.6em rgba(255, 255, 100, 0.6);
 }
 
+#playground-overlay .keyframe-dot.shift-selected {
+    border-color: var(--overlay-accent);
+    background: rgba(120, 200, 255, 0.4);
+    box-shadow: 0 0 0.5em rgba(120, 200, 255, 0.5);
+}
+
 #playground-overlay .playhead {
     position: absolute;
     top: 0;
@@ -582,6 +622,119 @@
     background: var(--overlay-accent);
     box-shadow: 0 0 0.4em rgba(120, 200, 255, 0.5);
     pointer-events: none;
+}
+
+/* Context action bar for selected keyframe */
+#playground-overlay .context-action-bar {
+    position: absolute;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.4em 0.6em;
+    border-radius: var(--overlay-radius);
+    background: rgba(40, 48, 72, 0.97);
+    border: 1px solid var(--overlay-border);
+    box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5);
+    font-size: 0.85em;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+#playground-overlay .context-action-bar .kf-info {
+    display: flex;
+    align-items: baseline;
+    gap: 0.2em;
+    color: var(--overlay-accent);
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.95em;
+}
+
+#playground-overlay .context-action-bar .kf-time-label {
+    opacity: 0.6;
+}
+
+#playground-overlay .context-action-bar .kf-values {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0 0.3em;
+    border-left: 1px solid var(--overlay-divider);
+    border-right: 1px solid var(--overlay-divider);
+}
+
+#playground-overlay .context-action-bar .kf-field-group {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+}
+
+#playground-overlay .context-action-bar .kf-field-group label {
+    font-size: 0.8em;
+    opacity: 0.5;
+    user-select: none;
+}
+
+#playground-overlay .context-action-bar .kf-val {
+    font-family: var(--overlay-mono), monospace;
+    color: #cde;
+    min-width: 3.5em;
+    text-align: right;
+    font-size: 0.9em;
+}
+
+#playground-overlay .context-action-bar .kf-current-val {
+    width: 4.5em;
+    padding: 0.15em 0.3em;
+    border-color: var(--overlay-border);
+    background: var(--overlay-field);
+    color: #fff;
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.9em;
+}
+
+#playground-overlay .context-action-bar .kf-current-val:focus {
+    border-color: var(--overlay-accent);
+    outline: none;
+}
+
+#playground-overlay .context-action-bar .kf-transition {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+}
+
+#playground-overlay .context-action-bar .kf-transition label {
+    font-size: 0.8em;
+    opacity: 0.5;
+    user-select: none;
+}
+
+#playground-overlay .context-action-bar .kf-transition select {
+    padding: 0.15em 0.2em;
+    border-color: var(--overlay-border);
+    background: var(--overlay-field);
+    color: #cde;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+#playground-overlay .context-action-bar .kf-undo-btn {
+    padding: 0.15em 0.35em;
+    font-size: 0.9em;
+    border-color: rgba(255, 200, 100, 0.4);
+    background: rgba(255, 200, 100, 0.1);
+    color: #fc8;
+}
+
+#playground-overlay .context-action-bar .kf-undo-btn:hover {
+    border-color: rgba(255, 200, 100, 0.6);
+    background: rgba(255, 200, 100, 0.2);
+}
+
+#playground-overlay .context-action-bar .kf-undo-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
 }
 
 #playground-overlay .track-actions {
@@ -968,6 +1121,9 @@
     margin-bottom: 0.3em;
     padding-bottom: 0.25em;
     border-bottom: 1px solid rgba(255, 150, 170, 0.15);
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
 }
 
 #playground-overlay .uniform-list-body {
@@ -991,6 +1147,7 @@
 
 #playground-overlay .uniform-group {
     margin-bottom: 0.2em;
+    margin-top: 0.1em;
 }
 
 #playground-overlay .uniform-group-header.collapsed ~ .uniform-table {
@@ -999,7 +1156,8 @@
 
 .uniform-group-header {
     cursor: pointer;
-    opacity: 0.9;
+    opacity: 0.89;
+    font-size: 0.9em;
 }
 
 .uniform-group-header:hover {
@@ -1012,7 +1170,11 @@
 }
 
 .uniform-group-header.collapsed .uniform-group-arrow::before {
-    content: "▶";
+    content: "\25B6";
+}
+
+.uniform-group-header:not(.collapsed) .uniform-group-count {
+    visibility: collapse;
 }
 
 #playground-overlay .selected-section {
@@ -1120,7 +1282,7 @@
     display: flex;
 }
 
-#playground-overlay .panel-header .btn.danger.reset-btn {
+#playground-overlay .panel-header .btn.danger {
     font-size: 0.75em;
     padding: 0.15em 0.45em;
     flex-shrink: 0;

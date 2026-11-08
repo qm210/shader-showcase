@@ -1,8 +1,4 @@
-import {
-    startRenderLoop,
-    createFramebufferWithTexture,
-    takePingPongFramebuffers
-} from "../index.js";
+import {createFramebufferWithTexture, startRenderLoop, takePingPongFramebuffers} from "../index.js";
 import standardSetup from "../retired/old3_SimpleGeometry.js";
 
 // dieses Beispiel basiert auf dem bekannten "Ray Tracing In One Weekend" von Peter Shirley
@@ -59,13 +55,13 @@ export default {
             name: "disableVariationWithTime",
             defaultValue: false,
             description: "Strahlrichtung-Variation zu jeder Zeit gleich wählen",
-            group: "variation"
+            radio: "variation"
         }, {
             type: "bool",
             name: "disableVariationOverall",
             defaultValue: false,
             description: "Strahlrichtung-Variation abschalten",
-            group: "variation"
+            radio: "variation"
         }, {
             type: "bool",
             name: "disableAccumulation",

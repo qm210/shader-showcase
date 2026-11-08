@@ -2,6 +2,8 @@ import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 
 // ─── Track class ──────────────────────────────────────────────────
 
+const MAX_UNDO_STEPS = 50;
+
 export class TimelineTrack {
     constructor(name) {
         this.id = 'track_' + Math.random().toString(36).substr(2, 9);
@@ -11,6 +13,7 @@ export class TimelineTrack {
         this.keyframes = []; // [{ time, value, transition }]
         this.loop = false;
         this.duration = 0;
+        this._undoStack = [];
 
         // Recompute duration from keyframes
         this.updateDuration();
@@ -70,14 +73,68 @@ export class TimelineTrack {
         }
         if (!inserted) this.keyframes.push(kf);
 
+        this._pushUndo({ type: 'add', keyframes: [kf] });
         this.updateDuration();
         return kf;
     }
 
     /** Remove a keyframe at the given time (with tolerance) */
     removeKeyframe(time, tolerance = 0.01) {
-        this.keyframes = this.keyframes.filter(k => Math.abs(k.time - time) > tolerance);
+        const removed = [];
+        this.keyframes = this.keyframes.filter(k => {
+            if (Math.abs(k.time - time) <= tolerance) {
+                removed.push(k);
+                return false;
+            }
+            return true;
+        });
+        if (removed.length) {
+            this._pushUndo({ type: 'remove', keyframes: removed });
+        }
         this.updateDuration();
+    }
+
+    /** Undo the last action on this track. Returns true if something was undone. */
+    undo() {
+        const entry = this._undoStack.pop();
+        if (!entry) return false;
+        if (entry.type === 'add') {
+            // Remove the added keyframe(s)
+            for (const kf of entry.keyframes) {
+                this.keyframes = this.keyframes.filter(
+                    k => Math.abs(k.time - kf.time) > 0.01
+                );
+            }
+        } else if (entry.type === 'remove') {
+            // Re-insert the removed keyframe(s)
+            for (const kf of entry.keyframes) {
+                let inserted = false;
+                for (let i = 0; i < this.keyframes.length; i++) {
+                    if (kf.time < this.keyframes[i].time) {
+                        this.keyframes.splice(i, 0, kf);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) this.keyframes.push(kf);
+            }
+        } else if (entry.type === 'edit') {
+            // Restore previous keyframe state
+            for (const { index, prev } of entry.keyframes) {
+                if (this.keyframes[index]) {
+                    this.keyframes[index] = prev;
+                }
+            }
+        }
+        this.updateDuration();
+        return true;
+    }
+
+    _pushUndo(entry) {
+        this._undoStack.push(entry);
+        if (this._undoStack.length > MAX_UNDO_STEPS) {
+            this._undoStack.shift();
+        }
     }
 
     /** Get interpolated value for a specific target uniform at current time */
