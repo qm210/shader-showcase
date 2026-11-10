@@ -24,11 +24,11 @@ export function aggregateIfArray(value, func, fallback = undefined) {
     return value ?? fallback;
 }
 
-export function calcTrackValueRange(track, provider) {
+export function calcTrackValueRange(track, context) {
     let [min, max] = [0, 1];
     for (const target of track.targets) {
         if (target.enabled && target.uniformName) {
-            const range = provider.getControlRange(target.uniformName);
+            const range = context.getControlRange(target.uniformName);
             const tMin = Array.isArray(range.min)
                 ? FALLBACK_RANGE.min : range.min;
             const tMax = Array.isArray(range.max)

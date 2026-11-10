@@ -28,7 +28,7 @@
     overflow: hidden;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius);
-    background: rgb(from var(--overlay-bg) r g b / 95%);
+    background: rgb(from var(--overlay-bg) r g b / 98%);
     box-shadow: 0 0.3em 1.5em rgba(0, 0, 0, 0.4);
     color: var(--overlay-text);
     font-family: "Segoe UI", system-ui, sans-serif;
@@ -133,7 +133,7 @@
 }
 
 #playground-overlay .btn {
-    padding: 0.1em 0.1em 0.2em;
+    padding: 0.1em 0.4em 0.2em;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: rgba(60, 80, 180, 0.3);
@@ -352,10 +352,9 @@
 #playground-overlay .track-targets-col {
     min-width: 10em;
     max-width: 35em;
-    border: 1px solid var(--overlay-divider);
     display: flex;
     flex-direction: column;
-    gap: 0.25em;
+    gap: 0.15em;
 }
 
 #playground-overlay .track-targets-col .add-target-btn {
@@ -365,6 +364,7 @@
 
 #playground-overlay .track-targets-col .target-row {
     margin-bottom: 0;
+    padding: 0;
 }
 
 #playground-overlay .track-actions-col {
@@ -470,7 +470,6 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.4em;
     margin-bottom: 0.35em;
     padding: 0.3em 0.4em;
     border-radius: var(--overlay-radius-sm);
@@ -479,7 +478,8 @@
 #playground-overlay .target-row .target-selector {
     min-width: 0;
     font-family: var(--overlay-mono), monospace;
-    font-size: 0.875em;
+    font-size: 0.8em;
+    margin-inline-start: 0.3rem;
 }
 
 #playground-overlay .target-name {
@@ -488,7 +488,7 @@
     overflow: hidden;
     color: #adf;
     font-family: var(--overlay-mono), monospace;
-    font-size: 0.875em;
+    font-size: 0.83em;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1308,13 +1308,7 @@
     color: #fff;
 }
 
-/* Do not hide the overlay itself: keep its draggable header visible. */
-#playground-overlay.collapsed {
-    width: auto;
-    min-width: min(12em, calc(100vw - 2em));
-}
-
-#playground-overlay.collapsed > :not(.panel-header) {
+#playground-overlay.hidden {
     display: none;
 }
 

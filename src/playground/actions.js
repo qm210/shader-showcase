@@ -1,12 +1,7 @@
-/**
- * Action constants and the central action dispatcher for the playground overlay.
- * All `data-action` attributes should reference these constants to avoid magic strings.
- */
-
 import {timelineSpan} from "./engine/math.js";
 
 export const ACTION = Object.freeze({
-    MINIMIZE: 'minimize',
+    HIDE_OVERLAY: 'hide-overlay',
     PLAY: 'play',
     ADD_TRACK: 'add-track',
     EXPORT: 'export',
@@ -31,15 +26,11 @@ export const ACTION = Object.freeze({
     LOAD_SNAPSHOT: 'load-snapshot',
 });
 
-/**
- * Execute an action on the overlay instance.
- * This replaces the inline `_runAction` switch-case in `Overlay`.
- */
-export function runAction(overlay, action, data) {
-    switch (action) {
-        case ACTION.MINIMIZE:
-            overlay.element.classList.toggle('collapsed');
-            overlay._scheduleSave();
+
+export function runAction(overlay, data) {
+    switch (data.action) {
+        case ACTION.HIDE_OVERLAY:
+            overlay.element.classList.toggle("hidden");
             break;
 
         case ACTION.PLAY:

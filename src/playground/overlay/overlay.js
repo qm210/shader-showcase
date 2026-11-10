@@ -12,7 +12,7 @@ import {timelineSpan} from "../engine/math.js";
 import {runAction} from "../actions.js";
 import {CHAR, DELAY_MS, STORAGE_KEY} from '../../app/constants.js';
 import {injectGlobalCSS} from "../../app/dom/utils.js";
-import {isRangeValue} from "../engine/valueRanges.js";
+import {calcTrackValueRange, isRangeValue} from "../engine/valueRanges.js";
 import {clamp} from "../../app/algorithms.js";
 import STYLESHEET from './overlay.css?inline';
 import {collectStorageJson, readStoredState} from "./storage.js";
@@ -300,12 +300,13 @@ export class Overlay {
     }
 
     _onClick(e) {
-        // Prevent normal click behavior when shift-drag is active
-        if (this._shiftDragActive) return;
+        if (this._shiftDragActive) {
+            return;
+        }
 
-        const actionEl = e.target.closest('[data-action]');
-        if (actionEl) {
-            runAction(this, actionEl.dataset.action, actionEl.dataset);
+        const actionData = e.target.closest('[data-action]')?.dataset;
+        if (actionData) {
+            runAction(this, actionData);
             return;
         }
 
@@ -319,28 +320,21 @@ export class Overlay {
             return;
         }
 
-        // Click on strip background to place a keyframe at click position
         const strip = e.target.closest('.keyframe-strip');
         if (strip) {
             const track = this.engine.getTrack(strip.dataset.trackId);
-            if (!track) return;
+            console.log("track?", track);
+            if (!track) {
+                return;
+            }
 
             // If no targets, add a default one so we can place keyframes
             if (!track.targets.length) {
-                track.addTarget('default', -1, 1);
+                track.addTarget("default", -1, 1);
             }
 
             // Find enabled target's min/max range
-            let minVal = 0, maxVal = 1;
-            for (const target of track.targets) {
-                if (target.enabled && target.uniformName) {
-                    const range = this.ctx.getControlRange(target.uniformName);
-                    const tMin = Array.isArray(range.min) ? -1 : range.min;
-                    const tMax = Array.isArray(range.max) ? 1 : range.max;
-                    minVal = Math.min(minVal, tMin);
-                    maxVal = Math.max(maxVal, tMax);
-                }
-            }
+            let [minVal, maxVal] = calcTrackValueRange(track, this.ctx);
 
             // Interpolate value from Y position (inverted: top = max, bottom = min)
             const rect = strip.getBoundingClientRect();
@@ -349,9 +343,17 @@ export class Overlay {
 
             // Calculate time from X position
             const inset = parseFloat(getComputedStyle(strip).fontSize) * 0.5;
-            const x = Math.min(1, Math.max(0, (e.clientX - rect.left - inset) / (rect.width - 2 * inset)));
+            const x = clamp(
+                (e.clientX - rect.left - inset) / (rect.width - 2 * inset),
+                0, 1
+            );
             const span = timelineSpan(this.engine);
             const time = span * x;
+
+            console.table({
+                minVal, maxVal, rect, yRatio, interpolatedValue,
+                inset, x, span, time
+            });
 
             // If this is the first keyframe and time > 0, prepend a (0, value) keyframe
             // so linear interpolation has a starting point.

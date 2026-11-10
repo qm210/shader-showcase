@@ -35,7 +35,7 @@ export function createPlaygroundOverlay() {
             </div>
             <button type="button"
                     class="minimize-btn"
-                    data-action="${ACTION.MINIMIZE}"
+                    data-action="${ACTION.HIDE_OVERLAY}"
                     title="Minimize">
                 −
             </button>
@@ -367,7 +367,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
             <div class="track-widget">
                 <div class="keyframe-strip"
                      data-track-id="${id}"
-                     title="Click to set value from Y position">
+                     title="Click to set keyframe">
                     <div class="strip-bg"></div>
                     ${dots}
                     <div class="playhead"
