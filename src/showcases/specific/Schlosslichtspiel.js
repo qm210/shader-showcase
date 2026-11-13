@@ -1,8 +1,4 @@
-import {
-    compile,
-    initVertices,
-    createStaticVertexBuffer
-} from "../index.js";
+import {compile, createStaticVertexBuffer, initVertices} from "../index.js";
 
 import vertexShaderSource from "../../shaders/vertex.basic.glsl";
 import fragmentShaderSource from "../../shaders/specific/schlosslichtspiel.fragment.glsl";
@@ -98,6 +94,9 @@ function render(gl, state) {
     gl.uniform1f(state.location.iEventOutline, state.uni.iEventOutline);
     gl.uniform1f(state.location.iEventWarp, state.uni.iEventWarp);
     gl.uniform1f(state.location.iEventOverWindows, state.uni.iEventOverWindows);
+    gl.uniform1f(state.location.iEventWindowAvoid, state.uni.iEventWindowAvoid);
+    gl.uniform1f(state.location.iEventWindowGap, state.uni.iEventWindowGap);
+    gl.uniform1f(state.location.iEventWindowReach, state.uni.iEventWindowReach);
 
     gl.uniform1f(state.location.iGlowStart, state.uni.iGlowStart);
     gl.uniform1f(state.location.iGlowRamp, state.uni.iGlowRamp);
@@ -213,6 +212,9 @@ const createUniforms = () => [
     { type: "float", name: "iEventWarp", defaultValue: 1.0, min: 0, max: 2, step: 0.01 },
     // These are float uniforms in GLSL, including this layer switch.
     { type: "float", name: "iEventOverWindows", defaultValue: 1.0, min: 0, max: 1, step: 1 },
+    { type: "float", name: "iEventWindowAvoid", defaultValue: 1.0, min: 0, max: 2, step: 0.01 },
+    { type: "float", name: "iEventWindowGap", defaultValue: 0.05, min: 0, max: 0.5, step: 0.001 },
+    { type: "float", name: "iEventWindowReach", defaultValue: 0.45, min: 0, max: 2, step: 0.01 },
 
     { separator: "Events: delayed neon / radioactive glow" },
     { type: "float", name: "iGlowStart", defaultValue: 24.0, min: 0, max: 180, step: 0.1 },
@@ -222,6 +224,8 @@ const createUniforms = () => [
     { type: "float", name: "iGlowRadius", defaultValue: 0.6, min: 0.01, max: 3, step: 0.01 },
     { type: "float", name: "iGlowFlicker", defaultValue: 0.5, min: 0, max: 1, step: 0.01 },
     { type: "float", name: "iGlowHueCycle", defaultValue: 0.08, min: -1, max: 1, step: 0.001 },
+
+
 
     { separator: "Layout dimensions (uniforms)" },
     { type: "float", name: "uLayoutNCols", defaultValue: 8.0, min: 1, max: 20, step: 1 },
@@ -254,5 +258,5 @@ const createUniforms = () => [
     { type: "vec3", name: "uColLitHi", defaultValue: [1.00, 0.85, 0.50], min: 0, max: 1, step: 0.01 },
 
     { separator: "Debug" },
-    { type: "int", name: "uDebugView", defaultValue: 0, min: 0, max: 5, step: 1 },
+    { type: "int", name: "uDebugView", defaultValue: 0, min: 0, max: 6, step: 1 },
 ];

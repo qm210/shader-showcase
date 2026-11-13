@@ -13,57 +13,66 @@ export class PlaygroundContext {
         this._elements = elements;
         this.engine = new TimelineEngine();
         this._controlMap = null;
-        this._rawControls = null;
+        this._controls = null;
         this.batches = {
             auto: [],
             custom: []
         };
-        this.setControls(controls);
-        if (state) {
-            this.initUniformValues(state);
-        }
+        this._connect(state, controls, elements);
         this._provider = this._createProvider();
         this.randomizer = new Randomizer(this._provider);
         this.overlay = new Overlay(this._provider);
     }
 
-    setControls(controls) {
-        const list = Array.isArray(controls) ? controls : controls?.uniforms;
+    _connect(state, controls, elements) {
+        const list = Array.isArray(controls)
+            ? controls
+            : controls?.uniforms;
         if (!Array.isArray(list)) {
-            console.error("Cannot setControls with:", controls);
+            console.error("Cannot connectControls:", controls);
             return;
         }
 
-        this._rawControls = list;
-        this.batches.auto = deriveAutoBatches(list);
-
+        this._controls = list;
         this._controlMap = new Map();
         for (const control of list) {
             if (control.separator || !isNumeric(control)) {
                 continue;
             }
+            const mainElements = elements.uniforms[control.name];
             this._controlMap.set(control.name, {
                 min: control.min,
                 max: control.max,
                 defaultValue: control.defaultValue,
                 type: control.type,
+                mainElements,
+            });
+            const callbacks = mainElements?.synchronize?.onChange;
+            if (!callbacks || callbacks.has("overlay")) {
+                continue;
+            }
+            callbacks.set("overlay", value => {
+                state[control.name] = value;
+                console.log("SYNC MAIN -> OVERLAY", control.name, value);
             });
         }
 
-        console.log("[PLAYGROUND] setControls(…) ->",
-            structuredClone({
-                rawControls: this._rawControls,
-                controlMap: this._controlMap,
-                batches: this.batches
-            })
-        );
+        this.batches.auto = deriveAutoBatches(list);
+
+        console.log("[PLAYGROUND] connectControls(…) ->", {
+            controls: this._controls,
+            controlMap: this._controlMap,
+            batches: structuredClone(this.batches)
+        });
+
+        this._initUniformValues(state);
     }
 
-    initUniformValues(state) {
-        if (!this._rawControls) {
+    _initUniformValues(state) {
+        if (!this._controls) {
             return;
         }
-        for (const control of this._rawControls) {
+        for (const control of this._controls) {
             if (control.separator || control.boolean) {
                 continue;
             }
@@ -101,7 +110,7 @@ export class PlaygroundContext {
         }
         // Update main page slider elements
         if (this._elements?.uniforms) {
-            updateAllSliders(this._elements, state, this._rawControls);
+            updateAllSliders(this._elements, state, this._controls);
         }
     }
 

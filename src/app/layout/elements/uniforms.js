@@ -137,9 +137,14 @@ const createInputControlElements = (control) => {
         reset: createSmallButton("reset", "reset"),
         description: null,
         updateValue: null,
+        synchronize: {
+            _lock: false,
+            onChange: new Map(),
+        }
     };
     if (control) {
         elements.value.dataset.id = control.name;
+        elements.control.dataset.uniform = control.name;
         elements.name.textContent = control.name;
     }
     elements.min.style.fontSize = "small";
@@ -275,6 +280,15 @@ function updateSlider(elements, state, control, full = false, givenValue = undef
     elements.control.value = value;
     value = toDigits(value, control);
     elements.value.textContent = ` = ${value}`;
+
+    if (elements.synchronize?._lock === false) {
+        elements.synchronize._lock = true;
+        for (const onChange of elements.synchronize.onChange.values()) {
+            onChange(value);
+        }
+        elements.synchronize._lock = false;
+    }
+
     return value;
 }
 
@@ -603,14 +617,21 @@ export function createResetAllButton(elements, state, controls) {
     return button;
 }
 
-/** Update all slider elements to reflect current state.uni values. */
 export function updateAllSliders(elements, state, controls) {
-    if (!controls?.uniforms) return;
+    if (!controls?.uniforms) {
+        return;
+    }
     for (const control of controls.uniforms) {
-        if (control.separator || control.boolean || !elements.uniforms[control.name]) continue;
+        if (control.separator || control.boolean || !elements.uniforms[control.name]) {
+            continue;
+        }
         const input = elements.uniforms[control.name];
         if (input.updateValue) {
+            // does that even make sense (this question applies to the whole function here)
+            debugger;
+            input.synchronize._lock = true;
             input.updateValue(state.uni[control.name]);
+            input.synchronize._lock = false;
         }
     }
 }

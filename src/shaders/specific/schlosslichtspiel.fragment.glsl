@@ -23,6 +23,10 @@ precision highp float;
 //  EVENTS: four simple geometries (circle, square, triangle, hexagon)
 //  fly across the facade at configurable times; after iGlowStart they
 //  turn into cyber / neon / radioactive glowing objects.
+//  With iEventWindowAvoid > 0 the shapes are geometrically warped around
+//  the windows: the part of a shape that would cover a window is split
+//  along the window's medial axis and squeezed into a band around it, so
+//  the shape never touches the glass or the frame (1 = fully, 0 = off).
 //
 //  Inputs: iResolution, iTime + the uniform blocks below. Default values
 //  are given in the comments and in hausfassade.uniforms.json. uv is
@@ -32,7 +36,7 @@ precision highp float;
 //
 //  Debugging: set uDebugView to n (1 = fBm only,
 //  2 = marble stripes only, 3 = warp field, 4 = window SDF contours,
-//  5 = event layer only).
+//  5 = event layer only, 6 = window-avoidance warp of the flyers).
 // =====================================================================
 
 out vec4 fragColor;
@@ -100,6 +104,9 @@ uniform float iEventOpacity;           // 1.0
 uniform float iEventOutline;           // 0.0    0 = filled, > 0 = ring thickness in W
 uniform float iEventWarp;              // 1.0    shapes act as obstacles for the wall structure
 uniform float iEventOverWindows;       // 1.0    1 = fly in front of the windows, 0 = behind
+uniform float iEventWindowAvoid;       // 1.0    0 = fly over the windows, 1 = warp fully around them
+uniform float iEventWindowGap;         // 0.05   clearance outside the frame (in W)
+uniform float iEventWindowReach;       // 0.45   band around a window that absorbs the warp (in W)
 uniform float iGlowStart;              // 24.0   time at which the glow begins (s)
 uniform float iGlowRamp;               // 6.0    seconds to fade the glow in
 uniform vec3  iGlowColor;              // (0.2, 1.0, 0.3)  neon / radioactive colour
@@ -142,7 +149,7 @@ uniform vec3 uColLitLo;                // default: (0.95, 0.55, 0.20)
 uniform vec3 uColLitHi;                // default: (1.00, 0.85, 0.50)
 
 // ------------------------------------------------ debug view --------------
-uniform int   uDebugView;              // 0 = off, 1..5 = debug channels
+uniform int   uDebugView;              // 0 = off, 1..6 = debug channels
 
 const vec4  c      = vec4(1, 0, -1, 0.5);
 const float pi     = 3.141593;
@@ -165,9 +172,9 @@ vec3 oklab_to_linear_srgb(vec3 oklch) {
 
     // linear sRGB
     vec3 lin = vec3(
-        +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
-        -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
-        -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_
+    +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+    -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+    -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_
     );
     return lin;
 }
@@ -414,10 +421,85 @@ float sdFlyer(int i, vec2 p) {
     return d;
 }
 
-void evalFlyers(vec2 p) {
+// p: warped sample position, cut: SDF of the region kept free (see below)
+void evalFlyers(vec2 p, float cut) {
     for (int i = 0; i < 4; i++) {
-        flyers[i].d = flyers[i].isOn > 0.5 ? sdFlyer(i, p) : 1e3;
+        flyers[i].d = flyers[i].isOn > 0.5 ? max(sdFlyer(i, p), cut) : 1e3;
     }
+}
+
+// ------------------------------------------------ window avoidance ----
+// Each window (half size h) is collapsed onto its medial axis: a point
+// on the outline at b lies rectDepth(b) away from that axis, measured
+// along the inward normal.  A pixel at distance s outside the window
+// samples the flyers at s - delta(s) along the outline normal, with
+//   delta(s) = (e + k*depth) * t^2,   t = clamp((e + R - s) / R, 0, 1)
+// i.e. pixels at s = e (frame + gap) fetch the content of the medial
+// axis, pixels at s >= e + R are untouched; delta is C1 at e + R and the
+// mapping stays monotonic (no folds).  For k = 1 every point of a shape
+// that lay over the window is pushed out through its nearest edge; for
+// 0 < k < 1 the shape is only parted along the medial axis.  Pixels
+// whose sample would cross the medial axis are cut away, so content is
+// never duplicated.  Contributions of all windows are summed, which is
+// continuous across the wall between windows.
+float rectDepth(vec2 b, vec2 h) {
+    float d = min(min(h.x, h.y), h.x + h.y - abs(b.x) - abs(b.y));
+    return max(d, 0.);
+}
+
+vec2 windowAvoidWarp(Facade f, vec2 p, out float cut) {
+    cut = -1e3;
+    float k = clamp(iEventWindowAvoid, 0., 1.);
+    if (k <= 0.) return p;
+    vec2  h = f.halfSize;
+    float e = k * (uLayoutFrameW + max(iEventWindowGap, 0.)) * f.W;
+    float R = max(iEventWindowReach, 1e-3) * f.W;
+    vec2 disp = vec2(0.);
+    for (int r = 0; r < 3; r++) {
+        for (int jj = 0; jj < int(uLayoutNCols); jj++) {
+            vec2 q = p - vec2(colCenterX(f, float(jj)), f.rowY[r]);
+            if (sdRect(q, h) > e + R) continue;
+            vec2 a = abs(q);
+            vec2 b, n;
+            float s;   // signed distance along n (< 0 inside the window)
+            if (a.x > h.x || a.y > h.y) {
+                b = clamp(q, -h, h);
+                s = length(q - b);
+                n = (q - b) / max(s, 1e-6);
+            } else if (h.x - a.x < h.y - a.y) {
+                b = vec2(sign(q.x) * h.x, q.y);
+                n = vec2(sign(q.x), 0.);
+                s = a.x - h.x;
+            } else {
+                b = vec2(q.x, sign(q.y) * h.y);
+                n = vec2(0., sign(q.y));
+                s = a.y - h.y;
+            }
+            float depth = rectDepth(b, h);
+            float t = clamp((e + R - s) / R, 0., 1.);
+            disp += n * (e + k * depth) * t * t;
+            // sample would pass the medial axis <=> s < e - (1-k)*depth.
+            // Inside the window, s is replaced by a smoothed (never
+            // smaller) distance so the halo shows no diagonal creases.
+            float sc = s;
+            if (s < 0.) {
+                float ks = k * 0.2 * min(h.x, h.y);
+                sc = -(smin(h.x - a.x, h.y - a.y, ks) + 0.25 * ks);
+            }
+            cut = max(cut, e - (1. - k) * depth - sc);
+        }
+    }
+    return p - disp;
+}
+
+float litState(vec2 idx, float t) {
+    // slowly switching lights, quickly faded between states
+    float seed = hash12(idx * 7.13 + 0.37);
+    float tt = t * iLightSwitchRate + seed * 10.;
+    float k = floor(tt);
+    float s0 = step(1. - iLitFraction, hash12(idx + k * vec2(13.1, 7.7)));
+    float s1 = step(1. - iLitFraction, hash12(idx + (k + 1.) * vec2(13.1, 7.7)));
+    return mix(s0, s1, smoothstep(0.94, 1.0, fract(tt)));
 }
 
 // ------------------------------------------------ obstacle field ------
@@ -442,8 +524,10 @@ inout float dSmooth, inout vec2 push, inout float streamK, inout float streamKL)
     streamKL += k * dot(centre * iOverallScale + iOverallNoiseShift, iMarbleSqueeze);
 }
 
-void obstacleField(Facade f, vec2 p, out float dSmooth, out vec2 push, out float streamK, out float streamKL) {
+void obstacleField(Facade f, vec2 p, out float dSmooth, out vec2 push,
+out float streamK, out float streamKL, out float spill) {
     dSmooth = 1e3;
+    spill = 0.;
     push = vec2(0.);
     streamK = 0.;
     streamKL = 0.;
@@ -454,8 +538,12 @@ void obstacleField(Facade f, vec2 p, out float dSmooth, out vec2 push, out float
         for (int jj = 0; jj < int(uLayoutNCols); jj++) {
             vec2 centre = vec2(colCenterX(f, float(jj)), f.rowY[r]);
             vec2 q = p - centre;
-            addObstacle(q, f.halfSize, sdRect(q, f.halfSize), centre, 1.,
+            float dw = sdRect(q, f.halfSize);
+            addObstacle(q, f.halfSize, dw, centre, 1.,
             kSmooth, flowR, wrapR, dSmooth, push, streamK, streamKL);
+            // light spill summed over all windows (continuous everywhere)
+            spill += litState(vec2(float(jj), float(r)), iTime)
+            * exp(-max(dw, 0.) / (0.3 * f.W));
         }
     }
     if (iEventWarp > 0.) {
@@ -502,15 +590,6 @@ vec3 wallColor(Facade f, vec2 uv, float dSmooth, vec2 push, float streamK, float
 
 // ------------------------------------------------ windows -------------
 
-float litState(vec2 idx, float t) {
-    // slowly switching lights, quickly faded between states
-    float seed = hash12(idx * 7.13 + 0.37);
-    float tt = t * iLightSwitchRate + seed * 10.;
-    float k = floor(tt);
-    float s0 = step(1. - iLitFraction, hash12(idx + k * vec2(13.1, 7.7)));
-    float s1 = step(1. - iLitFraction, hash12(idx + (k + 1.) * vec2(13.1, 7.7)));
-    return mix(s0, s1, smoothstep(0.94, 1.0, fract(tt)));
-}
 
 vec3 glassColor(Facade f, vec2 local, vec2 idx, vec2 pane) {
     vec2 n = local / f.halfSize;  // -1..1 inside the window
@@ -576,12 +655,14 @@ void main() {
     Facade f = makeFacade(asp);
     gW = f.W;
     setupFlyers(f, asp);
-    evalFlyers(uv);
+    float avoidCut;
+    vec2 flyerP = windowAvoidWarp(f, uv, avoidCut);
+    evalFlyers(flyerP, avoidCut);
 
     vec2 local, idx;
     float d = sdNearestWindow(f, uv, local, idx);
-    float dSmooth, streamK, streamKL; vec2 push;
-    obstacleField(f, uv, dSmooth, push, streamK, streamKL);
+    float dSmooth, streamK, streamKL, spill; vec2 push;
+    obstacleField(f, uv, dSmooth, push, streamK, streamKL, spill);
 
     // --- wall with morphing structure flowing around the obstacles
     vec3 col = wallColor(f, uv, dSmooth, push, streamK, streamKL);
@@ -604,7 +685,7 @@ void main() {
     col = mix(col, flyerCol.rgb, flyerCol.a * (1. - iEventOverWindows));
 
     // --- warm light spill of lit windows onto the wall
-    col += iLightSpill * litState(idx, iTime) * colLitLo() * exp(-max(d, 0.) / (0.3 * f.W));
+    col += iLightSpill * spill * colLitLo();
 
     // --- window frame
     float frameW = uLayoutFrameW * f.W;
@@ -645,6 +726,10 @@ void main() {
         if (uDebugView == 3) col = vec3(length(push) / f.W, 0.5 + 0.5 * push / f.W);
         if (uDebugView == 4) col = vec3(fract(dSmooth / f.W * 4.));
         if (uDebugView == 5) col = flyerCol.rgb * flyerCol.a + glow;
+        if (uDebugView == 6) {
+            vec2 w = (flyerP - uv) / f.W;
+            col = vec3(0.5 + 0.5 * w, 0.) * step(avoidCut, 0.);
+        }
     }
 
     fragColor = vec4(col, 1.);

@@ -4,7 +4,7 @@ function randomBetween(min, max, intensity) {
 }
 
 export class Randomizer {
-    constructor( contextProvider) {
+    constructor(contextProvider) {
         this._provider = contextProvider;
     }
 
@@ -48,30 +48,4 @@ export class Randomizer {
             return Array.isArray(value) ? (value[index] ?? value[0]) : value;
         }
     }
-
-    /** Only custom batches are persisted; auto batches come from the controls. */
-    toJSON() {
-        // Not used anymore — PlaygroundContext owns batches.
-        return [];
-    }
-
-    loadJSON(json) {
-        // Not used anymore — PlaygroundContext owns batches.
-    }
-
 }
-
-// ─── Legacy compat ──────────────────────────────────────────────
-
-let _randomizer = null;
-
-export function getUniformRandomizer(controls) {
-    if (!_randomizer) {
-        _randomizer = new Randomizer();
-    }
-    if (controls && controls instanceof Map) {
-        _randomizer.setControls(controls);
-    }
-    return _randomizer;
-}
-
