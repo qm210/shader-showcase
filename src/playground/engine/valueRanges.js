@@ -17,13 +17,6 @@ export function isFiniteArray(value) {
     );
 }
 
-export function aggregateIfArray(value, func, fallback = undefined) {
-    if (isFiniteArray(value)) {
-        return func(...value);
-    }
-    return value ?? fallback;
-}
-
 export function calcTrackValueRange(track, context) {
     let [min, max] = [0, 1];
     for (const target of track.targets) {

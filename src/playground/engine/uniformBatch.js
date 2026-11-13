@@ -1,5 +1,5 @@
 import {isNumeric} from "../../app/controls.js";
-import {aggregateIfArray, FALLBACK_RANGE, isRangeValue} from "./valueRanges.js";
+import {isRangeValue} from "./valueRanges.js";
 
 
 export class UniformBatch {
@@ -38,13 +38,7 @@ export class UniformBatch {
 
     addUniformFrom(control) {
         return this.addUniform(
-            control.name, {
-                min: aggregateIfArray(
-                    control.min, Math.min, FALLBACK_RANGE.min
-                ),
-                max: aggregateIfArray(
-                    control.max, Math.max, FALLBACK_RANGE.max
-                ),
+            control.name,{
                 type: control.type
             }
         );

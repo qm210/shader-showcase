@@ -1,24 +1,22 @@
 import {
     createContextActionBar,
     createPlaygroundOverlay,
+    MIN_TIMELINE_SPAN,
     renderContextActionBar,
     renderPlayback,
     renderPreview,
     renderRandomizerPanel,
     renderTracks
 } from './overlay.dom.js';
-import {isTypingTarget, parseRangeInput} from "./helpers.js";
+import {DEBUG, isTypingTarget, parseRangeInput} from "./helpers.js";
 import {timelineSpan} from "../engine/math.js";
-import {runAction} from "../actions.js";
+import {ACTION, runAction} from "../actions.js";
 import {CHAR, DELAY_MS, STORAGE_KEY} from '../../app/constants.js';
-import {injectGlobalCSS} from "../../app/dom/utils.js";
 import {calcTrackValueRange, isRangeValue} from "../engine/valueRanges.js";
 import {clamp} from "../../app/algorithms.js";
-import STYLESHEET from './overlay.css?inline';
 import {collectStorageJson, readStoredState} from "./storage.js";
 import {renderBatchList, renderUniformList} from "./uniforms.dom.js";
-
-export {escapeHtml, formatRange} from './helpers.js';
+import "./overlay.css";
 
 
 export class Overlay {
@@ -44,6 +42,9 @@ export class Overlay {
         this._editingBatchId = null;
         this._editingTrackId = null;
 
+        this._timeRangeStart = 0;
+        this._timeRangeEnd = MIN_TIMELINE_SPAN;
+
         // Context action bar for selected keyframe
         this.contextBar = createContextActionBar();
         this.contextBar.style.display = 'none';
@@ -68,7 +69,6 @@ export class Overlay {
     }
 
     init() {
-        injectGlobalCSS('overlay-style', STYLESHEET);
         this.createDOM();
         this.bindEvents();
         this.restoreState();
@@ -132,6 +132,7 @@ export class Overlay {
         overlay.addEventListener('dblclick', (e) => this._onDoubleClick(e));
         overlay.addEventListener('change', (e) => this._onChange(e));
         overlay.addEventListener('input', (e) => this._onInput(e));
+        overlay.addEventListener('keydown', (e) => this._onKeyDown(e));
         overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
         overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
 
@@ -323,25 +324,17 @@ export class Overlay {
         const strip = e.target.closest('.keyframe-strip');
         if (strip) {
             const track = this.engine.getTrack(strip.dataset.trackId);
-            console.log("track?", track);
+            DEBUG.table(track);
             if (!track) {
                 return;
             }
 
-            // If no targets, add a default one so we can place keyframes
-            if (!track.targets.length) {
-                track.addTarget("default", -1, 1);
-            }
-
-            // Find enabled target's min/max range
             let [minVal, maxVal] = calcTrackValueRange(track, this.ctx);
 
-            // Interpolate value from Y position (inverted: top = max, bottom = min)
             const rect = strip.getBoundingClientRect();
             const yRatio = 1 - (e.clientY - rect.top) / rect.height;
             const interpolatedValue = minVal + yRatio * (maxVal - minVal);
 
-            // Calculate time from X position
             const inset = parseFloat(getComputedStyle(strip).fontSize) * 0.5;
             const x = clamp(
                 (e.clientX - rect.left - inset) / (rect.width - 2 * inset),
@@ -386,8 +379,7 @@ export class Overlay {
         const trackWidget = e.target.closest('.track-widget');
         if (trackWidget) {
             const trackRow = trackWidget.closest('.track-wrapper');
-            const id = trackRow.dataset.trackId;
-            this.selectedTrackId = id;
+            this.selectedTrackId = trackRow.dataset.trackId;
             this.element.querySelectorAll(".track-wrapper.selected")
                 .forEach(el => el.classList.remove("selected"));
             trackRow.classList.add("selected");
@@ -575,8 +567,11 @@ export class Overlay {
     }
 
     _onBlur(e) {
-        // Confirm inline-edit on blur (click outside).
         if (this._editingTrackId && e.target.classList.contains('name')) {
+            const related = e.relatedTarget;
+            if (related?.closest(`[data-action="${ACTION.CANCEL_TRACK_NAME}"]`)) {
+                return;
+            }
             const newName = e.target.value.trim();
             if (newName) {
                 this.engine.getTrack(this._editingTrackId).name = newName;
@@ -712,6 +707,13 @@ export class Overlay {
             return;
         }
 
+        if (el.classList.contains('time-start') || el.classList.contains('time-end')) {
+            const start = parseFloat(this.ui.timeStart.value) || 0;
+            const end = parseFloat(this.ui.timeEnd.value) || 60;
+            this._setTimeRange(start, end);
+            return;
+        }
+
         if (el === this.ui.intensitySlider) {
             this.randomIntensity = parseFloat(el.value);
             this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
@@ -727,6 +729,14 @@ export class Overlay {
         // Validate uniform-list min/max inputs.
         if (el.classList.contains('uniform-min') || el.classList.contains('uniform-max')) {
             el.classList.toggle('invalid', parseRangeInput(el.value) === undefined);
+        }
+
+        // Handle uniform slider (value preview).
+        if (el.classList.contains('uniform-slider')) {
+            const tooltip = el.parentElement.querySelector('.slider-tooltip');
+            if (tooltip) {
+                tooltip.textContent = parseFloat(el.value).toFixed(2);
+            }
         }
 
         // Handle target selector input - update ranges when name changes
@@ -1036,13 +1046,40 @@ export class Overlay {
     }
 
     syncUI() {
-        this.ui.timeSlider.max = timelineSpan(this.engine);
+        const span = timelineSpan(this.engine);
+        this._timeRangeEnd = Math.max(this._timeRangeEnd, span);
+        this.ui.timeSlider.min = this._timeRangeStart;
+        this.ui.timeSlider.max = this._timeRangeEnd;
         this.ui.timeSlider.value = this.engine.currentTime;
         this.ui.timeDisplay.textContent = `${this.engine.currentTime.toFixed(1)}s`;
         this.ui.speedInput.value = this.engine.speed;
         this._syncPlayButton();
         this.ui.intensitySlider.value = this.randomIntensity;
         this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
+        this.ui.timeStart.value = this._timeRangeStart;
+        this.ui.timeEnd.value = this._timeRangeEnd;
+        this._updateTimeRangeLabels();
+    }
+
+    _setTimeRange(start, end) {
+        if (end <= start) {
+            this.ui.timeEnd.value = start + (start === 0 ? 1 : 10);
+            return;
+        }
+        this._timeRangeStart = start;
+        this._timeRangeEnd = end;
+        this.ui.timeSlider.min = start;
+        this.ui.timeSlider.max = end;
+        this.ui.timeStart.value = start;
+        this.ui.timeEnd.value = end;
+        this._updateTimeRangeLabels();
+        this.renderTimeline();
+        this._scheduleSave();
+    }
+
+    _updateTimeRangeLabels() {
+        this.ui.timeRangeStart.textContent = `${parseFloat(this.ui.timeStart.value).toFixed(1)}s`;
+        this.ui.timeRangeEnd.textContent = `${parseFloat(this.ui.timeEnd.value).toFixed(1)}s`;
     }
 
     renderTimeline() {

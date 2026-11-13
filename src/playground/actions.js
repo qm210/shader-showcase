@@ -1,4 +1,5 @@
 import {timelineSpan} from "./engine/math.js";
+import {DEBUG} from "./overlay/helpers.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: 'hide-overlay',
@@ -17,7 +18,6 @@ export const ACTION = Object.freeze({
     ADD_UNIFORM: 'add-uniform',
     REMOVE_UNIFORM: 'remove-uniform',
     RANDOMIZE: 'randomize',
-    CONFIRM_TRACK_NAME: 'confirm-track-name',
     CANCEL_TRACK_NAME: 'cancel-track-name',
     CLEAR_TRACK: 'clear-track',
     RESCALE_TRACK: 'rescale-track',
@@ -26,8 +26,9 @@ export const ACTION = Object.freeze({
     LOAD_SNAPSHOT: 'load-snapshot',
 });
 
-
 export function runAction(overlay, data) {
+    DEBUG.log("runAction:", data);
+    
     switch (data.action) {
         case ACTION.HIDE_OVERLAY:
             overlay.element.classList.toggle("hidden");
@@ -209,22 +210,6 @@ export function runAction(overlay, data) {
             }
             break;
 
-        case ACTION.CONFIRM_TRACK_NAME: {
-            const input = overlay.element.querySelector(`.track-wrapper[data-track-id="${CSS.escape(data.trackId)}"] .field.name`);
-            if (input) {
-                const name = input.value.trim();
-                if (name) {
-                    const track = overlay.engine.getTrack(data.trackId);
-                    if (track) {
-                        track.name = name;
-                    }
-                }
-            }
-            overlay._editingTrackId = null;
-            overlay.renderTimeline();
-            break;
-        }
-
         case ACTION.CANCEL_TRACK_NAME:
             overlay._editingTrackId = null;
             overlay.renderTimeline();
@@ -289,8 +274,7 @@ export function runAction(overlay, data) {
 
         case ACTION.LOAD_SNAPSHOT: {
             // Load current uniform values from the main page's state.uni into the engine overrides
-            overlay.ctx.loadSnapshotFromState();
-            const snapshot = overlay.ctx.getSnapshot();
+            const snapshot = overlay.ctx.loadSnapshotFromState();
             if (!snapshot) {
                 console.warn('[PLAYGROUND] No snapshot available. Click Load Snapshot again.');
                 return;

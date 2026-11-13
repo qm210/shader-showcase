@@ -1,4 +1,4 @@
-import {escapeHtml} from './helpers.js';
+import {escape} from './helpers.js';
 import {ACTION} from '../actions.js';
 import {percentOfSpan, timelineSpan} from "../engine/math.js";
 import {calcTrackValueRange} from "../engine/valueRanges.js";
@@ -97,6 +97,22 @@ export function createPlaygroundOverlay() {
         <div class="track-list">
             <div class="value-preview">
             </div>
+            <div class="time-range-bar">
+                <div class="time-range-labels">
+                    <span class="time-range-start">0.0s</span>
+                    <span class="time-range-end">60.0s</span>
+                </div>
+                <input type="range"
+                       class="time-slider"
+                       min="0"
+                       max="60"
+                       step="0.1"
+                       value="0">
+                <div class="time-range-controls">
+                    <label>Start: <input type="number" class="field num time-start" min="0" step="1" value="0"></label>
+                    <label>End: <input type="number" class="field num time-end" min="1" step="1" value="60"></label>
+                </div>
+            </div>
         </div>
 
         <div class="uniform-list-panel">
@@ -164,6 +180,10 @@ export function createPlaygroundOverlay() {
             playBtn: overlay.querySelector('.play-btn'),
             timeSlider: overlay.querySelector('.time-slider'),
             timeDisplay: overlay.querySelector('.time-display'),
+            timeStart: overlay.querySelector('.time-start'),
+            timeEnd: overlay.querySelector('.time-end'),
+            timeRangeStart: overlay.querySelector('.time-range-start'),
+            timeRangeEnd: overlay.querySelector('.time-range-end'),
             speedInput: overlay.querySelector('.speed-input'),
             trackList: overlay.querySelector('.track-list'),
             preview: overlay.querySelector('.value-preview'),
@@ -257,7 +277,9 @@ export function renderContextActionBar(bar, kf, track, surrounding) {
 export function renderTracks(ui, provider, selectedTrackId, editingTrackId, collapsedTrackIds, selectedKeyframe) {
     const { trackList } = ui;
     const engine = provider.engine;
-    trackList.innerHTML = '';
+    // Preserve time-range-bar, clear only track items
+    const timeRangeBar = trackList.querySelector('.time-range-bar');
+    trackList.querySelectorAll('.track-wrapper').forEach(w => w.remove());
     ui.timeSlider.max = timelineSpan(engine);
 
     // Build set of known uniform/batch names for validation
@@ -267,7 +289,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
     }
 
     for (const track of engine.getAllTracks()) {
-        const id = escapeHtml(track.id);
+        const id = escape(track.id);
 
         // Build target rows: show filled targets + one empty row at the end
         const targetRows = [];
@@ -290,7 +312,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
                            class="field target-selector"
                            list="${DATALIST.UNIFORMS}"
                            placeholder="Uniform name"
-                           value="${escapeHtml(target.uniformName)}"
+                           value="${escape(target.uniformName)}"
                            data-track-id="${id}"
                            data-target-idx="${i}"
                            spellcheck="false"
@@ -329,7 +351,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
 
         const dots = track.keyframes.map((kf, i) => {
             const selected = selectedKeyframe?.trackId === track.id && selectedKeyframe.kfIndex === i;
-            const title = escapeHtml(`t=${kf.time.toFixed(1)}s, val=${kf.value}, ${kf.transition}`);
+            const title = escape(`t=${kf.time.toFixed(1)}s, val=${kf.value}, ${kf.transition}`);
             return (
                 `<div class="keyframe-dot${selected ? ' selected' : ''}"
                       data-track-id="${id}"
@@ -342,21 +364,17 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
 
         const nameCol = editingTrackId === track.id
             ? `<input class="field name"
-                      value="${escapeHtml(track.name)}"
+                      value="${escape(track.name)}"
                       data-track-id="${id}"
                       spellcheck="false"
                       autocomplete="off">
-               <button type="button"
-                       class="btn subtle confirm-name"
-                       data-action="${ACTION.CONFIRM_TRACK_NAME}"
-                       data-track-id="${id}">${CHAR.CHECK}</button>
                <button type="button"
                        class="btn subtle cancel-name"
                        data-action="${ACTION.CANCEL_TRACK_NAME}"
                        data-track-id="${id}">${CHAR.X_MARK}</button>`
             : `<span class="track-name name"
                      data-track-id="${id}">
-                    ${escapeHtml(track.name)}
+                    ${escape(track.name)}
                 </span>`;
 
         const cols = `
@@ -372,9 +390,9 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
                     ${dots}
                     <div class="playhead"
                          style="left:${percentOfSpan(engine.currentTime, timelineSpan(engine))}"></div>
-                    <span class="range-label max-label">${escapeHtml(trackMax.toFixed(2))}</span>
+                    <span class="range-label max-label">${escape(trackMax.toFixed(2))}</span>
                     <span class="zero-marker">0</span>
-                    <span class="range-label min-label">${escapeHtml(trackMin.toFixed(2))}</span>
+                    <span class="range-label min-label">${escape(trackMin.toFixed(2))}</span>
                 </div>
             </div>
             <div class="track-actions-col">
@@ -431,7 +449,7 @@ export function renderPreview(ui, engine) {
             ? `[${val.map(v => v.toFixed(3)).join(', ')}]`
             : val.toFixed(4);
         return `<div class="val-line">
-                    <span class="val-name">${escapeHtml(name)}</span>
+                    <span class="val-name">${escape(name)}</span>
                     <span class="val-num">${displayVal}</span>
                 </div>`;
     });
@@ -470,11 +488,11 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
         const isSelected = target.id === selectedBatchId;
         return `
             <div class="selector-item${isSelected ? ' selected' : ''}"
-                 data-target-id="${escapeHtml(target.id)}">
+                 data-target-id="${escape(target.id)}">
                 <span class="selector-icon">${
                     target.type === 'batch' ? CHAR.BULLET_BATCH : CHAR.BULLET_UNIFORM
                 }</span>
-                <span class="selector-name">${escapeHtml(target.name)}</span>
+                <span class="selector-name">${escape(target.name)}</span>
             </div>
         `;
     }).join('');
@@ -492,7 +510,7 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
 
     // Uniform name suggestions.
     uniformNames.innerHTML = provider.getKnownUniformNames()
-        .map(name => `<option value="${escapeHtml(name)}"></option>`)
+        .map(name => `<option value="${escape(name)}"></option>`)
         .join('');
 
     return { selectedBatchId };

@@ -1,4 +1,3 @@
-
 export default function initLayout(rootId) {
 
     const root = document.getElementById(rootId);
@@ -67,19 +66,6 @@ function emptyDiv({id, className}) {
     return element;
 }
 
-export function setFromUrlParameters(paramMap) {
-    const urlParams = new URLSearchParams(window.location.search);
-    for (const paramName in paramMap) {
-        const paramValue = urlParams.get(paramName);
-        if (!paramValue) {
-            // not given in url
-            continue;
-        }
-        const cssProperty = paramMap[paramName];
-        document.documentElement.style.setProperty(cssProperty, paramValue);
-    }
-}
-
 function keepScrollPosition(element, storageKey) {
     let debounceTimer;
     element.addEventListener("scroll", () => {
@@ -101,4 +87,10 @@ function keepScrollPosition(element, storageKey) {
             300
         );
     });
+}
+
+const _params = new URLSearchParams(window.location.search);
+
+export function urlSearchParam(name) {
+    return _params.get(name);
 }

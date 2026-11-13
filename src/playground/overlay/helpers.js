@@ -1,6 +1,6 @@
+import {urlSearchParam} from "../../app/layout/page.js";
 
-
-export function escapeHtml(value) {
+export function escape(value) {
     return String(value)
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
@@ -33,3 +33,12 @@ export function isTypingTarget(target) {
         target?.closest?.('input, select, textarea, button, [contenteditable="true"]')
     );
 }
+
+const _debug = urlSearchParam("debug");
+
+export const DEBUG = {
+    log: (...args) =>
+        _debug && console.log("[DEBUG]", ...args),
+    table: (arg) =>
+        _debug && console.table(arg),
+};

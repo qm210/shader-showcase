@@ -45,6 +45,7 @@ export class PlaygroundContext {
                 max: control.max,
                 defaultValue: control.defaultValue,
                 type: control.type,
+                getValue: () => state.uni[control.name],
                 mainElements,
             });
             const callbacks = mainElements?.synchronize?.onChange;
@@ -52,7 +53,7 @@ export class PlaygroundContext {
                 continue;
             }
             callbacks.set("overlay", value => {
-                state[control.name] = value;
+                state.uni[control.name] = value;
                 console.log("SYNC MAIN -> OVERLAY", control.name, value);
             });
         }
@@ -142,6 +143,7 @@ export class PlaygroundContext {
         }
         this._snapshot = snapshot;
         console.log('[PLAYGROUND] Snapshot loaded:', snapshot);
+        return snapshot;
     }
 
     getSnapshot() {
@@ -160,8 +162,13 @@ export class PlaygroundContext {
 
         const components = [control?.defaultValue, min, max]
             .find(Array.isArray)?.length ?? 1;
-        
-        return { min, max, components };
+
+        return {
+            min,
+            max,
+            components,
+            value: control?.getValue()
+        };
     }
 
 

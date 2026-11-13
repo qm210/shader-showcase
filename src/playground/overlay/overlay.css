@@ -220,7 +220,6 @@
 
 #playground-overlay input[type="range"] {
     --slider-color: var(--overlay-accent);
-    flex: 1 1 10em;
     min-width: 0;
     height: 0.3em;
     margin: 0.5em 0;
@@ -232,6 +231,10 @@
     -webkit-appearance: none;
     appearance: none;
     cursor: pointer;
+}
+
+#playground-overlay input[type="range"].uniform-slider {
+    flex: 1 1 10em;
 }
 
 #playground-overlay input[type="range"]::-webkit-slider-thumb {
@@ -281,6 +284,46 @@
     background: rgba(255, 255, 255, 0.03);
     scrollbar-width: thin;
     scrollbar-color: var(--overlay-border) rgba(255, 255, 255, 0.1);
+}
+
+#playground-overlay .time-range-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+    padding: 0.4em 0.6em;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--overlay-radius-sm);
+}
+
+#playground-overlay .time-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7em;
+    font-family: var(--overlay-mono), monospace;
+    color: rgba(200, 220, 255, 0.5);
+    pointer-events: none;
+}
+
+#playground-overlay .time-range-bar .time-slider {
+    width: 100%;
+}
+
+#playground-overlay .time-range-controls {
+    display: flex;
+    gap: 1em;
+    font-size: 0.75em;
+    color: rgba(200, 220, 255, 0.6);
+}
+
+#playground-overlay .time-range-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+#playground-overlay .time-range-controls .field.num {
+    width: 4em;
 }
 
 #playground-overlay .track-list:empty {
@@ -420,7 +463,7 @@
 }
 
 #playground-overlay .track-wrapper.selected .track-name {
-    color: #acf;
+    color: #def;
 }
 
 #playground-overlay .track-name:hover {
@@ -511,7 +554,11 @@
     accent-color: var(--overlay-accent);
 }
 
-/* Invalid target styling */
+#playground-overlay .target-row .btn {
+    min-width: 1em;
+    padding-inline: 0.2em;
+}
+
 #playground-overlay .target-row.invalid-target {
     background: rgba(255, 80, 80, 0.1);
 }
@@ -551,15 +598,16 @@
     );
 }
 
-/* Range labels on the left edge */
 #playground-overlay .keyframe-strip .range-label {
     position: absolute;
-    left: -4em;
+    right: 100%;
+    margin-right: 0.9ch;
     font-size: 0.7em;
     font-family: var(--overlay-mono), monospace;
     color: rgba(200, 220, 255, 0.6);
     pointer-events: none;
     white-space: nowrap;
+    text-align: right;
 }
 
 #playground-overlay .keyframe-strip .range-label.max-label {
@@ -572,13 +620,15 @@
 
 #playground-overlay .keyframe-strip .zero-marker {
     position: absolute;
-    left: -3.5em;
+    right: 100%;
+    margin-right: 0.3em;
     top: 50%;
     transform: translateY(-50%);
     font-size: 0.65em;
     font-family: var(--overlay-mono), monospace;
     color: rgba(200, 220, 255, 0.4);
     pointer-events: none;
+    text-align: right;
 }
 
 #playground-overlay .keyframe-dot {
@@ -973,6 +1023,7 @@
 #playground-overlay .intensity-slider {
     --slider-color: var(--overlay-pink);
     background: rgba(255, 150, 170, 0.2);
+    max-width: 20%;
 }
 
 #playground-overlay .intensity-value {
@@ -1216,6 +1267,25 @@
     background: rgba(255, 255, 255, 0.04);
 }
 
+/* Vector component sub-rows */
+#playground-overlay .uniform-row-component {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#playground-overlay .uniform-row-component:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+#playground-overlay .uniform-row-component .cell-name {
+    padding-left: 1em;
+}
+
+#playground-overlay .uniform-row-component .component-placeholder {
+    display: block;
+    width: 1em;
+    height: 1em;
+}
+
 #playground-overlay .cell-check {
     width: 1.8em;
     padding-right: 0.2em !important;
@@ -1249,6 +1319,83 @@
 #playground-overlay .cell-max {
     width: 5em;
     padding: 0 !important;
+}
+
+#playground-overlay .cell-value {
+    width: 6em;
+    padding: 0 !important;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#playground-overlay .slider-tooltip {
+    position: absolute;
+    top: -1.4em;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.1em 0.35em;
+    border-radius: var(--overlay-radius-sm);
+    background: rgba(40, 50, 80, 0.95);
+    border: 1px solid var(--overlay-border);
+    color: var(--overlay-accent);
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.8em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 1;
+}
+
+#playground-overlay .cell-value:hover .slider-tooltip {
+    opacity: 1;
+}
+
+#playground-overlay .uniform-slider {
+    --slider-color: var(--overlay-accent);
+    width: 100%;
+    height: 0.3em;
+    margin: 0.25em 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1em;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px transparent;
+    font-size: 1em;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+#playground-overlay .uniform-slider::-webkit-slider-thumb {
+    width: 0.85em;
+    height: 0.85em;
+    border: 0;
+    border-radius: 50%;
+    background: var(--slider-color);
+    box-shadow: 0 0 0.4em rgba(120, 200, 255, 0.4);
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+#playground-overlay .uniform-slider::-moz-range-thumb {
+    width: 0.85em;
+    height: 0.85em;
+    border: 0;
+    border-radius: 50%;
+    background: var(--slider-color);
+    box-shadow: 0 0 0.4em rgba(120, 200, 255, 0.4);
+    cursor: pointer;
+}
+
+#playground-overlay .uniform-slider:focus,
+#playground-overlay .uniform-slider:active {
+    box-shadow: 0 0 0 2px var(--overlay-accent);
+    outline: none;
 }
 
 #playground-overlay .uniform-table input.uniform-min,
