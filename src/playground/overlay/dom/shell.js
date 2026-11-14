@@ -42,29 +42,34 @@ function headerTemplate() {
     return `
         <div class="panel-header"
              data-drag-handle>
+            ${actionButton({
+                action: ACTION.RESET,
+                label: `${CHAR.TRASH} Clear`,
+                className: 'btn danger',
+                title: 'Reset the whole Uniform Playground - erase everything!',
+            })}             
             <span class="title">Uniform Playground</span>
             <div class="panel-header-actions">
-                <div class="uniform-snaphot">
-                    <span>Uniforms:</span>
-                    ${actionButton({
-                        action: ACTION.RESET,
-                        label: 'Reset',
-                        className: 'btn danger reset-btn',
-                        title: 'Clear all tracks, batches, values '
-                            + 'and the stored overlay state',
-                    })}
-                    ${actionButton({
-                        action: ACTION.LOAD_SNAPSHOT,
-                        label: 'Load Snapshot',
-                        className: 'btn danger load-snapshot-btn',
-                        title: 'Load current uniform values '
-                            + 'from main page sliders',
-                    })}
-                </div>
                 <div class="track-list-export">
                     <span>Timeline:</span>
                     ${actionButton({action: ACTION.EXPORT, label: 'Export'})}
                     ${actionButton({action: ACTION.IMPORT, label: 'Import'})}
+                </div>
+                <div class="uniform-snaphot">
+                    <span>Uniform Snapshot:</span>
+                    ${actionButton({
+                        action: ACTION.LOAD_SNAPSHOT,
+                        label: 'Load Current',
+                        className: 'btn danger',
+                        title: 'Load current uniform values '
+                            + 'from main page sliders',
+                    })}
+                    ${actionButton({
+                        action: ACTION.RESET_SNAPSHOT,
+                        label: 'Back to Last',
+                        className: 'btn danger',
+                        title: 'Set all uniform values to most recent snapshot',
+                    })}
                 </div>
             </div>
             ${actionButton({

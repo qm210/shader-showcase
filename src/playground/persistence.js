@@ -10,7 +10,7 @@ export function collectStorageJson(overlay) {
         collapsedTracks: [...overlay.track.collapsedIds]
             .filter(overlay.engine.getTrack),
         timeline: {
-            ...overlay.engine.toJSON(),
+            ...overlay.engine.timelineToJSON(),
             playing: false
         },
         overrides: overlay.engine.getOverrides(),

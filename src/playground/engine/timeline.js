@@ -2,20 +2,25 @@ import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
 import {FALLBACK_RANGE} from "./valueRanges.js";
 
+/**
+ *  TODO: think ~ should the keyframeKey come from the index?
+ *              ~ can the index change when dragged? hmhmhmmmm...
+ */
+export function keyframeKey(trackId, kfIndex) {
+    return `${trackId}:${kfIndex}`;
+}
+
 const MAX_UNDO_STEPS = 50;
 
 export class TimelineTrack {
     constructor(name) {
         this.id = 'track_' + Math.random().toString(36).substr(2, 9);
         this.name = name;
-        // List of target uniforms this track drives
-        this.targets = []; // [{ uniformName, minValue, maxValue, enabled }]
-        this.keyframes = []; // [{ time, value, ease }]
+        this.targets = [];
+        this.keyframes = [];
         this.loop = false;
         this.duration = 0;
         this._undoStack = [];
-
-        // Recompute duration from keyframes
         this.updateDuration();
     }
 
@@ -24,7 +29,9 @@ export class TimelineTrack {
             this.duration = 0;
             return;
         }
-        this.duration = Math.max(...this.keyframes.map(k => k.time));
+        this.duration = Math.max(
+            ...this.keyframes.map(k => k.time)
+        );
     }
 
     addTarget(uniformName, minValue = undefined, maxValue = undefined) {
@@ -190,113 +197,10 @@ export class TimelineTrack {
     }
 }
 
-// ─── Timeline Engine class ────────────────────────────────────────
-
-export class TimelineEngine {
-    constructor() {
-        this.tracks = new Map(); // id -> TimelineTrack
-        this.currentTime = 0;
-        this.playing = false;
-        this.speed = 1.0;
-        this.baseTime = 0; // offset for shader iTime sync
-        this.onUpdate = null; // callback: (engine) => void, called every frame
-        this._overrides = {};
-    }
-
-    reset() {
-        this.tracks.clear();
-        this.currentTime = 0;
-        this.playing = false;
-        this.speed = 1.0;
-        this.baseTime = 0;
-        this._overrides = {};
-    }
-
-    addTrack(name) {
-        const track = new TimelineTrack(name);
-        this.tracks.set(track.id, track);
-        return track;
-    }
-
-    removeTrack(id) {
-        this.tracks.delete(id);
-    }
-
-    getTrack(id) {
-        return this.tracks.get(id);
-    }
-
-    getAllTracks() {
-        return Array.from(this.tracks.values());
-    }
-
-    update(dt) {
-        if (!this.playing) return;
-        this.currentTime += dt * this.speed;
-
-        // Auto-loop tracks that exceed their duration
-        for (const track of this.tracks.values()) {
-            if (track.loop && track.duration > 0 && this.currentTime > track.duration) {
-                this.currentTime -= track.duration;
-            }
-        }
-
-        if (this.onUpdate) this.onUpdate(this);
-    }
-
-    getUniformValues() {
-        const result = {};
-        for (const track of this.tracks.values()) {
-            const vals = track.getAllValues(this.currentTime);
-            Object.assign(result, vals);
-        }
-        return result;
-    }
-
-    setUniformValue(uniformName, value) {
-        this._overrides[uniformName] = value;
-    }
-
-    getOverrides() {
-        return { ...this._overrides };
-    }
-
-    getAllUniformValues() {
-        return Object.assign(this.getUniformValues(), this._overrides);
-    }
-
-    clearOverrides() {
-        this._overrides = {};
-    }
-
-    toJSON() {
-        const tracks = [];
-        for (const track of this.tracks.values()) {
-            tracks.push(track.toJSON());
-        }
-        return {
-            currentTime: this.currentTime,
-            playing: this.playing,
-            speed: this.speed,
-            baseTime: this.baseTime,
-            tracks,
-        };
-    }
-
-    loadJSON(json) {
-        this.reset();
-        this.currentTime = Number(json?.currentTime) || 0;
-        this.playing = Boolean(json?.playing);
-        this.speed = Number(json?.speed) || 1.0;
-        this.baseTime = Number(json?.baseTime) || 0;
-        for (const trackJson of json?.tracks ?? []) {
-            const track = TimelineTrack.fromJSON(trackJson);
-            this.tracks.set(track.id, track);
-        }
-        return this;
-    }
-
-    static fromJSON(json) {
-        return new TimelineEngine().loadJSON(json);
-    }
+export function parseKeyframeKey(key) {
+    const sep = key.lastIndexOf(':');
+    return {
+        trackId: key.slice(0, sep),
+        kfIndex: parseInt(key.slice(sep + 1), 10),
+    };
 }

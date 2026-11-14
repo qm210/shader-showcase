@@ -11,7 +11,7 @@ export class Randomizer {
     randomizeBatch(batch, intensity, provider) {
         const values = this.getBatchRandomValues(batch, intensity);
         for (const [name, value] of Object.entries(values)) {
-            provider.engine.setUniformValue(name, value);
+            provider.engine.setUniformOverride(name, value);
         }
         return values;
     }

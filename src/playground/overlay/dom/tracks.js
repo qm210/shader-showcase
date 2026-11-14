@@ -220,16 +220,18 @@ function valueLine(target, min, max, currentValue) {
 function keyframeStrip(track, provider, view, selectedKeyframes) {
     const [min, max] = calcTrackValueRange(track, provider);
     const playhead = stripPosition(provider.engine.currentTime, view);
-    const values = provider.engine.getAllUniformValues();
+    const values = provider.engine.getUniformBaseValues();
     const uniformLines = track.targets
         .filter(t => t.uniformName)
         .map(t => valueLine(t, min, max, values))
         .join('');
     const keyframes = keyframeDots(track, view, selectedKeyframes, min, max);
+    const showHint = track.keyframes.length === 0 ? "Click to set keyframe" : "";
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
-             title="Click to set keyframe">
+             title="${showHint}"
+             >
             <div class="strip-bg"></div>
             ${curveLines(track, view, min, max)}
             ${keyframes}

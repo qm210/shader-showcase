@@ -1,20 +1,16 @@
-import {TimelineEngine} from './engine/timeline.js';
 import {Overlay} from './overlay/overlay.js';
 import {Randomizer} from './engine/randomizer.js';
 import {deriveAutoBatches, UniformBatch} from './engine/uniformBatch.js';
 import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
-import {updateAllSliders} from "../app/layout/elements/uniforms.js";
 import './styles/overlay.css';
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType} from "./overlay/format.js";
+import {PlaygroundEngine} from "./engine/engine.js";
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {
-        this._appState = state;
-        this._snapshot = this.snapshotOfUniformValues();
-        this._elements = elements;
-        this.engine = new TimelineEngine();
+        this.engine = new PlaygroundEngine(state);
         this._controlMap = null;
         this._controls = null;
         this.batches = {
@@ -60,8 +56,9 @@ export class PlaygroundContext {
                 continue;
             }
             callbacks.set("overlay", value => {
-                state.uni[control.name] = value;
-                console.log("TODO: SYNC MAIN -> OVERLAY", control.name, value);
+                /** This would update the Playground when the Main State changes.
+                 *  This direction is currently intentionally unused.
+                 * */
             });
         }
 
@@ -91,75 +88,13 @@ export class PlaygroundContext {
         }
     }
 
-    // ─── Public API ──────────────────────────────────────────────
-
     update(dt) {
-        this.overlay.update(dt);
-    }
-
-    syncToShader(gl, state) {
-        this.overlay.syncToShader(gl, state);
-    }
-
-    toggleOverlay() {
-        this.overlay.toggle();
-    }
-
-    getUniformValues() {
-        return this.engine.getAllUniformValues();
-    }
-
-    /** Sync computed uniform values back to the main page's state.uni and update sliders. */
-    syncToState(state) {
-        if (!state || !state.uni) return;
-        const values = this.engine.getAllUniformValues();
-        for (const [name, value] of Object.entries(values)) {
-            state.uni[name] = value;
-        }
-        // Update main page slider elements
-        if (this._elements?.uniforms) {
-            updateAllSliders(this._elements, state, this._controls);
-        }
-    }
-
-    addTrack(name) {
-        const track = this.engine.addTrack(name);
-        this.overlay.renderTimeline();
-        return track;
-    }
-
-    removeTrack(id) {
-        this.engine.removeTrack(id);
-        this.overlay.renderTimeline();
-    }
-
-    resetOverlay() {
-        this.batches.custom = [];
-        this.overlay.reset();
-    }
-
-    snapshotOfUniformValues() {
-        const state = this._appState;
-        if (!state || !state.uni) {
-            return;
-        }
-        const snapshot = {};
-        for (const [name, value] of Object.entries(state.uni)) {
-            if (typeof value === 'number' || Array.isArray(value)) {
-                snapshot[name] = value;
-            }
-        }
-        this._snapshot = snapshot;
-        console.info('[PLAYGROUND] Loaded Snapshot:', snapshot);
-        return snapshot;
-    }
-
-    get recentSnapshot() {
-        return this._snapshot || null;
+        this.engine.update(dt);
+        this.overlay.update();
     }
 
     toJSON() {
-        return this.engine.toJSON();
+        return this.engine.timelineToJSON();
     }
 
     resolveRange(entry) {
@@ -178,7 +113,6 @@ export class PlaygroundContext {
         };
     }
 
-
     _createProvider() {
         const ctx = this;
 
@@ -192,7 +126,7 @@ export class PlaygroundContext {
             },
 
             getUniformValue(name) {
-                return ctx._appState.uni[name];
+                return ctx.engine.getUniformBaseValue(name);
             },
 
             getKnownUniformNames() {
@@ -261,6 +195,11 @@ export class PlaygroundContext {
 
             loadSnapshotFromState() {
                 return ctx.snapshotOfUniformValues();
+            },
+
+            /** Returns the main page's updateValue function for a uniform, or null. */
+            getUniformUpdateValue(name) {
+                return ctx._controlMap?.get(name)?.mainElements?.updateValue ?? null;
             },
         };
     }

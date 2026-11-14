@@ -1,12 +1,11 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from '../persistence.js';
 import {calcTrackValueRange, FALLBACK_RANGE, isRangeValue} from '../engine/valueRanges.js';
-import {EASING_TYPES, keyframeKey, parseKeyframeKey} from '../engine/keyframes.js';
+import {EASING_TYPES} from '../engine/keyframes.js';
 import {ACTION, runAction} from '../actions.js';
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
 import {TimeZoomControl} from './timeZoomControl.js';
 import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from '../engine/timeZoom.js';
-import {uploadUniforms} from './glUniforms.js';
 import {createPlaygroundOverlay} from './dom/shell.js';
 import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
 import {renderAllTracks, renderTrack, stripFraction} from './dom/tracks.js';
@@ -16,9 +15,7 @@ import {renderRandomizerPanel} from './dom/randomizer.js';
 import {createContextActionBar, positionContextBar, renderContextActionBar} from './dom/contextBar.js';
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
-
-const sliderTooltip = (slider) =>
-    slider.parentElement.querySelector('.slider-tooltip');
+import {keyframeKey, parseKeyframeKey} from "../engine/timeline.js";
 
 
 export class Overlay {
@@ -974,9 +971,16 @@ export class Overlay {
                 'invalid', parseRangeInput(el.value) === undefined
             );
         } else if (el.classList.contains('uniform-slider')) {
+            const name = el.dataset.uniformName;
+            const value = parseFloat(el.value);
+            this.engine.setUniformOverride(name, value);
+            const updateValue = this.ctx.getUniformUpdateValue(name);
+            if (updateValue) {
+                updateValue(value);
+            }
             const tooltip = sliderTooltip(el);
             if (tooltip) {
-                tooltip.textContent = parseFloat(el.value).toFixed(2);
+                tooltip.textContent = formatNumber(value);
             }
         } else if (el.classList.contains('target-selector')) {
             this._onTargetNameInput(el);
@@ -1146,10 +1150,11 @@ export class Overlay {
     }
 
     _importTimeline() {
+        // TODO: never tested; do that... one day.
         pickJsonFile()
             .then(json => {
                 // Load into the existing engine so references stay valid.
-                this.engine.loadJSON(json);
+                this.engine.loadTimelineFromJSON(json);
                 this.track.selectedKeyframes.clear();
                 this.syncUI();
                 this.renderTimeline();
@@ -1220,14 +1225,13 @@ export class Overlay {
         if (!state) {
             return;
         }
-
         if (state.timeline) {
-            this.engine.loadJSON(state.timeline);
+            this.engine.loadTimelineFromJSON(state.timeline);
             this.engine.playing = false;
         }
         for (const [name, value] of Object.entries(state.overrides ?? {})) {
             if (isRangeValue(value)) {
-                this.engine.setUniformValue(name, value);
+                this.engine.setUniformOverride(name, value);
             }
         }
         this.ctx.loadCustomBatches(state.customBatches);
@@ -1371,23 +1375,11 @@ export class Overlay {
 
     // ─── Public API ─────────────────────────────────────────────
 
-    getUniformValues() {
-        return this.engine.getAllUniformValues();
-    }
-
-    update(dt) {
-        this.engine.update(dt);
+    update() {
         if (this.engine.playing) {
             this._renderPlayback();
             this._scheduleSave();
         }
-    }
-
-    syncToShader(gl, state) {
-        DEBUG.log("syncToShader()")
-        uploadUniforms(
-            gl, state.program, state.location, this.getUniformValues()
-        );
     }
 
     setVisible(visible) {
@@ -1398,3 +1390,6 @@ export class Overlay {
         this.setVisible(this.element.hidden);
     }
 }
+
+const sliderTooltip = (slider) =>
+    slider.parentElement.querySelector('.slider-tooltip');

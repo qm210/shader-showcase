@@ -24,6 +24,7 @@ export const ACTION = Object.freeze({
     COPY_TRACK: 'copy-track',
     PASTE_TRACK: 'paste-track',
     LOAD_SNAPSHOT: 'load-snapshot',
+    RESET_SNAPSHOT: 'reset-snapshot',
 });
 
 export function runAction(overlay, data) {
@@ -273,9 +274,14 @@ export function runAction(overlay, data) {
                 return;
             }
             for (const [name, value] of Object.entries(snapshot)) {
-                overlay.engine.setUniformValue(name, value);
+                overlay.engine.setUniformOverride(name, value);
             }
             overlay.renderTimeline();
+            break;
+        }
+
+        case ACTION.RESET_SNAPSHOT: {
+            alert("Not Yet Implemented :(")
             break;
         }
     }

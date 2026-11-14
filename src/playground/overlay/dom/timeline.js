@@ -153,7 +153,7 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
 }
 
 export function renderPreview(ui, engine) {
-    const lines = Object.entries(engine.getAllUniformValues())
+    const lines = Object.entries(engine.getCurrentUniformValues())
         .map(([name, value]) => `
             <div class="val-line">
                 <span class="val-name">${esc(name)}</span>
