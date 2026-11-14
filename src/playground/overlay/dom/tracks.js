@@ -132,12 +132,13 @@ function valueLine(target, min, max, currentValue) {
     if (range === 0) {
         return '';
     }
-    const fraction = (value - min) / range;
+    const fraction = 1 - (value - min) / range;
     const clamped = Math.max(0, Math.min(1, fraction));
-    const leftPercent = (clamped * 100).toFixed(2);
+    const topPercent = (clamped * 100).toFixed(1);
+    const outside = clamped !== fraction;
     return `
-        <div class="value-line"
-             style="left:${leftPercent}%"
+        <div class="value-line ${outside && 'outside'}"
+             style="top:${topPercent}%"
              title="${esc(target.uniformName)}">
         </div>`;
 }

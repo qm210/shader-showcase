@@ -643,24 +643,30 @@
 
 #pg-overlay .keyframe-strip .value-line {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--overlay-accent);
-    opacity: 0.5;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-top: 1px dashed var(--overlay-pink-soft);
+    opacity: 0.66;
     pointer-events: none;
     z-index: 1;
 }
 
+#pg-overlay .keyframe-strip .value-line.outside {
+    border-style: dotted;
+}
+
 #pg-overlay .keyframe-dot {
+    --keyframe-color-idle: #f7a;
+    --keyframe-dot-size: 0.6em;
     position: absolute;
     top: 50%;
     z-index: 2;
-    width: 0.85em;
-    height: 0.85em;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    background: #f7a;
+    width: var(--keyframe-dot-size);
+    height: var(--keyframe-dot-size);
+    border: 3px solid var(--keyframe-color-idle);
+    border-radius: 25%;
+    background: transparent;
     transform: translate(-50%, -50%);
     cursor: pointer;
     transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s;
