@@ -1,5 +1,6 @@
-import {DEBUG} from "./overlay/utils.js";
-import {timelineSpan} from "./engine/timeZoom.js";
+import {MIN_TIME_STEP, timelineSpan} from "./engine/timeZoom.js";
+import {DEBUG} from "./overlay/index.js";
+import {calcTrackValueRange} from "./engine/valueRanges.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: 'hide-overlay',
@@ -98,7 +99,9 @@ export function runAction(overlay, data) {
 
         case ACTION.ADD_KEYFRAME: {
             const track = overlay.engine.getTrack(data.trackId);
-            if (!track) return;
+            if (!track) {
+                return;
+            }
 
             // If no targets, add a default one so we can place keyframes
             if (!track.targets.length) {
@@ -109,29 +112,27 @@ export function runAction(overlay, data) {
             const span = timelineSpan(overlay.engine);
             const defaultTime = overlay.engine.currentTime.toFixed(1);
             const timeStr = prompt('Keyframe time (s):', defaultTime);
-            if (timeStr === null) return;
-            const time = parseFloat(timeStr);
-            if (isNaN(time)) return;
-
-            // Find enabled target's min/max range for Y value
-            let minVal = 0, maxVal = 1;
-            for (const target of track.targets) {
-                if (target.enabled && target.uniformName) {
-                    const range = overlay.ctx.getControlRange(target.uniformName);
-                    const tMin = Array.isArray(range.min) ? -1 : range.min;
-                    const tMax = Array.isArray(range.max) ? 1 : range.max;
-                    minVal = Math.min(minVal, tMin);
-                    maxVal = Math.max(maxVal, tMax);
-                }
+            if (timeStr === null) {
+                return;
             }
+            const time = parseFloat(timeStr);
+            if (isNaN(time)) {
+                return;
+            }
+
+            const [minVal, maxVal] = calcTrackValueRange(track, overlay.ctx);
             const defaultVal = ((minVal + maxVal) / 2).toFixed(3);
             const valStr = prompt('Keyframe value:', defaultVal);
-            if (valStr === null) return;
+            if (valStr === null) {
+                return;
+            }
             const value = parseFloat(valStr);
-            if (isNaN(value)) return;
+            if (isNaN(value)) {
+                return;
+            }
 
             // If this is the first keyframe and time > 0, prepend a (0, value) keyframe
-            if (track.keyframes.length === 0 && time > 0.01) {
+            if (track.keyframes.length === 0 && time > MIN_TIME_STEP) {
                 track.addKeyframe(0, value);
             }
 

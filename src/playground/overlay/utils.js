@@ -1,5 +1,3 @@
-import {urlSearchParam} from "../../app/layout/page.js";
-
 export function formatRange(value) {
     if (value === null || value === undefined) {
         return '';
@@ -25,11 +23,3 @@ export function isTypingTarget(target) {
     );
 }
 
-const _debug = urlSearchParam("debug");
-
-export const DEBUG = {
-    log: (...args) =>
-        _debug && console.log("[DEBUG]", ...args),
-    table: (arg) =>
-        _debug && console.table(arg),
-};

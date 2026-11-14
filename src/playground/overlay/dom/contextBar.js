@@ -1,4 +1,4 @@
-import {CHAR} from '../../../app/constants.js';
+import {CHAR} from '../index.js';
 import {formatValue} from '../format.js';
 import {setShown} from './html.js';
 

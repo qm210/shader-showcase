@@ -1,4 +1,5 @@
 import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
+import {MIN_TIME_STEP} from "./timeZoom.js";
 
 const MAX_UNDO_STEPS = 50;
 
@@ -77,7 +78,7 @@ export class TimelineTrack {
     }
 
     /** Remove a keyframe at the given time (with tolerance) */
-    removeKeyframe(time, tolerance = 0.01) {
+    removeKeyframe(time, tolerance = MIN_TIME_STEP) {
         const removed = [];
         this.keyframes = this.keyframes.filter(k => {
             if (Math.abs(k.time - time) <= tolerance) {
@@ -100,7 +101,7 @@ export class TimelineTrack {
             // Remove the added keyframe(s)
             for (const kf of entry.keyframes) {
                 this.keyframes = this.keyframes.filter(
-                    k => Math.abs(k.time - kf.time) > 0.01
+                    k => Math.abs(k.time - kf.time) > MIN_TIME_STEP
                 );
             }
         } else if (entry.type === 'remove') {

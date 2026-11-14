@@ -134,11 +134,7 @@ function render(gl, state) {
     gl.uniform3fv(state.location.uColLitLo, state.uni.uColLitLo);
     gl.uniform3fv(state.location.uColLitHi, state.uni.uColLitHi);
 
-    // Debugging
     gl.uniform1i(state.location.uDebugView, state.uni.uDebugView || 0);
-
-    state.playground?.syncToShader(gl, state);
-    state.playground?.syncToState(state);
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }

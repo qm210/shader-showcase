@@ -1,9 +1,9 @@
 import {ACTION} from '../../actions.js';
 import {percentOfSpan} from '../../engine/math.js';
-import {CHAR} from '../../../app/constants.js';
+import {CHAR} from '../index.js';
 import {formatValue} from '../format.js';
 import {actionButton, esc, setShown} from './html.js';
-import {fullView, isInView, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
+import {fullView, isInView, MIN_TIME_STEP, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
 
 function timeRangeField(label, className, min, value) {
     return `
@@ -79,7 +79,7 @@ export function timelineTemplate() {
                     <input type="range"
                            class="time-sub-slider"
                            aria-label="Time within the zoomed range"
-                           min="0" max="${MIN_TIMELINE_SPAN}" step="0.01"
+                           min="0" max="${MIN_TIMELINE_SPAN}" step=${MIN_TIME_STEP}
                            value="0">
                     <div class="time-ticks time-sub-ticks"></div>
                 </div>
@@ -90,7 +90,6 @@ export function timelineTemplate() {
         </div>`;
 }
 
-/** Fractions in [0, 1] as a CSS percentage. */
 const percent = (fraction) => `${(100 * fraction).toFixed(3)}%`;
 
 function tickMarks(view) {

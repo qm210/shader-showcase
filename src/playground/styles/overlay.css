@@ -629,6 +629,17 @@
     text-align: right;
 }
 
+#pg-overlay .keyframe-strip .value-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--overlay-accent);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 1;
+}
+
 #pg-overlay .keyframe-dot {
     position: absolute;
     top: 50%;

@@ -1,7 +1,7 @@
 import {ACTION} from '../../actions.js';
 import {percentOfSpan} from '../../engine/math.js';
 import {calcTrackValueRange} from '../../engine/valueRanges.js';
-import {CHAR} from '../../../app/constants.js';
+import {CHAR} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
 import {DATALIST} from "./shell.js";
 import {fullView, isInView} from "../../engine/timeZoom.js";
@@ -106,9 +106,36 @@ function keyframeDots(track, view, selectedKeyframe) {
     }).join('');
 }
 
+function valueLine(target, min, max, currentValue) {
+    if (!target || !target.uniformName) {
+        return '';
+    }
+    const value = currentValue?.[target.uniformName];
+    if (value === undefined || value === null) {
+        return '';
+    }
+    const range = max - min;
+    if (range === 0) {
+        return '';
+    }
+    const fraction = (value - min) / range;
+    const clamped = Math.max(0, Math.min(1, fraction));
+    const leftPercent = (clamped * 100).toFixed(2);
+    return `
+        <div class="value-line"
+             style="left:${leftPercent}%"
+             title="${esc(target.uniformName)}">
+        </div>`;
+}
+
 function keyframeStrip(track, provider, view, selectedKeyframe) {
     const [min, max] = calcTrackValueRange(track, provider);
     const playhead = stripPosition(provider.engine.currentTime, view);
+    const values = provider.engine.getAllUniformValues();
+    const uniformLines = track.targets
+        .filter(t => t.uniformName)
+        .map(t => valueLine(t, min, max, values))
+        .join('');
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
@@ -117,10 +144,12 @@ function keyframeStrip(track, provider, view, selectedKeyframe) {
             ${keyframeDots(track, view, selectedKeyframe)}
             <div class="playhead"
                  style="${playhead}"></div>
+            ${uniformLines}
             <span class="range-label max-label">${esc(max.toFixed(2))}</span>
             <span class="zero-marker">0</span>
             <span class="range-label min-label">${esc(min.toFixed(2))}</span>
-        </div>`;
+        </div>
+    `;
 }
 
 function trackActions(trackId) {

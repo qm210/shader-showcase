@@ -1,5 +1,5 @@
 import {ACTION} from '../../actions.js';
-import {CHAR} from '../../../app/constants.js';
+import {CHAR} from '../index.js';
 import {formatRange} from '../utils.js';
 import {formatOverwrite} from '../format.js';
 import {actionButton, cls, dataAttrs, editableName, esc} from './html.js';

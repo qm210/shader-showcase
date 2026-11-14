@@ -1,6 +1,7 @@
 import {clamp} from '../../app/algorithms.js';
 
 export const MIN_TIMELINE_SPAN = 60;
+export const MIN_TIME_STEP = 0.01;
 const MIN_ZOOM_SPAN = 0.5;
 const TICK_STEPS = [1, 2, 5];
 

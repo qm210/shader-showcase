@@ -1,6 +1,6 @@
 import {ACTION} from '../../actions.js';
 import {formatRange} from '../utils.js';
-import {componentRange, formatComponent, vectorComponents,} from '../format.js';
+import {componentRange, formatComponent, isIntegerType, vectorComponents,} from '../format.js';
 import {actionButton, cls, dataAttrs, esc} from './html.js';
 
 const TABLE_HEADER = `
@@ -84,9 +84,10 @@ function overwriteCell(kind, entry, index, placeholder) {
 /** One table row per component (a vec3 gives three rows). */
 function uniformRows(provider, entry, isChecked) {
     const range = provider.getControlRange(entry.name);
+    const isInteger = isIntegerType(entry.type);
     return vectorComponents(entry.type).map((suffix, i) => {
         const isComponent = i > 0;
-        const compRange = componentRange(range, i);
+        const compRange = componentRange(range, i, isInteger);
         const data = dataAttrs({uniformName: entry.name, component: i});
         const checkCell = isComponent
             ? '<span class="component-placeholder"></span>'

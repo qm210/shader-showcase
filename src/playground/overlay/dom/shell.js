@@ -1,5 +1,5 @@
 import {ACTION} from '../../actions.js';
-import {CHAR} from '../../../app/constants.js';
+import {CHAR} from '../index.js';
 import {actionButton} from './html.js';
 import {timelineTemplate} from './timeline.js';
 import {uniformPanelTemplate} from './uniformList.js';

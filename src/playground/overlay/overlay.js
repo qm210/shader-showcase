@@ -1,13 +1,11 @@
-import {DEBUG, formatRange, isTypingTarget, parseRangeInput} from './utils.js';
-import {collectStorageJson, readStoredState} from './storage.js';
+import {formatRange, isTypingTarget, parseRangeInput} from './utils.js';
+import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from '../persistence.js';
 import {calcTrackValueRange, isRangeValue} from '../engine/valueRanges.js';
 import {ACTION, runAction} from '../actions.js';
-import {CHAR, DELAY_MS, STORAGE_KEY} from '../../app/constants.js';
-import {clamp} from '../../app/algorithms.js';
+import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
 import {TimeZoomControl} from './timeZoomControl.js';
 import {timelineSpan, visibleRange} from '../engine/timeZoom.js';
-import {downloadJson, pickJsonFile} from './fileExchange.js';
 import {uploadUniforms} from './glUniforms.js';
 import {createPlaygroundOverlay} from './dom/shell.js';
 import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
@@ -354,6 +352,7 @@ export class Overlay {
 
         const {start, end} = this._timeView();
         const time = start + stripFraction(strip, e.clientX) * (end - start);
+
         DEBUG.table({track: track.id, minVal, maxVal, yRatio, value, time});
 
         // A first keyframe after t = 0 gets a (0, value) partner so that
@@ -989,6 +988,7 @@ export class Overlay {
     }
 
     syncToShader(gl, state) {
+        DEBUG.log("syncToShader()")
         uploadUniforms(
             gl, state.program, state.location, this.getUniformValues()
         );

@@ -7,6 +7,11 @@ import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import {updateAllSliders} from "../app/layout/elements/uniforms.js";
 import './styles/overlay.css';
 
+/** Check if a GLSL type is an integer type (int, ivec*). */
+function isIntegerType(type) {
+    return /^i(ivec|nt)$/.test(type ?? '');
+}
+
 export class PlaygroundContext {
     constructor(state, controls, elements) {
         this._mainState = state;
@@ -184,8 +189,17 @@ export class PlaygroundContext {
                 return ctx.resolveRange({ name });
             },
 
+            getControlType(name) {
+                return ctx._controlMap?.get(name)?.type;
+            },
+
             getKnownUniformNames() {
-                return ctx._controlMap ? Array.from(ctx._controlMap.keys()) : [];
+                if (!ctx._controlMap) {
+                    return [];
+                }
+                return Array.from(ctx._controlMap.entries())
+                    .filter(([, ctrl]) => !isIntegerType(ctrl.type))
+                    .map(([name]) => name);
             },
 
             get batches() { return ctx.batches; },

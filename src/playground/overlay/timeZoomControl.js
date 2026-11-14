@@ -28,8 +28,13 @@ function wheelPixels(e, delta) {
 
 export class TimeZoomControl {
     /**
-     * @param ui        the overlay's element references
-     * @param timeline  {span(), zoom(), setZoom(zoom | null), seek(time)}
+     * @param {object} ui - The overlay's element references.
+     * @param {{
+     *   span: () => number,
+     *   zoom: () => number,
+     *   setZoom: (zoom: number | null) => void,
+     *   seek: (time: number) => void
+     * }} timeline - The timeline controls.
      */
     constructor(ui, timeline) {
         this.ui = ui;

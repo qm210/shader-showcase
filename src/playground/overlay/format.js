@@ -4,6 +4,11 @@ const VECTOR_COMPONENTS = ['x', 'y', 'z', 'w'];
 
 const isNil = (value) => value === null || value === undefined;
 
+/** Check if a GLSL type is an integer type (int, ivec*). */
+export function isIntegerType(type) {
+    return /^i(ivec|nt)$/.test(type ?? '');
+}
+
 /** Uniform value for display: vectors with 3, scalars with 4 decimals. */
 export function formatValue(value, empty = CHAR.NO_VALUE) {
     if (isNil(value)) {
@@ -36,15 +41,15 @@ export function formatComponent(value, index) {
 }
 
 /** Min/max/step of one component of a control range. */
-export function componentRange(range, index) {
+export function componentRange(range, index, isInteger) {
     if (isNil(range)) {
-        return {min: 0, max: 1, step: 0.01};
+        return {min: 0, max: 1, step: isInteger ? 1 : 0.01};
     }
     const pick = (v) => Array.isArray(v) ? v[index] : v;
     return {
         min: pick(range.min) ?? 0,
         max: pick(range.max) ?? 1,
-        step: range.step ?? 0.01,
+        step: range.step ?? (isInteger ? 1 : 0.01),
     };
 }
 
