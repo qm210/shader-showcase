@@ -275,6 +275,7 @@ export function renderAudioWaveforms(ui, engine, view, span) {
             top: tooltip.style.top,
             opacity: tooltip.style.opacity,
             visibility: tooltip.style.visibility,
+            zIndex: tooltip.style.zIndex,
             hasClass: tooltip.classList.contains('visible'),
         });
     });
