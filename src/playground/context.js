@@ -93,10 +93,6 @@ export class PlaygroundContext {
         this.overlay.update();
     }
 
-    toJSON() {
-        return this.engine.timelineToJSON();
-    }
-
     resolveRange(entry) {
         const control = this._controlMap?.get(entry.name);
 
@@ -106,11 +102,7 @@ export class PlaygroundContext {
         const components = [control?.defaultValue, min, max]
             .find(Array.isArray)?.length ?? 1;
 
-        return {
-            min,
-            max,
-            components,
-        };
+        return {min, max, components};
     }
 
     _createProvider() {
@@ -192,11 +184,6 @@ export class PlaygroundContext {
                 }
                 return {};
             },
-
-            /** Returns the main page's updateValue function for a uniform, or null. */
-            getUniformUpdateValue(name) {
-                return ctx._controlMap?.get(name)?.mainElements?.updateValue ?? null;
-            },
         };
     }
 
@@ -210,7 +197,6 @@ export function createUniformPlayground(state, controls, elements) {
     }
     return {
         overlay: _pg.overlay,
-        provider: _pg._provider,
         update: (dt) => _pg.update(dt),
     };
 }

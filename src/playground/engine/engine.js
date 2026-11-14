@@ -139,12 +139,6 @@ export class PlaygroundEngine {
         return snapshot;
     }
 
-    resetToLastSnapshot() {
-        for (const [name, value] of this.latestSnapshot) {
-            this.setActualUniformValue(name, value)
-        }
-    }
-
     getCurrentUniformDetails() {
         const tracksByName = new Map();
 
