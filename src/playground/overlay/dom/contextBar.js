@@ -1,7 +1,7 @@
 import {CHAR} from '../index.js';
 import {formatValue} from '../format.js';
 import {setShown} from './html.js';
-import {TRANSITION_TYPES} from '../../engine/keyframes.js';
+import {EASING_TYPES} from '../../engine/keyframes.js';
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 8;
@@ -46,7 +46,7 @@ export function createContextActionBar() {
         <div class="kf-ease">
             <label>Ease:</label>
             <select class="field kf-ease-select">
-                ${TRANSITION_TYPES.map(t =>
+                ${EASING_TYPES.map(t =>
                     `<option value="${t}">${t === 'smoothstep' ? 'smooth' : t}</option>`
                 ).join('')}
             </select>

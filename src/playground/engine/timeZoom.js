@@ -56,6 +56,14 @@ export function zoomAround(view, time, factor, span) {
     return clampZoom(start, start + newWidth, span);
 }
 
+export function ifValidTimeZoom(zoom) {
+    const {start, end} = zoom ?? {};
+    return Number.isFinite(start) && Number.isFinite(end) && start < end
+        ? {start, end}
+        : null;
+}
+
+
 /** Moves the view by `delta` seconds, keeping its width. */
 export function panBy(view, delta, span) {
     return clampZoom(view.start + delta, view.end + delta, span);

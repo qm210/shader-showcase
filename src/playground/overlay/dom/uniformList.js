@@ -1,6 +1,5 @@
 import {ACTION} from '../../actions.js';
-import {formatRange} from '../utils.js';
-import {componentRange, formatComponent, isIntegerType, vectorComponents,} from '../format.js';
+import {componentRange, formatComponent, formatRange, isIntegerType, vectorComponents,} from '../format.js';
 import {actionButton, cls, dataAttrs, esc} from './html.js';
 
 const TABLE_HEADER = `

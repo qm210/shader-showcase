@@ -730,35 +730,30 @@
     );
 }
 
-#pg-overlay .keyframe-strip .easing-line {
+.keyframe-strip .curve-lines {
     position: absolute;
-    inset: 0;
+    /* An <svg> is a replaced element: inset alone does not stretch it,
+       it needs an explicit size, else it is 300x150 px. Use the same
+       horizontal box as the keyframe dots. */
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
+    overflow: hidden;
     pointer-events: none;
 }
 
-#pg-overlay .keyframe-strip .easing-line path {
+.curve-lines path {
     fill: none;
-    stroke: var(--overlay-accent);
-    stroke-width: 1;
-    opacity: 0.5;
+    stroke: #5b9bb5;
+    stroke-width: 1.5px;
+    /* Keeps the width in screen pixels despite preserveAspectRatio=none. */
+    vector-effect: non-scaling-stroke;
 }
 
-#pg-overlay .keyframe-strip .tail-line {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-#pg-overlay .keyframe-strip .tail-line path {
-    fill: none;
-    stroke: var(--overlay-accent);
-    stroke-width: 1;
-    opacity: 0.3;
-    stroke-dasharray: 4 2;
+.curve-lines .tail-line {
+    stroke-dasharray: 12 8;
+    opacity: 0.6;
 }
 
 #pg-overlay .keyframe-strip .range-label {
@@ -1117,7 +1112,7 @@
 #pg-overlay .target-selector-dropdown {
     position: fixed;
     z-index: 10001;
-    max-height: 24em;
+    max-height: 40vh;
     overflow-y: auto;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
@@ -1125,6 +1120,7 @@
     box-shadow: 0 0.3em 1em rgba(0, 0, 0, 0.4);
     scrollbar-width: thin;
     scrollbar-color: var(--overlay-border) rgba(255, 255, 255, 0.1);
+    font-size: 0.8em;
 }
 
 #pg-overlay .target-selector-dropdown::-webkit-scrollbar {
@@ -1150,6 +1146,13 @@
     transition: background-color 0.1s, color 0.1s;
 }
 
+#pg-overlay .selector-item .selector-count {
+    margin-inline-start: auto;
+    padding-inline-start: 0.5em;
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
 #pg-overlay .selector-item:hover {
     background: rgba(255, 150, 170, 0.1);
     color: #bcd;
@@ -1169,6 +1172,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 #pg-overlay .randomizer-panel .randomize-btn {

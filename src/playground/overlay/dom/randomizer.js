@@ -32,7 +32,12 @@ const UNIFORM_TARGET_PREFIX = 'uniform:';
 /** Custom batches, auto batches, then every single uniform. */
 function randomizerTargets(provider) {
     const targets = provider.allBatches()
-        .map(batch => ({id: batch.id, name: batch.name, type: 'batch'}));
+        .map(batch => ({
+            id: batch.id,
+            name: batch.name,
+            type: 'batch',
+            count: batch.uniforms.length
+        }));
     const ids = new Set(targets.map(t => t.id));
     for (const name of provider.getKnownUniformNames()) {
         const id = UNIFORM_TARGET_PREFIX + name;
@@ -47,12 +52,16 @@ function selectorItem(target, selectedId) {
     const icon = target.type === 'batch'
         ? CHAR.BULLET_BATCH
         : CHAR.BULLET_UNIFORM;
+    const countSpan = target.count !== undefined
+        ? `<span class="selector-count">[${target.count}]</span>`
+        : '';
     return `
         <div class="${cls('selector-item', target.id === selectedId
                           && 'selected')}"
              ${dataAttrs({targetId: target.id})}>
             <span class="selector-icon">${icon}</span>
             <span class="selector-name">${esc(target.name)}</span>
+            ${countSpan}
         </div>
     `;
 }
@@ -60,7 +69,10 @@ function selectorItem(target, selectedId) {
 function renderSelectorDisplay(display, target) {
     if (target) {
         const kind = target.type === 'batch' ? 'Batch' : 'Uniform';
-        display.textContent = target.name;
+        const count = target.count !== undefined
+            ? ` [${target.count}]`
+            : '';
+        display.textContent = target.name + count;
         display.title = `${kind}: ${target.name}`;
     } else {
         display.textContent = 'No target';
@@ -70,13 +82,17 @@ function renderSelectorDisplay(display, target) {
 
 /**
  * Renders the panel and returns the effective selection: an unknown
- * batch id falls back to the first custom, then the first auto batch.
+ * batch id falls back to "All Uniforms", then the first custom, then
+ * the first auto batch.
  */
 export function renderRandomizerPanel(ui, provider, selectedBatchId) {
     const {batches} = provider;
     if (!provider.getBatch(selectedBatchId)) {
         selectedBatchId =
-            batches.custom[0]?.id ?? batches.auto[0]?.id ?? null;
+            batches.auto.find(b => b.id === 'auto:All Uniforms')?.id
+            ?? batches.custom[0]?.id
+            ?? batches.auto[0]?.id
+            ?? null;
     }
 
     const targets = randomizerTargets(provider);

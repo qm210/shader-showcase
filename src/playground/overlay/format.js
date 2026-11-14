@@ -60,3 +60,25 @@ export function vectorComponents(type) {
         ? VECTOR_COMPONENTS.slice(0, Number(match[1]))
         : [null];
 }
+
+export const formatNumber = (value, digits = 2) =>
+    typeof value === 'number' ? value.toFixed(digits) : JSON.stringify(value);
+
+export function formatRange(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return Array.isArray(value) ? value.join(', ') : String(value);
+}
+
+export function parseRangeInput(text) {
+    const trimmed = text.trim();
+    if (trimmed === '') {
+        return null;
+    }
+    const parts = trimmed.split(/[\s,;]+/).filter(Boolean).map(Number);
+    if (parts.length === 0 || !parts.every(Number.isFinite)) {
+        return undefined;
+    }
+    return parts.length === 1 ? parts[0] : parts;
+}

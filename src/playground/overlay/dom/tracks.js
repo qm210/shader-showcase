@@ -4,9 +4,8 @@ import {calcTrackValueRange} from '../../engine/valueRanges.js';
 import {CHAR, clamp} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
 import {DATALIST} from "./shell.js";
-import {fullView, isInView} from "../../engine/timeZoom.js";
+import {isInView} from "../../engine/timeZoom.js";
 
-/** Compute eased t for a given ease type. */
 function easedT(t, ease) {
     if (ease === 'step') {
         return 0;
@@ -17,82 +16,72 @@ function easedT(t, ease) {
     return t;
 }
 
-/** Generate SVG path for easing curve between two keyframes. */
-function easingPath(kf1, kf2, view, stripWidth, min, max) {
-    const span = view.end - view.start;
-    if (span <= 0) {
-        return '';
-    }
-    const t1 = (kf1.time - view.start) / span;
-    const t2 = (kf2.time - view.start) / span;
-    const x1 = t1 * stripWidth;
-    const x2 = t2 * stripWidth;
+function valueFraction(value, min, max) {
     const range = max - min;
-    const y1 = range === 0 ? 50 : (1 - (kf1.value - min) / range) * 100;
-    const y2 = range === 0 ? 50 : (1 - (kf2.value - min) / range) * 100;
-    const steps = 20;
+    return range === 0 ? 0.5 : 1 - (value - min) / range;
+}
+
+const CURVE_STEPS = 20;
+
+const fmt = (n) => n.toFixed(2);
+
+function easingPath(kf1, kf2, toPoint) {
     const ease = kf1.ease || 'linear';
-
+    const [x1, y1] = toPoint(kf1.time, kf1.value);
+    const [x2, y2] = toPoint(kf2.time, kf2.value);
     if (ease === 'step') {
-        return `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+        return `M ${fmt(x1)} ${fmt(y1)} H ${fmt(x2)} V ${fmt(y2)}`;
     }
-
-    let d = `M ${x1.toFixed(1)} ${y1.toFixed(1)}`;
-    for (let i = 1; i <= steps; i++) {
+    const steps = ease === 'linear' ? 1 : CURVE_STEPS;
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
         const frac = i / steps;
-        const eased = easedT(frac, ease);
         const x = x1 + (x2 - x1) * frac;
-        const y = y1 + (y2 - y1) * eased;
-        d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+        const y = y1 + (y2 - y1) * easedT(frac, ease);
+        points.push(`${fmt(x)} ${fmt(y)}`);
     }
-    return d;
+    return `M ${points.join(' L ')}`;
 }
 
-/** Generate SVG element for a single easing curve segment. */
-function easingSegment(kf1, kf2, view, min, max) {
-    if (!isInView(view, kf1.time) && !isInView(view, kf2.time)) {
-        return '';
-    }
-    const path = easingPath(kf1, kf2, view, 100, min, max);
-    if (!path) {
-        return '';
-    }
-    return `<svg class="easing-line" viewBox="0 0 100 100"
-                 preserveAspectRatio="none">
-            <path d="${path}" />
-        </svg>`;
-}
-
-/** Generate all easing line SVGs for a track's keyframes. */
-function easingLines(track, view, min, max) {
-    if (track.keyframes.length <= 1) {
-        return '';
-    }
-    return track.keyframes.slice(0, -1)
-        .map((kf, i) => easingSegment(kf, track.keyframes[i + 1], view, min, max))
-        .filter(Boolean)
-        .join('');
-}
-
-/** Generate the tail line from the last keyframe to the right edge. */
-function tailLine(track, view, min, max) {
+/**
+ * One SVG with the easing curves between the keyframes and the tail
+ * after the last one. The viewBox is 0..100 in both directions and is
+ * stretched over the strip, like the percent positions of the dots.
+ */
+function curveLines(track, view, min, max) {
     const kfs = track.keyframes;
-    if (kfs.length === 0) {
-        return '';
-    }
-    const last = kfs[kfs.length - 1];
     const span = view.end - view.start;
-    if (span <= 0 || last.time < view.start) {
+    if (kfs.length === 0 || span <= 0) {
         return '';
     }
-    const range = max - min;
-    const y = range === 0
-        ? 50
-        : (1 - (last.value - min) / range) * 100;
-    const xStart = ((last.time - view.start) / span) * 100;
-    return `<svg class="tail-line" viewBox="0 0 100 100"
-                 preserveAspectRatio="none">
-            <path d="M ${xStart.toFixed(1)} ${y.toFixed(1)} L 100 ${y.toFixed(1)}" />
+    const toPoint = (time, value) => [
+        (time - view.start) / span * 100,
+        valueFraction(value, min, max) * 100,
+    ];
+    // Segments overlapping the view, also those spanning all of it.
+    const easing = kfs.slice(0, -1)
+        .map((kf, i) => [kf, kfs[i + 1]])
+        .filter(([a, b]) => a.time <= view.end && b.time >= view.start)
+        .map(([a, b]) => easingPath(a, b, toPoint))
+        .join(' ');
+
+    const last = kfs[kfs.length - 1];
+    let tail = '';
+    if (last.time < view.end) {
+        const [x, y] = toPoint(last.time, last.value);
+        tail = `M ${fmt(x)} ${fmt(y)} H 100`;
+    }
+    return `
+        <svg class="curve-lines"
+             viewBox="0 0 100 100"
+             preserveAspectRatio="none"
+             >
+            <path class="easing-line"
+                  d="${easing}"
+                  />
+            <path class="tail-line"
+                  d="${tail}"
+                  />
         </svg>`;
 }
 
@@ -111,7 +100,6 @@ const TRACK_ACTIONS = [
         title: 'Delete track', className: 'btn icon danger'},
 ];
 
-/** Uniform names and batch ids a target may refer to. */
 function knownTargetNames(provider) {
     const names = new Set(provider.getKnownUniformNames());
     for (const batch of provider.allBatches()) {
@@ -179,7 +167,6 @@ function stripPosition(time, view) {
 
 /** Dots of the keyframes inside the visible window `view`. */
 function keyframeDots(track, view, selectedKeyframes, min, max) {
-    const range = max - min;
     return track.keyframes.map((kf, i) => {
         if (!isInView(view, kf.time)) {
             return '';
@@ -202,10 +189,7 @@ function keyframeDots(track, view, selectedKeyframes, min, max) {
     }
 
     function valuePosition(value) {
-        if (range === 0) {
-            return '50%';
-        }
-        const fraction = 1 - (value - min) / range;
+        const fraction = valueFraction(value, min, max);
         return `${clamp(fraction * 100, 0, 100).toFixed(1)}%`;
     }
 }
@@ -218,12 +202,11 @@ function valueLine(target, min, max, currentValue) {
     if (value === undefined || value === null) {
         return '';
     }
-    const range = max - min;
-    if (range === 0) {
+    if (max === min) {
         return '';
     }
-    const fraction = 1 - (value - min) / range;
-    const clamped = Math.max(0, Math.min(1, fraction));
+    const fraction = valueFraction(value, min, max);
+    const clamped = clamp(fraction, 0, 1);
     const topPercent = (clamped * 100).toFixed(1);
     const outside = clamped !== fraction;
     return `
@@ -243,15 +226,13 @@ function keyframeStrip(track, provider, view, selectedKeyframes) {
         .map(t => valueLine(t, min, max, values))
         .join('');
     const keyframes = keyframeDots(track, view, selectedKeyframes, min, max);
-    const tail = tailLine(track, view, min, max);
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
              title="Click to set keyframe">
             <div class="strip-bg"></div>
+            ${curveLines(track, view, min, max)}
             ${keyframes}
-            ${easingLines(track, view, min, max)}
-            ${tail}
             <div class="playhead"
                  style="${playhead}"></div>
             ${uniformLines}
@@ -301,25 +282,39 @@ function trackColumns(
         </div>`;
 }
 
-/**
- * Rebuilds all track rows. The keyframe strips show the time window
- * `view`, the full timeline by default.
- */
-export function renderTracks(ui, provider, selectedTrackId, editingTrackId,
-                             collapsedTrackIds, selectedKeyframes,
-                             view = fullView(provider.engine)) {
+function createTrackRow(track, provider, knownNames, selectedTrackId,
+                        editingTrackId, collapsedTrackIds, selectedKeyframes,
+                        view) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'track-wrapper';
+    wrapper.classList.toggle('selected', selectedTrackId === track.id);
+    wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
+    wrapper.dataset.trackId = track.id;
+    wrapper.innerHTML = trackColumns(
+        track, provider, view, knownNames, editingTrackId,
+        selectedKeyframes
+    );
+    return wrapper;
+}
+
+export function renderAllTracks(ui, provider, ...state) {
     const knownNames = knownTargetNames(provider);
-    const wrappers = provider.engine.getAllTracks().map(track => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'track-wrapper';
-        wrapper.classList.toggle('selected', selectedTrackId === track.id);
-        wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
-        wrapper.dataset.trackId = track.id;
-        wrapper.innerHTML = trackColumns(
-            track, provider, view, knownNames,
-            editingTrackId, selectedKeyframes
-        );
-        return wrapper;
-    });
-    ui.trackRows.replaceChildren(...wrappers);
+    const rows = provider.engine.getAllTracks().map(track =>
+        createTrackRow(track, provider, knownNames, ...state)
+    );
+    ui.trackRows.replaceChildren(...rows);
+}
+
+export function renderTrack(ui, provider, trackId, ...state) {
+    const track = provider.engine.getTrack(trackId);
+    const row = ui.trackRows.querySelector(
+        `.track-wrapper[data-track-id="${CSS.escape(trackId)}"]`
+    );
+    if (!track || !row) {
+        return false;
+    }
+    row.replaceWith(
+        createTrackRow(track, provider, knownTargetNames(provider), ...state)
+    );
+    return true;
 }

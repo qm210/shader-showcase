@@ -102,9 +102,13 @@ export class UniformBatch {
 
 export function deriveAutoBatches(controls) {
     const batches = [];
+    const allUniforms = [];
     let batch = null;
     for (const control of controls) {
         if (control.separator) {
+            if (batch) {
+                batches.push(batch);
+            }
             batch = new UniformBatch(
                 control.separator,
                 { id: `auto:${control.separator}` }
@@ -115,6 +119,7 @@ export function deriveAutoBatches(controls) {
         if (!isNumeric(control)) {
             continue;
         }
+        allUniforms.push(control);
         if (!batch) {
             batch = new UniformBatch(
                 "Any",
@@ -123,6 +128,19 @@ export function deriveAutoBatches(controls) {
             batches.push(batch);
         }
         batch.addUniformFrom(control);
+    }
+    if (batch) {
+        batches.push(batch);
+    }
+    if (allUniforms.length > 0) {
+        const allBatch = new UniformBatch(
+            "All Uniforms",
+            { id: "auto:All Uniforms" }
+        );
+        for (const control of allUniforms) {
+            allBatch.addUniformFrom(control);
+        }
+        batches.unshift(allBatch);
     }
     return batches.filter(b => b.uniforms.length > 0);
 }

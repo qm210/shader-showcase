@@ -1,7 +1,6 @@
 import {ACTION} from '../../actions.js';
 import {CHAR} from '../index.js';
-import {formatRange} from '../utils.js';
-import {formatOverwrite} from '../format.js';
+import {formatOverwrite, formatRange} from '../format.js';
 import {actionButton, cls, dataAttrs, editableName, esc} from './html.js';
 
 import {DATALIST} from "./shell.js";

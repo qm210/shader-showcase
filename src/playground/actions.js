@@ -44,7 +44,7 @@ export function runAction(overlay, data) {
             overlay.engine.addTrack(name);
             const tracks = overlay.engine.getAllTracks();
             if (tracks.length === 1) {
-                overlay.selectedTrackId = tracks[0].id;
+                overlay.track.selectedId = tracks[0].id;
             }
             overlay.renderTimeline();
             break;
@@ -71,7 +71,7 @@ export function runAction(overlay, data) {
                 overlay.selectedKeyframe = null;
                 const tracks = overlay.engine.getAllTracks();
                 if (tracks.length === 1) {
-                    overlay.selectedTrackId = tracks[0].id;
+                    overlay.track.selectedId = tracks[0].id;
                 }
                 overlay.renderTimeline();
             }
@@ -248,17 +248,17 @@ export function runAction(overlay, data) {
         case ACTION.COPY_TRACK: {
             const track = overlay.engine.getTrack(data.trackId);
             if (track && track.keyframes.length) {
-                overlay._copiedTrack = JSON.parse(JSON.stringify(track.keyframes));
+                overlay.clipboard.track = JSON.parse(JSON.stringify(track.keyframes));
                 alert('Keyframes copied! Use the paste button on another track.');
             }
             break;
         }
 
         case ACTION.PASTE_TRACK: {
-            if (!overlay._copiedTrack || !overlay._copiedTrack.length) return;
+            if (!overlay.clipboard.track || !overlay.clipboard.track.length) return;
             const track = overlay.engine.getTrack(data.trackId);
             if (track) {
-                track.keyframes = JSON.parse(JSON.stringify(overlay._copiedTrack));
+                track.keyframes = JSON.parse(JSON.stringify(overlay.clipboard.track));
                 track.updateDuration();
                 overlay.renderTimeline();
             }

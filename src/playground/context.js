@@ -7,15 +7,12 @@ import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import {updateAllSliders} from "../app/layout/elements/uniforms.js";
 import './styles/overlay.css';
 import {DEBUG} from "./overlay/index.js";
-
-/** Check if a GLSL type is an integer type (int, ivec*). */
-function isIntegerType(type) {
-    return /^i(ivec|nt)$/.test(type ?? '');
-}
+import {isIntegerType} from "./overlay/format.js";
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {
-        this._mainState = state;
+        this._appState = state;
+        this._snapshot = this.snapshotOfUniformValues();
         this._elements = elements;
         this.engine = new TimelineEngine();
         this._controlMap = null;
@@ -28,6 +25,11 @@ export class PlaygroundContext {
         this._provider = this._createProvider();
         this.randomizer = new Randomizer(this._provider);
         this.overlay = new Overlay(this._provider);
+
+        DEBUG.log("[PLAYGROUND] Context constructed.", {
+            overlay: this.overlay,
+            provider: this._provider,
+        });
     }
 
     _connect(state, controls, elements) {
@@ -137,10 +139,11 @@ export class PlaygroundContext {
         this.overlay.reset();
     }
 
-    /** Load a snapshot of current uniform values from the main page's state.uni. */
-    loadSnapshotFromState() {
-        const state = this._mainState;
-        if (!state || !state.uni) return;
+    snapshotOfUniformValues() {
+        const state = this._appState;
+        if (!state || !state.uni) {
+            return;
+        }
         const snapshot = {};
         for (const [name, value] of Object.entries(state.uni)) {
             if (typeof value === 'number' || Array.isArray(value)) {
@@ -152,7 +155,7 @@ export class PlaygroundContext {
         return snapshot;
     }
 
-    getSnapshot() {
+    get recentSnapshot() {
         return this._snapshot || null;
     }
 
@@ -259,7 +262,7 @@ export class PlaygroundContext {
             },
 
             loadSnapshotFromState() {
-                return ctx.loadSnapshotFromState();
+                return ctx.snapshotOfUniformValues();
             },
         };
     }
@@ -277,14 +280,14 @@ export function createUniformPlayground(state, controls, elements) {
         overlay: _pg.overlay,
         _provider: _pg._provider,
         update: (dt) => _pg.update(dt),
-        syncToShader: (gl, state) => _pg.syncToShader(gl, state),
-        syncToState: (state) => _pg.syncToState(state),
-        toggleOverlay: () => _pg.toggleOverlay(),
-        getUniformValues: () => _pg.getUniformValues(),
-        addTrack: (name) => _pg.addTrack(name),
-        removeTrack: (id) => _pg.removeTrack(id),
-        resetOverlay: () => _pg.resetOverlay(),
-        toJSON: () => _pg.toJSON(),
-        loadSnapshotFromState: () => _pg.loadSnapshotFromState(),
+        // syncToShader: (gl, state) => _pg.syncToShader(gl, state),
+        // syncToState: (state) => _pg.syncToState(state),
+        // toggleOverlay: () => _pg.toggleOverlay(),
+        // getUniformValues: () => _pg.getUniformValues(),
+        // addTrack: (name) => _pg.addTrack(name),
+        // removeTrack: (id) => _pg.removeTrack(id),
+        // resetOverlay: () => _pg.resetOverlay(),
+        // toJSON: () => _pg.toJSON(),
+        // loadSnapshotFromState: () => _pg.loadSnapshotFromState(),
     };
 }

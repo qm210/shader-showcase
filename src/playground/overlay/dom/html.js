@@ -66,3 +66,11 @@ export function pointerFraction(el, clientX, inset = 0) {
         ? Math.min(Math.max((clientX - rect.left - inset) / width, 0), 1)
         : 0;
 }
+
+export function isTypingTarget(target) {
+    return Boolean(
+        target?.closest?.('input, select, textarea, button, [contenteditable="true"]')
+    );
+}
+
+export const intAttr = (el, key) => parseInt(el.dataset[key], 10);
