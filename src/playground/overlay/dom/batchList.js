@@ -109,10 +109,9 @@ function batchCard(provider, batch, selectedBatchId, editingBatchId) {
         </div>`;
 }
 
-export function renderBatchList(ui, provider, selectedBatchId,
-                                editingBatchId) {
+export function renderBatchList(ui, provider, {selectedId, renamingId}) {
     ui.batchList.innerHTML = provider.batches.custom
         .map(batch =>
-            batchCard(provider, batch, selectedBatchId, editingBatchId))
-        .join('');
+            batchCard(provider, batch, selectedId, renamingId)
+        ).join('');
 }

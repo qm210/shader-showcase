@@ -10,10 +10,10 @@ const RECT_STYLE = [
     'z-index:50',
 ].join(';');
 
-const keyOf = (dot) => `${dot.dataset.trackId}:${dot.dataset.kfIndex}`;
+const keyOf = (dot) => `${dot.dataset.trackId}:${dot.dataset.kfId}`;
 
 export class KeyframeBoxSelect {
-    /** onSelect({trackId, kfIndex}) receives the first dot in the box. */
+    /** onSelect({trackId, kfId}) receives the first dot in the box. */
     constructor(root, onSelect) {
         this.onSelect = onSelect;
         this.active = false;
@@ -88,8 +88,8 @@ export class KeyframeBoxSelect {
         const [first] = this.selected;
         this.selected.clear();
         if (first) {
-            const [trackId, kfIndex] = first.split(':');
-            this.onSelect({trackId, kfIndex: parseInt(kfIndex, 10)});
+            const [trackId, kfId] = first.split(':');
+            this.onSelect({trackId, kfId});
         } else {
             this.onSelect(null);
         }

@@ -15,6 +15,47 @@ function neighbourValue(className, title) {
     `;
 }
 
+export function contextBarTemplate() {
+    return `
+        <div class="context-action-bar">
+            <div class="kf-info">
+                <span class="kf-time-label">t</span>
+                <span class="kf-time-value"></span>
+            </div>
+            <div class="kf-values">
+                <div class="kf-field-group">
+                    <label>Prev</label>
+                    ${neighbourValue('kf-prev-val', 'Previous keyframe value')}
+                </div>
+                <div class="kf-field-group">
+                    <label>Val</label>
+                    <input class="field kf-current-val"
+                           type="text"
+                           inputmode="decimal"
+                           spellcheck="false"
+                           autocomplete="off">
+                </div>
+                <div class="kf-field-group">
+                    <label>Next</label>
+                    ${neighbourValue('kf-next-val', 'Next keyframe value')}
+                </div>
+            </div>
+            <div class="kf-ease">
+                <label>Ease:</label>
+                <select class="field kf-ease-select">
+                    ${EASING_TYPES.map(t =>
+                        `<option value="${t}">${t === 'smoothstep' ? 'smooth' : t}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <button type="button"
+                    class="btn icon kf-undo-btn"
+                    title="Undo (Ctrl+Z)">
+                ${CHAR.UNDO}
+            </button>
+        </div>`;
+}
+
 /** Create the context action bar element (initially hidden). */
 export function createContextActionBar() {
     const bar = document.createElement('div');

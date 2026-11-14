@@ -2,12 +2,14 @@ import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
 import {FALLBACK_RANGE} from "./valueRanges.js";
 
-/**
- *  TODO: think ~ should the keyframeKey come from the index?
- *              ~ can the index change when dragged? hmhmhmmmm...
- */
-export function keyframeKey(trackId, kfIndex) {
-    return `${trackId}:${kfIndex}`;
+let _keyframeIdCounter = 0;
+
+export function createKeyframeId() {
+    return `kf_${++_keyframeIdCounter}_${Date.now().toString(36)}`;
+}
+
+export function keyframeKey(trackId, kfId) {
+    return `${trackId}:${kfId}`;
 }
 
 const MAX_UNDO_STEPS = 50;
@@ -67,7 +69,7 @@ export class TimelineTrack {
                 ? Math.max(this.targets[0].minValue, Math.min(this.targets[0].maxValue, value))
                 : value;
 
-        const kf = { time, value: clampedValue, ease };
+        const kf = { id: createKeyframeId(), time, value: clampedValue, ease };
         // Insert sorted by time
         let inserted = false;
         for (let i = 0; i < this.keyframes.length; i++) {
@@ -201,6 +203,6 @@ export function parseKeyframeKey(key) {
     const sep = key.lastIndexOf(':');
     return {
         trackId: key.slice(0, sep),
-        kfIndex: parseInt(key.slice(sep + 1), 10),
+        kfId: key.slice(sep + 1),
     };
 }

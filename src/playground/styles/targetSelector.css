@@ -1,0 +1,67 @@
+/* Only what makes it work as a selector; all looks are in the theme.
+   :where() has zero specificity, so any theme rule overrides it. */
+
+:where(.selector-wrapper) {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+}
+
+:where(.selector-display) {
+    flex: 1;
+    min-width: 0;          /* lets it shrink, so the name can ellipsize */
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Ellipsis has to sit on the text item: a flex container itself does
+   not truncate its items. */
+:where(.selector-display .selector-name) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+:where(.selector-display .selector-icon,
+       .selector-display .selector-count) {
+    flex: none;
+}
+
+/* JS sets top/bottom, left and width relative to the display. */
+:where(.selector-dropdown) {
+    position: fixed;
+    z-index: var(--selector-z, 10001);
+    max-height: var(--selector-max-height, 40vh);
+    overflow-y: auto;
+}
+
+/* Guards against a theme setting display on the dropdown. */
+:where(.selector-dropdown[hidden]) {
+    display: none;
+}
+
+:where(.selector-item) {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+:where(.selector-count) {
+    flex: none;
+    margin-inline-start: auto;
+}
+
+:where(.selector-icon) {
+    flex: none;
+}
+
+:where(.selector-name) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

@@ -90,10 +90,12 @@ function uniformRows(provider, entry, isChecked) {
         const compRange = componentRange(range, i, isInteger);
         const compValue = esc(formatComponent(currentValue, i));
         const data = dataAttrs({uniformName: entry.name, component: i});
+        const checkInputId = `check-${entry.name}`;
         const checkCell = isComponent
             ? '<span class="component-placeholder"></span>'
             : `<input type="checkbox"
                       class="uniform-checkbox"
+                      id="${checkInputId}"
                       ${dataAttrs({uniformName: entry.name})}
                       ${isChecked ? 'checked' : ''}>
             </td>`;
@@ -103,7 +105,11 @@ function uniformRows(provider, entry, isChecked) {
         return `
             <tr class="${rowClass}">
                 <td class="cell-check">${checkCell}</td>
-                <td class="cell-name">${isComponent ? '' : esc(entry.name)}</td>
+                <td class="cell-name">
+                    <label for="${checkInputId}">
+                        ${isComponent ? '' : entry.name}
+                    </label>
+                </td>
                 <td class="cell-type">
                     ${esc(suffix ? `${entry.type}.${suffix}` : entry.type)}
                 </td>
@@ -179,8 +185,7 @@ function selectedSection(provider, selectedEntries, selectedBatchId) {
         </div>`;
 }
 
-export function renderUniformList(ui, provider, selectedBatchId,
-                                  editingBatchId) {
+export function renderUniformList(ui, provider, uiBatch) {
     const {uniformListBody} = ui;
     if (!uniformListBody) {
         return;
@@ -192,9 +197,9 @@ export function renderUniformList(ui, provider, selectedBatchId,
         return;
     }
 
-    const selectedNames = activeNames(provider.getBatch(selectedBatchId));
+    const selectedNames = activeNames(provider.getBatch(uiBatch.selectedId));
     // While editing a batch, the checkboxes reflect that batch instead.
-    const checkedNames = activeNames(provider.getBatch(editingBatchId))
+    const checkedNames = activeNames(provider.getBatch(uiBatch.renamingId))
         ?? selectedNames;
     const isChecked = (entry) => Boolean(checkedNames?.has(entry.name));
 
@@ -204,7 +209,7 @@ export function renderUniformList(ui, provider, selectedBatchId,
         : [];
 
     uniformListBody.innerHTML =
-        selectedSection(provider, selectedEntries, selectedBatchId)
+        selectedSection(provider, selectedEntries, uiBatch.selectedId)
         + [...groups]
             .map(([name, entries]) =>
                 groupSection(provider, name, entries, isChecked))

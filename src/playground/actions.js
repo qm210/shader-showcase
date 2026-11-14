@@ -140,7 +140,7 @@ export function runAction(overlay, data) {
             const count = overlay.ctx.batches.custom.length + 1;
             const name = `Batch ${count}`;
             const batch = overlay.ctx.addBatch(name);
-            overlay.selectedBatchId = batch.id;
+            overlay.batch.selectedId = batch.id;
             overlay.updateOnTargetsChanged();
             break;
         }
@@ -156,8 +156,8 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.DESELECT_BATCHES: {
-            overlay.selectedBatchId = null;
-            overlay._editingBatchId = null;
+            overlay.batch.selectedId = null;
+            overlay.batch.renamingId = null;
             overlay.renderUniformPanel();
             break;
         }
@@ -166,7 +166,7 @@ export function runAction(overlay, data) {
             const batch = overlay.ctx.getBatch(data.batchId);
             if (batch) {
                 batch.addUniform('');
-                overlay.selectedBatchId = batch.id;
+                overlay.batch.selectedId = batch.id;
                 overlay.renderUniformPanel();
                 overlay.element
                     .querySelector(`.batch-card[data-batch-id="${CSS.escape(batch.id)}"] .batch-uniform-row:last-child .name`)
@@ -198,8 +198,8 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.RANDOMIZE:
-            if (overlay.selectedBatchId) {
-                overlay.ctx.randomizeBatch(overlay.selectedBatchId, overlay.randomIntensity, overlay.engine);
+            if (overlay.batch.selectedId) {
+                overlay.ctx.randomizeBatch(overlay.batch.selectedId, overlay.randomIntensity, overlay.engine);
                 overlay._renderPreview();
                 overlay._scheduleSave();
             }

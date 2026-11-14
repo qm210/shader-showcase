@@ -58,10 +58,6 @@ export class PlaygroundEngine {
         if (this.onUpdate) this.onUpdate(this);
     }
 
-    getActualUniformValue(name) {
-        return this._mainState.uni[name];
-    }
-
     getAllTimelineValues() {
         const result = {};
         for (const track of this.tracks.values()) {
@@ -95,6 +91,10 @@ export class PlaygroundEngine {
             ...this.getUniformBaseValues(),
             ...this.getAllTimelineValues(),
         }
+    }
+
+    getActualUniformValue(name) {
+        return this._mainState.uni[name];
     }
 
     setActualUniformValue(name, value) {
@@ -143,6 +143,37 @@ export class PlaygroundEngine {
         for (const [name, value] of this.latestSnapshot) {
             this.setActualUniformValue(name, value)
         }
+    }
+
+    getCurrentUniformDetails() {
+        const tracksByName = new Map();
+
+        for (const track of this.tracks.values()) {
+            for (const target of track.targets) {
+                if (!target.enabled) {
+                    continue;
+                }
+                const name = target.uniformName;
+                if (!tracksByName.has(name)) {
+                    tracksByName.set(name, []);
+                }
+                tracksByName.get(name).push(track);
+            }
+        }
+
+        return Object.entries(this.getCurrentUniformValues())
+            .map(([name, value]) => {
+                const override = this._overrides[name];
+                const usedInTracks = (tracksByName.get(name) ?? [])
+                        .map(t => t.name).join(", ");
+                return {
+                    name,
+                    value,
+                    isUntouched: override === undefined && usedInTracks === "",
+                    override,
+                    usedInTracks,
+                };
+            });
     }
 
     timelineToJSON() {

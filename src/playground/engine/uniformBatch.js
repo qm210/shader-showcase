@@ -113,7 +113,6 @@ export function deriveAutoBatches(controls) {
                 control.separator,
                 { id: `auto:${control.separator}` }
             );
-            batches.push(batch);
             continue;
         }
         if (!isNumeric(control)) {
@@ -125,7 +124,6 @@ export function deriveAutoBatches(controls) {
                 "Any",
                 { id: "auto:Any" },
             );
-            batches.push(batch);
         }
         batch.addUniformFrom(control);
     }

@@ -167,17 +167,17 @@ function stripPosition(time, view) {
 
 /** Dots of the keyframes inside the visible window `view`. */
 function keyframeDots(track, view, selectedKeyframes, min, max) {
-    return track.keyframes.map((kf, i) => {
+    return track.keyframes.map(kf => {
         if (!isInView(view, kf.time)) {
             return '';
         }
-        const key = `${track.id}:${i}`;
+        const key = `${track.id}:${kf.id}`;
         const selected = selectedKeyframes.has(key);
         const title = `t=${kf.time.toFixed(1)}s, val=${kf.value}, `
             + kf.ease;
         return `
             <div class="${cls('keyframe-dot', selected && 'selected')}"
-                 ${dataAttrs({trackId: track.id, kfIndex: i})}
+                 ${dataAttrs({trackId: track.id, kfId: kf.id})}
                  style="${position(kf, view)}"
                  title="${esc(title)}"></div>`;
     }).join('');

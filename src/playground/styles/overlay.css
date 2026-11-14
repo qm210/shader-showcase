@@ -257,17 +257,28 @@
     grid-area: tracks;
     display: grid;
     grid-template-columns: repeat(2, max-content) minmax(0, 1fr) max-content;
-    grid-auto-rows: max-content;
-    align-content: start;
+    grid-template-rows: auto auto auto auto auto 1fr auto;
     gap: 0.5em;
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 0.6em;
     background: rgba(255, 255, 255, 0.03);
     scrollbar-width: thin;
     scrollbar-color: var(--overlay-border) rgba(255, 255, 255, 0.1);
     position: relative;
+}
+
+#pg-overlay .value-preview {
+    grid-column: 1 / -1;
+    overflow-y: auto;
+    padding: 0.4em 0.85em;
+    border-top: 1px solid var(--overlay-divider);
+    background: rgba(255, 255, 255, 0.05);
+    color: #9c9;
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.8em;
+    user-select: text;
 }
 
 #pg-overlay .timeline-tooltip {
@@ -276,6 +287,7 @@
     border-radius: var(--overlay-radius-sm);
     background: rgba(40, 50, 80, 0.95);
     border: 1px solid var(--overlay-border);
+    box-shadow: 0 0.3em 1em rgba(0, 0, 0, 0.4);
     color: var(--overlay-accent);
     font-family: var(--overlay-mono), monospace;
     font-size: 0.75em;
@@ -292,12 +304,13 @@
 }
 
 #pg-overlay .keyframe-popup {
-    position: absolute;
+    position: absolute ;
     padding: 0.4em 0.6em;
     border-radius: var(--overlay-radius-sm);
     background: rgba(40, 50, 80, 0.98);
     border: 1px solid var(--overlay-border);
     color: var(--overlay-accent);
+    box-shadow: 0 0.3em 1em rgba(0, 0, 0, 0.4);
     font-family: var(--overlay-mono), monospace;
     font-size: 0.75em;
     z-index: 101;
@@ -541,6 +554,7 @@
 #pg-overlay .track-targets-col .target-row {
     margin-bottom: 0;
     padding: 0;
+    flex-wrap: nowrap;
 }
 
 #pg-overlay .track-actions-col {
@@ -999,18 +1013,7 @@
 
 /* Value preview */
 
-#pg-overlay .value-preview {
-    grid-column: 1 / -1;
-    max-height: 6em;
-    overflow-y: auto;
-    padding: 0.4em 0.85em;
-    border-top: 1px solid var(--overlay-divider);
-    background: rgba(255, 255, 255, 0.05);
-    color: #9c9;
-    font-family: var(--overlay-mono), monospace;
-    font-size: 0.8em;
-    user-select: text;
-}
+
 
 #pg-overlay .value-preview .val-line {
     display: flex;
@@ -1086,45 +1089,34 @@
     align-items: center;
 }
 
-#pg-overlay .target-selector-wrapper {
-    position: relative;
+#pg-overlay .target-selector {
     flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
     width: 100%;
-    align-items: baseline;
     gap: 1ch;
 }
 
-#pg-overlay .target-selector-wrapper > div {
-    flex: 1;
+#pg-overlay .target-selector > span {
+    margin-left: 1ch;
+    font-size: 0.9em;
 }
 
-#pg-overlay .target-selector-display {
+#pg-overlay .target-selector > .selector-display {
+    gap: 0.4em;
     padding: 0.25em 0.65em;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: var(--overlay-field);
     color: var(--overlay-pink-soft);
     font-size: 0.875em;
-    cursor: pointer;
-    user-select: none;
     transition: border-color 0.15s, background-color 0.15s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-#pg-overlay .target-selector-display:hover {
+#pg-overlay .target-selector > .selector-display:hover {
     border-color: rgba(255, 150, 170, 0.5);
     background: rgba(255, 150, 170, 0.1);
 }
 
-#pg-overlay .target-selector-dropdown {
-    position: fixed;
-    z-index: 10001;
-    max-height: 40vh;
-    overflow-y: auto;
+#pg-overlay .target-selector > .selector-dropdown {
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: rgba(40, 45, 65, 0.98);
@@ -1134,31 +1126,27 @@
     font-size: 0.8em;
 }
 
-#pg-overlay .target-selector-dropdown::-webkit-scrollbar {
+#pg-overlay .target-selector > .selector-dropdown::-webkit-scrollbar {
     width: 0.4em;
 }
 
-#pg-overlay .target-selector-dropdown::-webkit-scrollbar-track {
+#pg-overlay .target-selector > .selector-dropdown::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.03);
 }
 
-#pg-overlay .target-selector-dropdown::-webkit-scrollbar-thumb {
+#pg-overlay .target-selector > .selector-dropdown::-webkit-scrollbar-thumb {
     border-radius: var(--overlay-radius-sm);
     background: var(--overlay-border);
 }
 
 #pg-overlay .selector-item {
-    display: flex;
-    align-items: center;
     gap: 0.4em;
     padding: 0.3em 0.65em;
-    cursor: pointer;
     color: #9ab;
     transition: background-color 0.1s, color 0.1s;
 }
 
-#pg-overlay .selector-item .selector-count {
-    margin-inline-start: auto;
+#pg-overlay .selector-count {
     padding-inline-start: 0.5em;
     font-size: 0.9em;
     opacity: 0.7;
@@ -1177,13 +1165,6 @@
 #pg-overlay .selector-icon {
     font-size: 0.8em;
     opacity: 0.6;
-}
-
-#pg-overlay .selector-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
 }
 
 #pg-overlay .randomizer-panel .randomize-btn {

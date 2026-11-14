@@ -1,6 +1,7 @@
 import {ACTION} from '../../actions.js';
 import {CHAR} from '../index.js';
 import {actionButton} from './html.js';
+import {contextBarTemplate} from './contextBar.js';
 import {timelineTemplate} from './timeline.js';
 import {uniformPanelTemplate} from './uniformList.js';
 import {randomizerTemplate} from './randomizer.js';
@@ -28,14 +29,17 @@ const UI_SELECTORS = {
     trackRows:             '.track-rows',
     preview:               '.value-preview',
     timelineTooltip:       '.timeline-tooltip',
-    batchSelectorDisplay:  '.target-selector-display',
-    batchSelectorDropdown: '.target-selector-dropdown',
-    randomizeBtn:          '.randomize-btn',
-    intensitySlider:       '.intensity-slider',
-    intensityValue:        '.intensity-value',
     batchList:             '.batch-list',
     uniformNames:          `#${DATALIST.UNIFORMS}`,
     uniformListBody:       '.uniform-list-body',
+    randomize: {
+        targetSelector:    '.target-selector > .selector-display',
+        targetDropdown:    '.target-selector > .selector-dropdown',
+        button:            '.randomize-btn',
+        intensitySlider:   '.intensity-slider',
+        intensityValue:    '.intensity-value',
+    },
+    contextBar:            '.context-action-bar'
 };
 
 function headerTemplate() {
@@ -76,6 +80,17 @@ function headerTemplate() {
         <datalist id="${DATALIST.UNIFORMS}"></datalist>`;
 }
 
+function queryUI(root, selectors) {
+    return Object.fromEntries(
+        Object.entries(selectors).map(([key, selector]) => [
+            key,
+            typeof selector === 'string'
+                ? root.querySelector(selector)
+                : queryUI(root, selector),
+        ])
+    );
+}
+
 export function createPlaygroundOverlay() {
     const overlay = document.createElement('div');
     overlay.id = 'pg-overlay';
@@ -84,11 +99,10 @@ export function createPlaygroundOverlay() {
         timelineTemplate(),
         uniformPanelTemplate(),
         randomizerTemplate(),
+        contextBarTemplate(),
     ].join('');
 
-    const ui = Object.fromEntries(
-        Object.entries(UI_SELECTORS)
-            .map(([key, selector]) => [key, overlay.querySelector(selector)])
-    );
-    return {element: overlay, ui, contextBar: null};
+    const ui = queryUI(overlay, UI_SELECTORS);
+
+    return {element: overlay, ui};
 }

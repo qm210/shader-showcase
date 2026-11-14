@@ -159,14 +159,23 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
     }
 }
 
-export function renderPreview(ui, engine) {
-    const lines = Object.entries(engine.getCurrentUniformValues())
-        .map(([name, value]) => `
+export function renderPreview(ui, engine, {debug = false} = {}) {
+    const currentValues = engine.getCurrentUniformDetails()
+    if (debug) {
+        console.group("[UNIFORM PREVIEW] t =", engine.currentTime, "sec.");
+        console.table(currentValues);
+        console.groupEnd();
+    }
+    const lines = currentValues
+        .filter(it => !it.isUntouched)
+        .map(it => `
             <div class="val-line">
-                <span class="val-name">${esc(name)}</span>
-                <span class="val-num">${formatValue(value)}</span>
-            </div>`);
+                <span class="val-name">${esc(it.name)}</span>
+                <span class="val-num">${formatValue(it.value)}</span>
+            </div>`
+        );
     ui.preview.innerHTML = lines.length
         ? lines.join('')
         : '<div class="val-empty">No active tracks</div>';
+
 }
