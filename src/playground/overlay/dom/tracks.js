@@ -285,6 +285,16 @@ function trackColumns(
         </div>`;
 }
 
+function trackColor(trackId) {
+    let hash = 0;
+    for (let i = 0; i < trackId.length; i++) {
+        hash = ((hash << 5) - hash) + trackId.charCodeAt(i);
+        hash |= 0;
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 65%)`;
+}
+
 function createTrackRow(track, provider, knownNames, selectedTrackId,
                         editingTrackId, collapsedTrackIds, selectedKeyframes,
                         view) {
@@ -293,6 +303,7 @@ function createTrackRow(track, provider, knownNames, selectedTrackId,
     wrapper.classList.toggle('selected', selectedTrackId === track.id);
     wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
     wrapper.dataset.trackId = track.id;
+    wrapper.style.setProperty('--curve-color', trackColor(track.id));
     wrapper.innerHTML = trackColumns(
         track, provider, view, knownNames, editingTrackId,
         selectedKeyframes

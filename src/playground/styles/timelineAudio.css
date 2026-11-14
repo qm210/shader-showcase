@@ -1,14 +1,13 @@
-#pg-overlay .audio-waveform-rows {
+#pg .audio-waveform-rows {
     display: contents;
 }
 
-#pg-overlay .audio-track-row {
-    grid-column: 1 / -1;
+#pg .audio-track-row {
     display: contents;
 }
 
-#pg-overlay .audio-name-col {
-    grid-column: 1 / span 2;
+#pg .audio-name-col {
+    grid-column: span 2;
     min-width: 6em;
     padding: 0.5em 0.65em;
     display: flex;
@@ -16,7 +15,7 @@
     gap: 0.3em;
 }
 
-#pg-overlay .audio-name-col .audio-label {
+#pg .audio-name-col .audio-label {
     color: #9bf;
     font-size: 0.83em;
     overflow-wrap: anywhere;
@@ -25,14 +24,14 @@
     min-width: 0;
 }
 
-#pg-overlay .audio-name-col .audio-duration {
+#pg .audio-name-col .audio-duration {
     color: rgba(200, 220, 255, 0.5);
     font-size: 0.75em;
     font-family: var(--overlay-mono), monospace;
     white-space: nowrap;
 }
 
-#pg-overlay .audio-controls-col .sample-selector {
+#pg .audio-controls-col .sample-selector {
     font-size: 0.76em;
     font-family: var(--overlay-mono), monospace;
     position: relative;
@@ -40,7 +39,7 @@
     user-select: none;
 }
 
-#pg-overlay .audio-controls-col .sample-selector-value {
+#pg .audio-controls-col .sample-selector-value {
     padding: 0.1em 0.3em;
     background: var(--overlay-bg);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -50,17 +49,17 @@
     display: inline-block;
 }
 
-#pg-overlay .audio-controls-col .sample-selector:hover .sample-selector-value {
+#pg .audio-controls-col .sample-selector:hover .sample-selector-value {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.3);
 }
 
-#pg-overlay .audio-controls-col .sample-selector:focus .sample-selector-value {
+#pg .audio-controls-col .sample-selector:focus .sample-selector-value {
     border-color: #9bf;
     box-shadow: 0 0 0 1px rgba(153, 187, 255, 0.3);
 }
 
-#pg-overlay .audio-controls-col .sample-selector-dropdown {
+#pg .audio-controls-col .sample-selector-dropdown {
     display: none;
     position: absolute;
     top: 100%;
@@ -74,35 +73,34 @@
     overflow: hidden;
 }
 
-#pg-overlay .audio-controls-col .sample-selector.open .sample-selector-dropdown {
+#pg .audio-controls-col .sample-selector.open .sample-selector-dropdown {
     display: block;
 }
 
-#pg-overlay .audio-controls-col .sample-option {
+#pg .audio-controls-col .sample-option {
     padding: 0.2em 0.5em;
     color: #9bf;
     cursor: pointer;
     white-space: nowrap;
 }
 
-#pg-overlay .audio-controls-col .sample-option:hover {
+#pg .audio-controls-col .sample-option:hover {
     background: rgba(255, 255, 255, 0.1);
 }
 
-#pg-overlay .audio-controls-col .sample-option[data-selected="true"] {
+#pg .audio-controls-col .sample-option[data-selected="true"] {
     color: #9f9;
     font-weight: 600;
 }
 
-#pg-overlay .audio-status.audio-loading {
+#pg .audio-status.audio-loading {
     color: #bb9;
     font-style: italic;
 }
 
-#pg-overlay .audio-widget {
-    grid-column: 3;
-    min-width: 15em;
-    padding: 0.1em 0.5em 0.1em 2em;
+#pg .audio-widget {
+    min-width: var(--track-widget-min-width);
+    padding: var(--track-widget-pad);
     display: flex;
     align-items: stretch;
     position: relative;
@@ -110,15 +108,14 @@
     max-height: 8em;
 }
 
-#pg-overlay .audio-controls-col {
-    grid-column: 4;
+#pg .audio-controls-col {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
-#pg-overlay .sample-res-label {
+#pg .sample-res-label {
     font-size: 0.8em;
     color: rgba(255, 255, 255, 0.5);
     text-transform: lowercase;
@@ -126,31 +123,31 @@
     white-space: nowrap;
 }
 
-#pg-overlay .audio-waveform-container {
+#pg .audio-waveform-container {
     flex: 1;
     position: relative;
     min-height: 0;
 }
 
-#pg-overlay .audio-waveform {
+#pg .audio-waveform {
     width: 100%;
     height: 100%;
     min-height: 0;
     display: block;
 }
 
-#pg-overlay .audio-waveform path {
+#pg .audio-waveform path {
     fill: rgba(150, 200, 255, 0.3);
     stroke: rgba(150, 200, 255, 0.6);
     stroke-width: 0.5;
 }
 
-#pg-overlay .audio-empty {
+#pg .audio-empty {
     color: rgba(255, 255, 255, 0.4);
     font-size: 0.85em;
 }
 
-#pg-overlay .audio-status {
+#pg .audio-status {
     color: rgba(255, 255, 255, 0.3);
     font-size: 0.8em;
 }

@@ -152,6 +152,7 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
     const time = engine.currentTime;
     const inView = isInView(view, time);
     ui.timeSlider.value = time;
+    ui.timeSlider.classList.toggle('playing', engine.playing);
     ui.timeSubSlider.value = time;
     ui.timeSubSlider.classList.toggle('out-of-view', !inView);
 

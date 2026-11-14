@@ -109,7 +109,7 @@ function queryUI(root, selectors) {
 
 export function createPlaygroundOverlay() {
     const overlay = document.createElement('div');
-    overlay.id = 'pg-overlay';
+    overlay.id = "pg";
     overlay.innerHTML = [
         headerTemplate(),
         timelineTemplate(),
@@ -117,10 +117,6 @@ export function createPlaygroundOverlay() {
         randomizerTemplate(),
         contextBarTemplate(),
     ].join('');
-
-    document.queryTooltips = () => [
-        ...overlay.querySelectorAll('.timeline-tooltip')
-    ];
 
     const ui = queryUI(overlay, UI_SELECTORS);
 

@@ -110,5 +110,5 @@ kbd {
 
 input[type="range" i] {
   min-width: 5vw;
-  width: 100% !important;
+  width: 100%;
 }

@@ -24,6 +24,7 @@ export class PlaygroundContext {
         this.overlay = new Overlay(this._provider);
         this._playbackSync = new PlaybackSync(state, this.engine);
         this._playbackSync.connectOverlay(this.overlay);
+        this._playbackSync.connectMainActions(state.track?.actions ?? null);
         
         // Initialize overlay asynchronously (loads default audio, etc.)
         this.overlay.init().catch(err => {

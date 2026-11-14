@@ -1,16 +1,18 @@
 @import "timeZoom.css";
 @import "controls.css";
 @import "timeline.css";
-@import "audio.css";
+@import "timelineAudio.css";
+@import "keyframes.css";
 @import "uniforms.css";
 
-#pg-overlay {
+#pg {
     --overlay-accent: #7df;
     --overlay-pink: #f9a;
     --overlay-pink-soft: #fca;
     --overlay-text: #e8e8f0;
     --overlay-bg: rgb(50, 55, 75);
-    --overlay-border: rgba(140, 170, 255, 0.35);
+    --overlay-neutral: rgb(140, 170, 255);
+    --overlay-border: rgba(from var(--overlay-neutral) r g b / 35%);
     --overlay-divider: rgba(255, 255, 255, 0.1);
     --overlay-field: rgba(255, 255, 255, 0.08);
     --overlay-mono: "Consolas", "Monaco", monospace;
@@ -19,6 +21,11 @@
     --overlay-gap: 0.5em;
     --overlay-pad: 0.6em 0.85em;
     --overlay-randomize: #bb9fee;
+
+    --slider-color: var(--overlay-accent);
+    --track-widget-pad: 0.1em 0.5em 0.1em 2em;
+    --track-widget-min-width: 15em;
+    --curve-color: var(--overlay-neutral);
 
     position: fixed;
     top: 1em;
@@ -51,38 +58,38 @@
 }
 
 /* The display above would otherwise override the hidden attribute. */
-#pg-overlay[hidden] {
+#pg[hidden] {
     display: none;
 }
 
-#pg-overlay,
-#pg-overlay *,
-#pg-overlay *::before,
-#pg-overlay *::after {
+#pg,
+#pg *,
+#pg *::before,
+#pg *::after {
     box-sizing: border-box;
 }
 
 /* Native controls otherwise retain browser-specific font defaults. */
-#pg-overlay :where(button, input, select) {
+#pg :where(button, input, select) {
     font-family: inherit;
     font-size: inherit;
 }
 
-#pg-overlay :where(button, select, input[type="checkbox"]) {
+#pg :where(button, select, input[type="checkbox"]) {
     cursor: pointer;
 }
 
-#pg-overlay :where(button, input, select):focus-visible {
+#pg :where(button, input, select):focus-visible {
     outline: 2px solid var(--overlay-accent);
     outline-offset: 2px;
 }
 
-#pg-overlay.dragging {
+#pg.dragging {
     opacity: 0.9;
     cursor: move;
 }
 
-#pg-overlay .panel-header {
+#pg .panel-header {
     grid-area: title;
     display: flex;
     flex: 0 0 auto;
@@ -97,11 +104,11 @@
     cursor: move;
 }
 
-#pg-overlay .panel-header:hover {
+#pg .panel-header:hover {
     background: linear-gradient(135deg, rgba(90, 110, 220, 0.45), rgba(70, 80, 160, 0.55));
 }
 
-#pg-overlay .panel-header .title {
+#pg .panel-header .title {
     min-width: 0;
     overflow-wrap: anywhere;
     margin-right: auto;
@@ -109,24 +116,24 @@
     font-variant: small-caps;
 }
 
-#pg-overlay .panel-header-actions {
+#pg .panel-header-actions {
     display: flex;
     gap: 1ch;
 }
 
-#pg-overlay .panel-header-actions span {
+#pg .panel-header-actions span {
     margin-left: 1rem;
     margin-right: 1ch;
 }
 
-#pg-overlay .panel-header span,
-#pg-overlay .panel-header .btn {
+#pg .panel-header span,
+#pg .panel-header .btn {
     font-size: 0.75em;
     padding: 0.15em 0.45em;
     flex-shrink: 0;
 }
 
-#pg-overlay .minimize-btn {
+#pg .minimize-btn {
     display: flex;
     flex: 0 0 auto;
     align-items: center;
@@ -142,19 +149,19 @@
     font-size: 1.1em;
 }
 
-#pg-overlay .minimize-btn:hover {
+#pg .minimize-btn:hover {
     background: rgba(255, 255, 255, 0.06);
     color: #fff;
 }
 
-#pg-overlay.hidden {
+#pg.hidden {
     display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #pg-overlay *,
-    #pg-overlay *::before,
-    #pg-overlay *::after {
+    #pg *,
+    #pg *::before,
+    #pg *::after {
         transition: none;
     }
 }

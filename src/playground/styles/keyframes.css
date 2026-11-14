@@ -1,0 +1,373 @@
+#pg .track-widget .keyframe-strip {
+    flex: 1;
+    margin-top: 0;
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    transition: min-height 400ms cubic-bezier(0.23, 1, 0.37, 1);
+}
+
+#pg .track-wrapper.selected .track-widget .keyframe-strip {
+    background-color: var(--overlay-bg);
+    min-height: 200px;
+}
+
+#pg .keyframe-strip {
+    position: relative;
+    height: 100%;
+    margin-top: 0;
+    overflow: visible;
+    border-radius: var(--overlay-radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    cursor: copy;
+}
+
+#pg .keyframe-strip .strip-bg {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent calc(100% / 20 - 1px),
+        rgba(255, 255, 255, 0.03) calc(100% / 20 - 1px),
+        rgba(255, 255, 255, 0.03) calc(100% / 20)
+    );
+}
+
+.keyframe-strip .curve-lines {
+    position: absolute;
+    /* An <svg> is a replaced element: inset alone does not stretch it,
+       it needs an explicit size, else it is 300x150 px. Use the same
+       horizontal box as the keyframe dots. */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.curve-lines path {
+    fill: none;
+    stroke: var(--curve-color, #5b9bb5);
+    stroke-width: 1.5px;
+    /* Keeps the width in screen pixels despite preserveAspectRatio=none. */
+    vector-effect: non-scaling-stroke;
+}
+
+.curve-lines .tail-line {
+    stroke-dasharray: 12 8;
+    opacity: 0.6;
+}
+
+#pg .keyframe-strip .range-label {
+    position: absolute;
+    right: 100%;
+    margin-right: 0.9ch;
+    font-size: 0.7em;
+    font-family: var(--overlay-mono), monospace;
+    color: rgba(200, 220, 255, 0.6);
+    pointer-events: none;
+    white-space: nowrap;
+    text-align: right;
+}
+
+#pg .keyframe-strip .range-label.max-label {
+    top: 0.1em;
+}
+
+#pg .keyframe-strip .range-label.min-label {
+    bottom: 0.1em;
+}
+
+#pg .keyframe-strip .zero-marker {
+    position: absolute;
+    right: 100%;
+    margin-right: 0.3em;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65em;
+    font-family: var(--overlay-mono), monospace;
+    color: rgba(200, 220, 255, 0.4);
+    pointer-events: none;
+    text-align: right;
+}
+
+#pg .keyframe-strip .value-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 5px;
+    margin-top: -2px;
+    z-index: 1;
+}
+
+#pg .keyframe-strip .value-line::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px dashed var(--overlay-pink-soft);
+    opacity: 0.66;
+}
+
+#pg .keyframe-strip .value-line.outside {
+    border-style: dotted;
+}
+
+#pg .keyframe-dot {
+    --keyframe-color-idle: var(--overlay-neutral);
+    --keyframe-dot-size: 0.6em;
+    --keyframe-hit-size: 24px;
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: var(--keyframe-hit-size);
+    height: var(--keyframe-hit-size);
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+
+#pg .keyframe-dot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--keyframe-dot-size);
+    height: var(--keyframe-dot-size);
+    border: 2px solid var(--keyframe-color-idle);
+    border-radius: 50%;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    transition: background-color 0.15s, box-shadow 0.15s;
+}
+
+#pg .keyframe-dot:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+#pg .keyframe-dot:hover::before {
+    background: #f9c;
+    box-shadow: 0 0 0.5em rgba(255, 150, 170, 0.6);
+}
+
+#pg .keyframe-dot.selected::before {
+    border-color: #fff;
+    background: #ff4;
+    box-shadow: 0 0 0.6em rgba(255, 255, 100, 0.6);
+}
+
+#pg .keyframe-dot.shift-selected::before {
+    border-color: var(--overlay-accent);
+    background: rgba(120, 200, 255, 0.4);
+    box-shadow: 0 0 0.5em rgba(120, 200, 255, 0.5);
+}
+
+#pg .keyframe-popup {
+    position: absolute ;
+    padding: 0.4em 0.6em;
+    border-radius: var(--overlay-radius-sm);
+    background: rgba(40, 50, 80, 0.98);
+    border: 1px solid var(--overlay-border);
+    color: var(--overlay-accent);
+    box-shadow: 0 0.3em 1em rgba(0, 0, 0, 0.4);
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.75em;
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+    min-width: 140px;
+}
+
+#pg .keyframe-popup .popup-title {
+    color: #89a;
+    font-weight: bold;
+    text-align: center;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid var(--overlay-border);
+    margin-bottom: 0.05em;
+}
+
+#pg .keyframe-popup .popup-row {
+    display: flex;
+    gap: 0.5em;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#pg .keyframe-popup .popup-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+#pg .keyframe-popup .popup-row .kf-seek-btn {
+    flex: none;
+}
+
+#pg .keyframe-popup .popup-row select option {
+    background: rgb(30, 35, 55);
+    color: #cde;
+    padding: 0.3em 0.5em;
+}
+
+#pg .keyframe-popup .popup-label {
+    color: #89a;
+}
+
+#pg .keyframe-popup .popup-value {
+    color: var(--overlay-accent);
+}
+
+#pg span.popup-value {
+    white-space: pre;
+}
+
+#pg .keyframe-popup .popup-value.kf-seek-btn {
+    background: var(--overlay-field);
+    border: 1px solid var(--overlay-border);
+    border-radius: var(--overlay-radius-sm);
+    padding: 0.1em 0.35em;
+    cursor: pointer;
+    color: var(--overlay-accent);
+    font-family: var(--overlay-mono), monospace;
+    font-size: inherit;
+    transition: background 0.15s;
+}
+
+#pg .keyframe-popup .popup-value.kf-seek-btn:hover {
+    background: rgba(130, 170, 255, 0.2);
+}
+
+#pg .keyframe-popup .popup-remove {
+    margin-top: 0.2em;
+    padding: 0.15em 0.4em;
+    border: 1px solid var(--overlay-border);
+    border-radius: var(--overlay-radius-sm);
+    background: rgba(255, 100, 100, 0.15);
+    color: #f88;
+    cursor: pointer;
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+#pg .keyframe-popup .popup-remove:hover {
+    background: rgba(255, 100, 100, 0.3);
+}
+
+#pg .context-action-bar {
+    position: absolute;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.4em 0.6em;
+    border-radius: var(--overlay-radius);
+    background: rgba(40, 48, 72, 0.97);
+    border: 1px solid var(--overlay-border);
+    box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.5);
+    font-size: 0.85em;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+#pg .context-action-bar .kf-info {
+    display: flex;
+    align-items: baseline;
+    gap: 0.2em;
+    color: var(--overlay-accent);
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.95em;
+}
+
+#pg .context-action-bar .kf-time-label {
+    opacity: 0.6;
+}
+
+#pg .context-action-bar .kf-values {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0 0.3em;
+    border-left: 1px solid var(--overlay-divider);
+    border-right: 1px solid var(--overlay-divider);
+}
+
+#pg .context-action-bar .kf-field-group {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+}
+
+#pg .context-action-bar .kf-field-group label {
+    font-size: 0.8em;
+    opacity: 0.5;
+    user-select: none;
+}
+
+#pg .context-action-bar .kf-val {
+    font-family: var(--overlay-mono), monospace;
+    color: #cde;
+    min-width: 3.5em;
+    text-align: right;
+    font-size: 0.9em;
+}
+
+#pg .context-action-bar .kf-current-val {
+    width: 4.5em;
+    padding: 0.15em 0.3em;
+    border-color: var(--overlay-border);
+    background: var(--overlay-field);
+    color: #fff;
+    font-family: var(--overlay-mono), monospace;
+    font-size: 0.9em;
+}
+
+#pg .context-action-bar .kf-current-val:focus {
+    border-color: var(--overlay-accent);
+    outline: none;
+}
+
+#pg .context-action-bar .kf-transition {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+}
+
+#pg .context-action-bar .kf-transition label {
+    font-size: 0.8em;
+    opacity: 0.5;
+    user-select: none;
+}
+
+#pg .context-action-bar .kf-transition select {
+    padding: 0.15em 0.2em;
+    border-color: var(--overlay-border);
+    background: var(--overlay-field);
+    color: #cde;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+#pg .context-action-bar .kf-undo-btn {
+    padding: 0.15em 0.35em;
+    font-size: 0.9em;
+    border-color: rgba(255, 200, 100, 0.4);
+    background: rgba(255, 200, 100, 0.1);
+    color: #fc8;
+}
+
+#pg .context-action-bar .kf-undo-btn:hover {
+    border-color: rgba(255, 200, 100, 0.6);
+    background: rgba(255, 200, 100, 0.2);
+}
+
+#pg .context-action-bar .kf-undo-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}

@@ -20,6 +20,7 @@ export class PlaybackSync {
         this._mainState = mainState;
         this._engine = engine;
         this._overlay = null;
+        this._mainActions = null;
         this._lastEngineTime = 0;
         this._lastMainTime = 0;
         this._syncingFromMain = false;
@@ -32,6 +33,15 @@ export class PlaybackSync {
      */
     connectOverlay(overlay) {
         this._overlay = overlay;
+    }
+
+    /**
+     * Connect the main page's track actions so overlay seek/play
+     * also trigger the main page's audio handling logic.
+     * @param {object} mainActions - { seek: fn, togglePlay: fn }
+     */
+    connectMainActions(mainActions) {
+        this._mainActions = mainActions;
     }
 
     // ─── Main → Overlay ───────────────────────────────────────
@@ -85,6 +95,7 @@ export class PlaybackSync {
         this._syncingFromOverlay = true;
         this._mainState.time = time;
         this._lastMainTime = time;
+        this._mainActions?.seek?.();
         this._syncingFromOverlay = false;
     }
 
@@ -98,6 +109,7 @@ export class PlaybackSync {
         if (playing) {
             this._mainState.play.previousTimestamp = null;
         }
+        this._mainActions?.togglePlay?.(playing);
         this._syncingFromOverlay = false;
     }
 

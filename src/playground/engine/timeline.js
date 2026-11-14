@@ -16,7 +16,7 @@ const MAX_UNDO_STEPS = 50;
 
 export class TimelineTrack {
     constructor(name) {
-        this.id = 'track_' + Math.random().toString(36).substr(2, 9);
+        this.id = 'track_' + Math.random().toString(36).slice(2, 11);
         this.name = name;
         this.targets = [];
         this.keyframes = [];

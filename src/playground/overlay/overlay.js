@@ -81,7 +81,7 @@ export class Overlay {
     }
 
     async init() {
-        await this.createDOM();
+        this.createDOM();
         this.bindEvents();
         this.restoreFromStorage();
         await this._loadDefaultAudio();
