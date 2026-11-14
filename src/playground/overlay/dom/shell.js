@@ -25,6 +25,7 @@ const UI_SELECTORS = {
     timeSubSlider:         '.time-sub-slider',
     timeSubTicks:          '.time-sub-ticks',
     speedInput:            '.speed-input',
+    audioFileInput:        '#audio-file-input',
     timelineEditor:        '.timeline-editor',
     trackRows:             '.track-rows',
     preview:               '.value-preview',
@@ -45,13 +46,28 @@ const UI_SELECTORS = {
 function headerTemplate() {
     return `
         <div class="panel-header"
-             data-drag-handle>
-            <span class="title">Uniform Playground</span>
+             data-drag-handle
+         >
+            <span class="title">
+                Uniform Playground
+            </span>
             <div class="panel-header-actions">
-                <div class="track-list-export">
-                    <span>Timeline:</span>
-                    ${actionButton({action: ACTION.EXPORT, label: 'Export'})}
-                    ${actionButton({action: ACTION.IMPORT, label: 'Import'})}
+                <div class="timeline-actions">
+                    <span>Timeline:</span>                   
+                    ${actionButton({
+                        action: ACTION.EXPORT,
+                        label: 'Export'
+                    })}
+                    ${actionButton({
+                        action: ACTION.IMPORT,
+                        label: 'Import'
+                    })}
+                    ${actionButton({
+                        action: ACTION.LOAD_AUDIO,
+                        label: '🎵',
+                        title: 'Load audio file',
+                        className: 'btn icon'
+                    })}                    
                 </div>
                 <div class="uniform-snaphot">
                     <span>Uniform Snapshot:</span>

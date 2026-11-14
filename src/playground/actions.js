@@ -26,10 +26,11 @@ export const ACTION = Object.freeze({
     PASTE_TRACK: 'paste-track',
     LOAD_SNAPSHOT: 'load-snapshot',
     CLEAR_OVERRIDES: 'clear-overrides',
+    LOAD_AUDIO: 'load-audio',
 });
 
 export function runAction(overlay, data) {
-    DEBUG.log("runAction()", data.action, data);
+    DEBUG.log(`[ACTION] [${data.action}]`, data);
 
     switch (data.action) {
         case ACTION.HIDE_OVERLAY:
@@ -282,6 +283,15 @@ export function runAction(overlay, data) {
         case ACTION.CLEAR_OVERRIDES: {
             overlay.engine.clearOverrides();
             overlay.renderTimeline();
+            break;
+        }
+
+        case ACTION.LOAD_AUDIO: {
+            const fileInput = overlay.ui.audioFileInput;
+            if (!fileInput) {
+                return;
+            }
+            fileInput.click();
             break;
         }
 

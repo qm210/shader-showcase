@@ -1,4 +1,5 @@
 import {TimelineTrack} from "./timeline.js";
+import {AudioTrack} from "./audioTrack.js";
 
 const LATEST_SNAPSHOT_KEY = "_LATEST_";
 
@@ -9,6 +10,8 @@ export class PlaygroundEngine {
         this.snapshots = new Map();
         this.loadCurrentSnapshot();
         this.tracks = new Map();
+        this.audioTracks = new Map();
+        this._audioContext = null;
         this.currentTime = 0;
         this.playing = false;
         this.speed = 1.0;
@@ -19,11 +22,23 @@ export class PlaygroundEngine {
 
     reset() {
         this.tracks.clear();
+        this.audioTracks.clear();
         this.currentTime = 0;
         this.playing = false;
         this.speed = 1.0;
         this.baseTime = 0;
         this._overrides = {};
+    }
+
+    /**
+     * Get or create an AudioContext for decoding audio.
+     * @returns {AudioContext}
+     */
+    _getAudioContext() {
+        if (!this._audioContext) {
+            this._audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return this._audioContext;
     }
 
     addTrack(name) {
@@ -42,6 +57,29 @@ export class PlaygroundEngine {
 
     getAllTracks() {
         return Array.from(this.tracks.values());
+    }
+
+    /**
+     * Load an audio file and add it as an audio track.
+     * @param {File} file
+     * @returns {Promise<AudioTrack>}
+     */
+    async loadAudioTrack(file) {
+        const track = await AudioTrack.load(file, this._getAudioContext());
+        this.audioTracks.set(track.id, track);
+        return track;
+    }
+
+    removeAudioTrack(id) {
+        this.audioTracks.delete(id);
+    }
+
+    getAudioTrack(id) {
+        return this.audioTracks.get(id);
+    }
+
+    getAllAudioTracks() {
+        return Array.from(this.audioTracks.values());
     }
 
     update(dt) {
@@ -78,7 +116,7 @@ export class PlaygroundEngine {
     getUniformBaseValues() {
         const snapshot = this.latestSnapshot;
         if (!snapshot) {
-            console.error("[ENGINE] Engine does not know any snapshot!");
+            console.error("[ENGINE] Engine does not know any uniform snapshot!");
         }
         return {
             ...snapshot,

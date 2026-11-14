@@ -115,15 +115,16 @@ function targetRow(trackId, index, target, knownNames) {
     const isValid = !name || knownNames.has(name);
     const checked = target && (!isValid || target.enabled);
     const disabled = target && !isValid && target.enabled;
-    const removeButton = target
-        ? actionButton({
+    const removeButton =
+        actionButton({
             action: ACTION.REMOVE_TARGET,
             label: CHAR.TIMES,
             className: 'btn icon subtle',
             title: 'Remove target',
             data: {trackId, targetIdx: index},
-        })
-        : '';
+            style: !target ? "visibility:hidden" : "",
+            disabled: !target,
+        });
     return `
         <div class="${cls('target-row', !isValid && 'invalid-target')}">
             <input type="checkbox"

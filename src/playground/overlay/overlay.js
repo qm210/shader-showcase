@@ -7,16 +7,21 @@ import {KeyframeBoxSelect} from './boxSelect.js';
 import {TimeZoomControl} from './timeZoomControl.js';
 import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from '../engine/timeZoom.js';
 import {createPlaygroundOverlay} from './dom/shell.js';
-import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
+import {renderAudioWaveforms, renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
 import {renderAllTracks, renderTrack, stripFraction} from './dom/tracks.js';
 import {findAllUniformComponents, renderUniformList} from './dom/uniformList.js';
 import {renderBatchList} from './dom/batchList.js';
 import {renderRandomizerPanel} from './dom/randomizer.js';
 import {positionContextBar, renderContextActionBar} from './dom/contextBar.js';
+import {setWaveformSamples} from './dom/audioTrack.js';
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
 import {keyframeKey, parseKeyframeKey} from "../engine/timeline.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
+
+// Default audio file for development (Vite asset import).
+// Place your audio file in the public/ directory and update the path below.
+const DEFAULT_AUDIO_FILE = '/DreamySchilfester2024_3_2025-12-11_2128.ogg';
 
 
 export class Overlay {
@@ -73,14 +78,13 @@ export class Overlay {
 
         // Context action bar for the selected keyframe (created in shell.js)
         this.contextBar = null;
-
-        this.init();
     }
 
-    init() {
-        this.createDOM();
+    async init() {
+        await this.createDOM();
         this.bindEvents();
         this.restoreFromStorage();
+        await this._loadDefaultAudio();
         this.syncUI();
         this.renderTimeline();
         this.renderRandomizer();
@@ -91,9 +95,40 @@ export class Overlay {
         const dom = createPlaygroundOverlay();
         this.element = dom.element;
         this.ui = dom.ui;
+        this.ui.onSeek = (time) => this._seek(time);
         this.contextBar = this.ui.contextBar;
         document.body.append(this.element);
         document.body.append(this.contextBar);
+    }
+
+    /**
+     * Load the default audio file if it exists.
+     */
+    async _loadDefaultAudio() {
+        if (!DEFAULT_AUDIO_FILE) {
+            return;
+        }
+        try {
+            const response = await fetch(DEFAULT_AUDIO_FILE);
+            if (!response.ok) {
+                DEBUG.log('[AUDIO] Default audio file not found, skipping.');
+                return;
+            }
+            const blob = await response.blob();
+            const file = audioFile(blob, DEFAULT_AUDIO_FILE);
+            const track = await this.engine.loadAudioTrack(file);
+
+            DEBUG.log('[AUDIO] Loaded default audio:', {file, track});
+        } catch (err) {
+            console.warn('[AUDIO] Failed to load default audio:', err.message);
+            console.error(err);
+        }
+
+        function audioFile(blob, filepath, fallbackType = "audio/ogg") {
+            const filename = filepath.split('/').pop();
+            const type = blob.type || fallbackType;
+            return new File([blob], filename, {type});
+        }
     }
 
     bindEvents() {
@@ -480,6 +515,14 @@ export class Overlay {
         if (this._ignoreNextClick) {
             this._ignoreNextClick = false;
             return;
+        }
+
+        // Close sample selector dropdown when clicking outside
+        const selector = e.target.closest('.sample-selector');
+        if (!selector) {
+            document.querySelectorAll('.sample-selector.open').forEach(el =>
+                el.classList.remove('open')
+            );
         }
 
         const actionData = e.target.closest('[data-action]')?.dataset;
@@ -910,6 +953,29 @@ export class Overlay {
             );
         } else if (el === this.ui.timeSlider || el === this.ui.timeSubSlider) {
             sliderTooltip(el)?.classList.remove('dragging');
+        } else if (el === this.ui.audioFileInput && el.files?.length) {
+            const file = el.files[0];
+            el.value = '';
+            void this._loadAudioFile(file);
+        } else if (el.classList.contains('sample-selector')) {
+            // Toggle dropdown open/close
+            el.classList.toggle('open');
+        } else if (el.classList.contains('sample-option')) {
+            const value = Number(el.dataset.value);
+            setWaveformSamples(value);
+            // Update the displayed value
+            const selector = el.closest('.sample-selector');
+            if (selector) {
+                const valueEl = selector.querySelector('.sample-selector-value');
+                if (valueEl) valueEl.textContent = `${value}/px`;
+                // Update selected state
+                selector.querySelectorAll('.sample-option').forEach(opt =>
+                    opt.removeAttribute('data-selected')
+                );
+                el.setAttribute('data-selected', 'true');
+                selector.classList.remove('open');
+            }
+            this.renderTimeline();
         }
     }
 
@@ -1060,7 +1126,7 @@ export class Overlay {
 
     togglePlaying() {
         this.engine.playing = !this.engine.playing;
-        this.ctx._playbackSync.onOverlayPlayToggled(this.engine.playing);
+        this.ctx._playbackSync?.onOverlayPlayToggled(this.engine.playing);
         this._syncPlayButton();
     }
 
@@ -1150,6 +1216,33 @@ export class Overlay {
                 this.renderTimeline();
             })
             .catch(err => alert(`Invalid timeline file: ${err.message}`));
+    }
+
+    /**
+     * Load an audio file and add it as an audio track.
+     * @param {File} file
+     */
+    async _loadAudioFile(file) {
+        try {
+            await this.engine.loadAudioTrack(file);
+            const audioTracks = this.engine.getAllAudioTracks();
+            if (audioTracks.length > 0) {
+                const maxDuration = Math.max(
+                    ...audioTracks.map(t => t.duration)
+                );
+                const currentEnd = parseFloat(this.ui.timeEnd.value);
+                if (maxDuration > currentEnd) {
+                    this.ui.timeEnd.value = maxDuration.toFixed(2);
+                    this._timeZoom.applyTypedRange(
+                        parseFloat(this.ui.timeStart.value),
+                        maxDuration
+                    );
+                }
+            }
+            this.renderTimeline();
+        } catch (err) {
+            alert(`Failed to load audio: ${err.message}`);
+        }
     }
 
     reset() {
@@ -1277,7 +1370,7 @@ export class Overlay {
 
     _seek(time) {
         this.engine.currentTime = time;
-        this.ctx._playbackSync.onOverlaySeek(time);
+        this.ctx._playbackSync?.onOverlaySeek(time);
         this._renderPlayback();
         this._scheduleSave();
     }
@@ -1290,6 +1383,8 @@ export class Overlay {
         renderAllTracks(this.ui, this.ctx, ...this._trackRenderState());
         this._refreshTargetRows();
         this._renderPlayback();
+        const view = visibleRange(this.zoom, this.render.renderedSpan);
+        renderAudioWaveforms(this.ui, this.engine, view, this.render.renderedSpan, this.engine.currentTime);
         this._renderPreview();
         this._positionContextBar();
         this._scheduleSave();

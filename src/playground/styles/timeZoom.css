@@ -66,8 +66,9 @@
 #pg-overlay .time-ruler-hint {
     position: absolute;
     top: 0;
-    right: 0;
-    font-size: 9px;
+    right: .5em;
+    font-size: 0.8em;
+    color: var(--overlay-pink);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s;

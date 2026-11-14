@@ -27,8 +27,10 @@ export function actionButton({
     title = '',
     disabled = false,
     data = {},
+    style = "",
 }) {
     const titleAttr = title ? `title="${esc(title)}"` : '';
+    const styleAttr = style ? `style="${style}"` : '';
     return `
         <button
             type="button"
@@ -37,6 +39,7 @@ export function actionButton({
             ${dataAttrs(data)}
             ${titleAttr}
             ${disabled ? "disabled" : ""}
+            ${styleAttr}
         >
             ${label}
         </button>`;
