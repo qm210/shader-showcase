@@ -12,7 +12,7 @@ export const DATALIST = {
 
 export function createPlaygroundOverlay() {
     const overlay = document.createElement('div');
-    overlay.id = 'playground-overlay';
+    overlay.id = 'pg-overlay';
     overlay.innerHTML = `
         <div class="panel-header"
              data-drag-handle>
@@ -20,87 +20,86 @@ export function createPlaygroundOverlay() {
                 Uniform Playground
             </span>
              <div class="panel-header-actions">
-                <button type="button"
-                        class="btn danger reset-btn"
-                        data-action="${ACTION.RESET}"
-                        title="Clear all tracks, batches, values and the stored overlay state">
-                    Reset
-                </button>
-                <button type="button"
-                        class="btn danger load-snapshot-btn"
-                        data-action="${ACTION.LOAD_SNAPSHOT}"
-                        title="Load current uniform values from main page sliders">
-                    Load Snapshot
-                </button>
+                <div class="uniform-snaphot">
+                    <span>Uniforms:</span>
+                    <button type="button"
+                            class="btn danger reset-btn"
+                            data-action="${ACTION.RESET}"
+                            title="Clear all tracks, batches, values and the stored overlay state">
+                        Reset
+                    </button>
+                    <button type="button"
+                            class="btn danger load-snapshot-btn"
+                            data-action="${ACTION.LOAD_SNAPSHOT}"
+                            title="Load current uniform values from main page sliders">
+                        Load Snapshot
+                    </button>
+                </div>
+                <div class="track-list-export">
+                    <span>Timeline:</span>
+                    <button type="button"
+                            class="btn"
+                            data-action="${ACTION.EXPORT}">
+                        Export
+                    </button>
+                    <button type="button"
+                            class="btn"
+                            data-action="${ACTION.IMPORT}">
+                        Import
+                    </button>
+                </div>                
             </div>
             <button type="button"
                     class="minimize-btn"
                     data-action="${ACTION.HIDE_OVERLAY}"
                     title="Minimize">
-                −
+                ${CHAR.X_MARK}
             </button>
         </div>
 
-        <div class="action-bar">
-            <button type="button"
+        <div class="timeline-editor">
+            <div class="tracks-actions">
+                <button type="button"
                     class="btn"
                     data-action="${ACTION.ADD_TRACK}"
                     title="Create a new track">
-                + Track
-            </button>
-
+                    + Track
+                </button>            
+            </div>
             <div class="timeline-controls">
-                <button type="button"
-                        class="btn icon play-btn"
-                        data-action="${ACTION.PLAY}"
-                        title="Play/Pause (Space)">
-                    ${CHAR.PLAY}
-                </button>
-                <input type="range"
-                       class="time-slider"
-                       min="0"
-                       max="${MIN_TIMELINE_SPAN}"
-                       step="0.1"
-                       value="0">
-                <span class="time-display">
-                    0.0s
-                </span>
-
-                <div class="speed-control">
-                    <label for="playground-speed">
-                        x
-                    </label>
-                    <input type="number"
-                           id="playground-speed"
-                           class="field num speed-input"
-                           min="0.1"
-                           max="5"
-                           step="0.1"
-                           value="1.0">
+                <div class="play-controls">
+                    <div class="speed-control">
+                        <label for="playground-speed">
+                            ${CHAR.TIMES}
+                        </label>
+                        <input type="number"
+                               id="playground-speed"
+                               class="field num speed-input"
+                               min="0.1"
+                               max="20"
+                               step="0.1"
+                               value="1.0">
+                    </div>
+                    <button type="button"
+                            class="btn icon play-btn"
+                            data-action="${ACTION.PLAY}"
+                            title="Play/Pause (Space)">
+                        ${CHAR.PLAY}
+                    </button>                    
                 </div>
-            </div>
-
-            <div class="track-list-export">
-                <button type="button"
-                        class="btn"
-                        data-action="${ACTION.EXPORT}">
-                    Export
-                </button>
-                <button type="button"
-                        class="btn"
-                        data-action="${ACTION.IMPORT}">
-                    Import
-                </button>
-            </div>
-        </div>
-
-        <div class="track-list">
-            <div class="value-preview">
-            </div>
+            </div>            
             <div class="time-range-bar">
                 <div class="time-range-labels">
-                    <span class="time-range-start">0.0s</span>
-                    <span class="time-range-end">60.0s</span>
+                    <div>
+                        <span class="time-range-label">Start:</span>
+                        <input type="number" class="field num time-start" min="0" step="1" value="0">
+                        <span class="time-range-unit">s</span>
+                    </div>
+                    <div>
+                        <span class="time-range-label">End:</span>
+                        <input type="number" class="field num time-end" min="1" step="1" value="60">
+                        <span class="time-range-unit">s</span>
+                    </div>
                 </div>
                 <input type="range"
                        class="time-slider"
@@ -108,11 +107,10 @@ export function createPlaygroundOverlay() {
                        max="60"
                        step="0.1"
                        value="0">
-                <div class="time-range-controls">
-                    <label>Start: <input type="number" class="field num time-start" min="0" step="1" value="0"></label>
-                    <label>End: <input type="number" class="field num time-end" min="1" step="1" value="60"></label>
-                </div>
             </div>
+            <div></div>
+            <div class="track-rows"></div>
+            <div class="value-preview"></div>
         </div>
 
         <div class="uniform-list-panel">
@@ -179,13 +177,11 @@ export function createPlaygroundOverlay() {
         ui: {
             playBtn: overlay.querySelector('.play-btn'),
             timeSlider: overlay.querySelector('.time-slider'),
-            timeDisplay: overlay.querySelector('.time-display'),
             timeStart: overlay.querySelector('.time-start'),
             timeEnd: overlay.querySelector('.time-end'),
-            timeRangeStart: overlay.querySelector('.time-range-start'),
-            timeRangeEnd: overlay.querySelector('.time-range-end'),
+
             speedInput: overlay.querySelector('.speed-input'),
-            trackList: overlay.querySelector('.track-list'),
+            timelineEditor: overlay.querySelector('.timeline-editor'),
             preview: overlay.querySelector('.value-preview'),
             batchSelectorDisplay: overlay.querySelector('.target-selector-display'),
             batchSelectorDropdown: overlay.querySelector('.target-selector-dropdown'),
@@ -275,11 +271,9 @@ export function renderContextActionBar(bar, kf, track, surrounding) {
 }
 
 export function renderTracks(ui, provider, selectedTrackId, editingTrackId, collapsedTrackIds, selectedKeyframe) {
-    const { trackList } = ui;
+    const { timelineEditor } = ui;
     const engine = provider.engine;
-    // Preserve time-range-bar, clear only track items
-    const timeRangeBar = trackList.querySelector('.time-range-bar');
-    trackList.querySelectorAll('.track-wrapper').forEach(w => w.remove());
+    const trackRows = timelineEditor.querySelector('.track-rows');
     ui.timeSlider.max = timelineSpan(engine);
 
     // Build set of known uniform/batch names for validation
@@ -410,12 +404,12 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
                         class="btn icon"
                         data-action="${ACTION.COPY_TRACK}"
                         data-track-id="${id}"
-                        title="Copy keyframes">${CHAR.COPY}</button>
+                        title="Copy keyframes">${CHAR.ARROW_PAIR_RIGHT}</button>
                 <button type="button"
                         class="btn icon"
                         data-action="${ACTION.PASTE_TRACK}"
                         data-track-id="${id}"
-                        title="Paste keyframes">${CHAR.PASTE}</button>
+                        title="Paste keyframes">${CHAR.ARROW_PAIR_LEFT}</button>
                 <button type="button"
                         class="btn icon"
                         data-action="${ACTION.CLEAR_TRACK}"
@@ -439,7 +433,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId, coll
         );
         wrapper.dataset.trackId = track.id;
         wrapper.innerHTML = cols;
-        trackList.appendChild(wrapper);
+        trackRows.appendChild(wrapper);
     }
 }
 
@@ -519,9 +513,8 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
 export function renderPlayback(ui, engine) {
     const time = engine.currentTime;
     ui.timeSlider.value = time;
-    ui.timeDisplay.textContent = `${time.toFixed(1)}s`;
     const left = percentOfSpan(time, timelineSpan(engine));
-    const playheads = ui.trackList.querySelectorAll('.playhead');
+    const playheads = ui.timelineEditor.querySelectorAll('.playhead');
     for (const playhead of playheads) {
         playhead.style.left = left;
     }

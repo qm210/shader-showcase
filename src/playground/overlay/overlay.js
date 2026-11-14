@@ -753,7 +753,7 @@ export class Overlay {
                 track.addTarget(newName, -1, 1);
                 this.renderTimeline();
                 // Re-focus the newly added selector
-                const selectors = this.ui.trackList.querySelectorAll('.target-selector');
+                const selectors = this.ui.timelineEditor.querySelectorAll('.target-selector');
                 const lastSelector = selectors[selectors.length - 2]; // second to last (last is the new empty one)
                 if (lastSelector) {
                     lastSelector.focus();
@@ -1051,7 +1051,6 @@ export class Overlay {
         this.ui.timeSlider.min = this._timeRangeStart;
         this.ui.timeSlider.max = this._timeRangeEnd;
         this.ui.timeSlider.value = this.engine.currentTime;
-        this.ui.timeDisplay.textContent = `${this.engine.currentTime.toFixed(1)}s`;
         this.ui.speedInput.value = this.engine.speed;
         this._syncPlayButton();
         this.ui.intensitySlider.value = this.randomIntensity;
@@ -1078,13 +1077,13 @@ export class Overlay {
     }
 
     _updateTimeRangeLabels() {
-        this.ui.timeRangeStart.textContent = `${parseFloat(this.ui.timeStart.value).toFixed(1)}s`;
-        this.ui.timeRangeEnd.textContent = `${parseFloat(this.ui.timeEnd.value).toFixed(1)}s`;
+        // Labels are now input fields, values set directly by caller
     }
 
     renderTimeline() {
         this._renderTracks();
         this._renderPlayback();
+        this._renderPreview();
         this._positionContextBar();
         this._scheduleSave();
     }
