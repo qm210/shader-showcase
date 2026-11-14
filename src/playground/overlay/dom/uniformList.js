@@ -83,10 +83,12 @@ function overwriteCell(kind, entry, index, placeholder) {
 /** One table row per component (a vec3 gives three rows). */
 function uniformRows(provider, entry, isChecked) {
     const range = provider.getControlRange(entry.name);
+    const currentValue = provider.getUniformValue(entry.name);
     const isInteger = isIntegerType(entry.type);
     return vectorComponents(entry.type).map((suffix, i) => {
         const isComponent = i > 0;
         const compRange = componentRange(range, i, isInteger);
+        const compValue = esc(formatComponent(currentValue, i));
         const data = dataAttrs({uniformName: entry.name, component: i});
         const checkCell = isComponent
             ? '<span class="component-placeholder"></span>'
@@ -108,7 +110,7 @@ function uniformRows(provider, entry, isChecked) {
                 ${overwriteCell('min', entry, i, compRange.min)}
                 <td class="cell-value">
                     <span class="slider-tooltip">
-                        ${esc(formatComponent(range?.value, i))}
+                        ${compValue}
                     </span>
                     <input type="range"
                            class="uniform-slider"
@@ -116,7 +118,7 @@ function uniformRows(provider, entry, isChecked) {
                            min="${compRange.min}"
                            max="${compRange.max}"
                            step="${compRange.step}"
-                           title="Drag to preview value">
+                           title="${compValue}">
                 </td>
                 ${overwriteCell('max', entry, i, compRange.max)}
             </tr>`;

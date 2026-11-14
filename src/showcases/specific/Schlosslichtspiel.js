@@ -34,7 +34,6 @@ function render(gl, state) {
         console.info("[DEBUG STATE]", state);
         printDebug = false;
     }
-    state.playground?.update(state.play.dt);
 
     gl.useProgram(state.program);
 

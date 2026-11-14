@@ -88,6 +88,7 @@ function advanceTime(moveTimestep, state, timestamp) {
         state.play.dt = 0;
         return;
     }
+    state.playground?.update(state.play.dt);
 
     moveTimestep(state, timestamp);
     state.time += state.play.dt;

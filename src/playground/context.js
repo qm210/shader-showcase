@@ -53,7 +53,6 @@ export class PlaygroundContext {
                 max: control.max,
                 defaultValue: control.defaultValue,
                 type: control.type,
-                actualValue: () => state.uni[control.name],
                 mainElements,
             });
             const callbacks = mainElements?.synchronize?.onChange;
@@ -192,8 +191,8 @@ export class PlaygroundContext {
                 return ctx.resolveRange({ name });
             },
 
-            getControlValue(name) {
-                return ctx._controlMap?.get(name)?.actualValue();
+            getUniformValue(name) {
+                return ctx._appState.uni[name];
             },
 
             getKnownUniformNames() {
@@ -275,18 +274,8 @@ export function createUniformPlayground(state, controls, elements) {
         _pg = new PlaygroundContext(state, controls, elements);
     }
     return {
-        engine: _pg.engine,
         overlay: _pg.overlay,
-        _provider: _pg._provider,
+        provider: _pg._provider,
         update: (dt) => _pg.update(dt),
-        // syncToShader: (gl, state) => _pg.syncToShader(gl, state),
-        // syncToState: (state) => _pg.syncToState(state),
-        // toggleOverlay: () => _pg.toggleOverlay(),
-        // getUniformValues: () => _pg.getUniformValues(),
-        // addTrack: (name) => _pg.addTrack(name),
-        // removeTrack: (id) => _pg.removeTrack(id),
-        // resetOverlay: () => _pg.resetOverlay(),
-        // toJSON: () => _pg.toJSON(),
-        // loadSnapshotFromState: () => _pg.loadSnapshotFromState(),
     };
 }
