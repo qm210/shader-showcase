@@ -228,22 +228,29 @@ export function renderAudioWaveforms(ui, engine, view, span) {
 
     // Add hover tooltip handler to audio widgets
     const tooltip = ui.timelineTooltip;
-    const overlayRect = ui.timelineEditor?.getBoundingClientRect();
-    if (!overlayRect) return;
+    const timelineEditor = ui.timelineEditor;
+
+    DEBUG.log("[TOOLTIP]", {tooltip, timelineEditor, container});
 
     container.addEventListener('mousemove', (e) => {
         const widget = e.target.closest('.audio-widget');
         if (!widget) {
-            tooltip.classList.remove('visible');
+            DEBUG.log("[TOOLTIP] no widget -> hide");
+            tooltip?.classList.remove('visible');
+            return;
+        }
+        const svg = widget.querySelector('.audio-waveform');
+        if (!svg) {
+            DEBUG.log("[TOOLTIP] no svg", {widget});
+            return;
+        }
+        const bins = svg.dataset.bins;
+        if (!bins) {
+            DEBUG.log("[TOOLTIP] no bins", {widget, svg});
             return;
         }
 
-        const svg = widget.querySelector('.audio-waveform');
-        if (!svg) return;
-
-        const bins = svg.dataset.bins;
-        if (!bins) return;
-
+        const overlayRect = timelineEditor.getBoundingClientRect();
         const widgetRect = widget.getBoundingClientRect();
         const x = e.clientX - widgetRect.left;
         const percentage = Math.max(0, Math.min(1, x / widgetRect.width));
@@ -262,9 +269,18 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         tooltip.style.left = `${e.clientX - overlayRect.left + 10}px`;
         tooltip.style.top = `${e.clientY - overlayRect.top - 40}px`;
         tooltip.classList.add('visible');
+
+        DEBUG.log("[TOOLTIP] visible", {
+            left: tooltip.style.left,
+            top: tooltip.style.top,
+            opacity: tooltip.style.opacity,
+            visibility: tooltip.style.visibility,
+            hasClass: tooltip.classList.contains('visible'),
+        });
     });
 
     container.addEventListener('mouseleave', () => {
-        tooltip.classList.remove('visible');
+        DEBUG.log("[TOOLTIP] leave -> hide");
+        tooltip?.classList.remove('visible');
     });
 }

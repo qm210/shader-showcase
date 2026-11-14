@@ -84,12 +84,12 @@ function advanceTime(moveTimestep, state, timestamp) {
     if (state.play.previousTimestamp === null) {
         state.play.previousTimestamp = timestamp;
     }
-    if (!state.play.running) {
+    if (state.play.running) {
+        moveTimestep(state, timestamp);
+        state.time += state.play.dt;
+    } else {
         state.play.dt = 0;
-        return;
     }
-    moveTimestep(state, timestamp);
-    state.time += state.play.dt;
     state.playground?.update(state.play.dt);
 
     doFpsMeasurement(state);

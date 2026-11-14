@@ -2,6 +2,7 @@ import {ACTION} from '../../actions.js';
 import {actionButton, cls, dataAttrs, esc} from './html.js';
 import {CHAR} from "../index.js";
 import {targetSelectorTemplate} from "./targetSelector.js";
+import {TARGET_PREFIX, targetId} from "../../engine/targets.js";
 
 export function randomizerTemplate() {
     return `
@@ -25,8 +26,6 @@ export function randomizerTemplate() {
         </section>`;
 }
 
-const UNIFORM_TARGET_PREFIX = 'uniform:';
-
 /** Custom batches, auto batches, then every single uniform. */
 function randomizerTargets(provider) {
     const targets = provider.allBatches()
@@ -38,7 +37,7 @@ function randomizerTargets(provider) {
         }));
     const ids = new Set(targets.map(t => t.id));
     for (const name of provider.getKnownUniformNames()) {
-        const id = UNIFORM_TARGET_PREFIX + name;
+        const id = targetId(TARGET_PREFIX.UNIFORM, name);
         if (!ids.has(id)) {
             targets.push({id, name, type: "uniform"});
         }

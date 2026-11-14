@@ -1,6 +1,5 @@
 import {Overlay} from './overlay/overlay.js';
 import {Randomizer} from './engine/randomizer.js';
-import {deriveAutoBatches, UniformBatch} from './engine/uniformBatch.js';
 import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import './styles/overlay.css';
@@ -8,6 +7,7 @@ import {DEBUG} from "./overlay/index.js";
 import {isIntegerType} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
 import {PlaybackSync} from "./engine/playbackSync.js";
+import {BatchTarget, deriveAutoBatches} from "./engine/targets.js";
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {
@@ -155,11 +155,11 @@ export class PlaygroundContext {
                     if (Array.isArray(json)) {
                         // replace when given an array
                         ctx.batches.custom = json.map(batchJson =>
-                            UniformBatch.fromJSON(batchJson)
+                            BatchTarget.fromJSON(batchJson)
                         );
                     } else {
                         // add if single batch, if id is new
-                        const batch = UniformBatch.fromJSON(json);
+                        const batch = BatchTarget.fromJSON(json);
                         if (!ctx.batches.custom.find(b => b.id === batch.id)) {
                             ctx.batches.custom.push(batch);
                         }
@@ -170,9 +170,10 @@ export class PlaygroundContext {
             },
 
             addBatch(name) {
-                const batch = new UniformBatch(
+                const batch = new BatchTarget(
                     name, {
-                        id: `custom:${Date.now()}`
+                        id: `custom:${Date.now()}`,
+                        custom: true,
                     });
                 ctx.batches.custom.push(batch);
                 return batch;

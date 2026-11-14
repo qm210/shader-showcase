@@ -1,13 +1,35 @@
-import {isNumeric} from "../../app/controls.js";
 import {isRangeValue} from "./valueRanges.js";
+import {isNumeric} from "../../app/controls.js";
+
+export const TARGET_PREFIX = {
+    UNIFORM: "uniform",
+    BATCH: "batch",
+    AUTO_BATCH: "auto",
+};
+
+const TARGET_PREFIXES = Object.values(TARGET_PREFIX);
+
+export const targetId = (prefix, name) => {
+    const id = `${prefix}:${name}`;
+    if (!TARGET_PREFIXES.includes(prefix)) {
+        console.warn(`Invalid Target Prefix for ID "${id}"`);
+    }
+    return id;
+};
 
 
-export class UniformBatch {
+export class BatchTarget {
     constructor(name, {id = "", custom = false} = {}) {
-        this.id = id || UniformBatch.createId(custom ? 'custom' : 'auto');
+        const prefix = custom ? TARGET_PREFIX.BATCH : TARGET_PREFIX.AUTO_BATCH;
+        this.id = id || BatchTarget.createId(prefix);
         this.name = name;
         this.custom = custom;
         this.uniforms = [];
+    }
+
+    static newAuto(name) {
+        const id = targetId(TARGET_PREFIX.AUTO_BATCH, name);
+        return new BatchTarget(name, {id});
     }
 
     addUniform(name = "", {
@@ -80,7 +102,7 @@ export class UniformBatch {
 
     static fromJSON(json) {
         const name = String(json.name ?? "Batch");
-        const batch = new UniformBatch(
+        const batch = new BatchTarget(
             name, {
                 id: json.id ?? null,
                 custom: true,
@@ -109,10 +131,7 @@ export function deriveAutoBatches(controls) {
             if (batch) {
                 batches.push(batch);
             }
-            batch = new UniformBatch(
-                control.separator,
-                { id: `auto:${control.separator}` }
-            );
+            batch = BatchTarget.newAuto(control.separator);
             continue;
         }
         if (!isNumeric(control)) {
@@ -120,10 +139,7 @@ export function deriveAutoBatches(controls) {
         }
         allUniforms.push(control);
         if (!batch) {
-            batch = new UniformBatch(
-                "Any",
-                { id: "auto:Any" },
-            );
+            batch = BatchTarget.newAuto("Any");
         }
         batch.addUniformFrom(control);
     }
@@ -131,10 +147,7 @@ export function deriveAutoBatches(controls) {
         batches.push(batch);
     }
     if (allUniforms.length > 0) {
-        const allBatch = new UniformBatch(
-            "All Uniforms",
-            { id: "auto:All Uniforms" }
-        );
+        const allBatch = BatchTarget.newAuto("All Uniforms");
         for (const control of allUniforms) {
             allBatch.addUniformFrom(control);
         }
