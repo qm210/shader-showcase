@@ -125,6 +125,23 @@ function uniformRows(provider, entry, isChecked) {
     }).join('');
 }
 
+export function findAllUniformComponents(uniformName, container) {
+    const table = container.closest('.uniform-table');
+    const sliders = Array.from(
+        table?.querySelectorAll(
+            `input[data-uniform-name="${uniformName}"]`
+        ) ?? []
+    ).filter(s => s.classList.contains('uniform-slider'));
+    return sliders.map(s => ({
+            idx: parseInt(s.dataset.component, 10),
+            value: parseFloat(s.value)
+        }))
+        .sort((a, b) =>
+            a.idx - b.idx
+        )
+        .map(s => s.value);
+}
+
 function uniformTable(provider, entries, isChecked, extraClass = '') {
     const rows = entries
         .map(entry => uniformRows(provider, entry, isChecked(entry)))

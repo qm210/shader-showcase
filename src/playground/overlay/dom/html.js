@@ -22,15 +22,24 @@ export function dataAttrs(data = {}) {
 
 /** A button that triggers an ACTION via the overlay's click delegation. */
 export function actionButton({
-    action, label, className = 'btn', title = '', data = {},
+    action, label,
+    className = 'btn',
+    title = '',
+    disabled = false,
+    data = {},
 }) {
     const titleAttr = title ? `title="${esc(title)}"` : '';
     return `
-        <button type="button"
-                class="${className}"
-                data-action="${action}"
-                ${dataAttrs(data)}
-                ${titleAttr}>${label}</button>`;
+        <button
+            type="button"
+            class="${className}"
+            data-action="${action}"
+            ${dataAttrs(data)}
+            ${titleAttr}
+            ${disabled ? "disabled" : ""}
+        >
+            ${label}
+        </button>`;
 }
 
 /**

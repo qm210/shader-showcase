@@ -130,7 +130,13 @@
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
-#pg-overlay .btn:hover {
+#pg-overlay .btn:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    filter: saturate(50%);
+}
+
+#pg-overlay .btn:hover:not(:disabled) {
     border-color: rgba(130, 170, 255, 0.5);
     background: rgba(80, 100, 220, 0.5);
 }
@@ -151,7 +157,7 @@
     opacity: 0.6;
 }
 
-#pg-overlay .btn.subtle:hover {
+#pg-overlay .btn.subtle:hover:not(:disabled) {
     opacity: 1;
 }
 
@@ -161,7 +167,7 @@
     color: #faa;
 }
 
-#pg-overlay .btn.danger:hover {
+#pg-overlay .btn.danger:hover:not(:disabled) {
     border-color: rgba(255, 100, 100, 0.4);
     background: rgba(255, 80, 80, 0.3);
     color: #faa;
@@ -379,6 +385,8 @@
 
 #pg-overlay .tracks-actions {
     display: flex;
+    flex-direction: column;
+    gap: 1ch;
 }
 
 #pg-overlay .tracks-actions .btn {

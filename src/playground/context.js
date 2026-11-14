@@ -10,7 +10,7 @@ import {PlaygroundEngine} from "./engine/engine.js";
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {
-        this.engine = new PlaygroundEngine(state);
+        this.engine = new PlaygroundEngine(state, elements);
         this._controlMap = null;
         this._controls = null;
         this.batches = {
@@ -191,10 +191,6 @@ export class PlaygroundContext {
                     return ctx.randomizer.randomizeBatch(batch, intensity, engine);
                 }
                 return {};
-            },
-
-            loadSnapshotFromState() {
-                return ctx.snapshotOfUniformValues();
             },
 
             /** Returns the main page's updateValue function for a uniform, or null. */

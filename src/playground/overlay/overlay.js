@@ -9,7 +9,7 @@ import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from '../eng
 import {createPlaygroundOverlay} from './dom/shell.js';
 import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
 import {renderAllTracks, renderTrack, stripFraction} from './dom/tracks.js';
-import {renderUniformList} from './dom/uniformList.js';
+import {findAllUniformComponents, renderUniformList} from './dom/uniformList.js';
 import {renderBatchList} from './dom/batchList.js';
 import {renderRandomizerPanel} from './dom/randomizer.js';
 import {createContextActionBar, positionContextBar, renderContextActionBar} from './dom/contextBar.js';
@@ -972,12 +972,9 @@ export class Overlay {
             );
         } else if (el.classList.contains('uniform-slider')) {
             const name = el.dataset.uniformName;
-            const value = parseFloat(el.value);
-            this.engine.setUniformOverride(name, value);
-            const updateValue = this.ctx.getUniformUpdateValue(name);
-            if (updateValue) {
-                updateValue(value);
-            }
+            const components = findAllUniformComponents(name, el);
+            const value = components.length === 1 ? components[0] : components;
+            this.engine.setActualUniformValue(name, value);
             const tooltip = sliderTooltip(el);
             if (tooltip) {
                 tooltip.textContent = formatNumber(value);

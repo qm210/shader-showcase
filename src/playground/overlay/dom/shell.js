@@ -42,12 +42,6 @@ function headerTemplate() {
     return `
         <div class="panel-header"
              data-drag-handle>
-            ${actionButton({
-                action: ACTION.RESET,
-                label: `${CHAR.TRASH} Clear`,
-                className: 'btn danger',
-                title: 'Reset the whole Uniform Playground - erase everything!',
-            })}             
             <span class="title">Uniform Playground</span>
             <div class="panel-header-actions">
                 <div class="track-list-export">
@@ -65,8 +59,8 @@ function headerTemplate() {
                             + 'from main page sliders',
                     })}
                     ${actionButton({
-                        action: ACTION.RESET_SNAPSHOT,
-                        label: 'Back to Last',
+                        action: ACTION.CLEAR_OVERRIDES,
+                        label: 'Clear Overrides',
                         className: 'btn danger',
                         title: 'Set all uniform values to most recent snapshot',
                     })}

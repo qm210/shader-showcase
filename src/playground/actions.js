@@ -5,6 +5,7 @@ export const ACTION = Object.freeze({
     HIDE_OVERLAY: 'hide-overlay',
     PLAY: 'play',
     ADD_TRACK: 'add-track',
+    REMOVE_ALL_TRACKS: "remove-all-tracks",
     EXPORT: 'export',
     IMPORT: 'import',
     RESET: 'reset',
@@ -24,7 +25,7 @@ export const ACTION = Object.freeze({
     COPY_TRACK: 'copy-track',
     PASTE_TRACK: 'paste-track',
     LOAD_SNAPSHOT: 'load-snapshot',
-    RESET_SNAPSHOT: 'reset-snapshot',
+    CLEAR_OVERRIDES: 'clear-overrides',
 });
 
 export function runAction(overlay, data) {
@@ -267,22 +268,32 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.LOAD_SNAPSHOT: {
-            // Load current uniform values from the main page's state.uni into the engine overrides
-            const snapshot = overlay.ctx.loadSnapshotFromState();
-            if (!snapshot) {
-                console.warn('[PLAYGROUND] No snapshot available. Click Load Snapshot again.');
-                return;
-            }
-            for (const [name, value] of Object.entries(snapshot)) {
-                overlay.engine.setUniformOverride(name, value);
-            }
+            overlay.engine.loadCurrentSnapshot();
+            console.info("[SNAPSHOT] Loaded:", overlay.engine.latestSnapshot);
+            alert(
+                "Current Uniform values read from main state;\n" +
+                `There are still ${overlay.engine.overrideCount} Overrides set.\n\n` +
+                "Use \"Clear Overrides\" to discard all of these."
+            );
             overlay.renderTimeline();
             break;
         }
 
-        case ACTION.RESET_SNAPSHOT: {
-            alert("Not Yet Implemented :(")
+        case ACTION.CLEAR_OVERRIDES: {
+            overlay.engine.clearOverrides();
+            overlay.renderTimeline();
+            break;
+        }
+
+        default: {
+            alert(`${data.action}? Not Yet Implemented :(`);
             break;
         }
     }
+}
+
+function userWantsToDiscardOverrides() {
+    return confirm(
+        "Snapshot loaded, do you want to discard all previous Overwrites?"
+    );
 }

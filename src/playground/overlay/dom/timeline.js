@@ -21,6 +21,13 @@ export function timelineTemplate() {
         <div class="timeline-editor">
             <div class="tracks-actions">
                 ${actionButton({
+                    action: ACTION.REMOVE_ALL_TRACKS,
+                    label: `${CHAR.TRASH} Clear All`,
+                    className: 'btn danger',
+                    title: 'Delete all tracks! Irreversible!',
+                    disabled: true
+                })}             
+                ${actionButton({
                     action: ACTION.ADD_TRACK,
                     label: '+ Track',
                     title: 'Create a new track',

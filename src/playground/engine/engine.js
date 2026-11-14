@@ -8,7 +8,7 @@ export class PlaygroundEngine {
         this._mainElements = mainElements;
         this.snapshots = new Map();
         this.loadCurrentSnapshot();
-        this.tracks = new Map(); // id -> TimelineTrack
+        this.tracks = new Map();
         this.currentTime = 0;
         this.playing = false;
         this.speed = 1.0;
@@ -115,6 +115,10 @@ export class PlaygroundEngine {
         this._overrides = {};
     }
 
+    get overrideCount() {
+        return this._overrides.length;
+    }
+
     get latestSnapshot() {
         return this.snapshots.get(LATEST_SNAPSHOT_KEY) || null;
     }
@@ -122,7 +126,6 @@ export class PlaygroundEngine {
     loadCurrentSnapshot() {
         const snapshot = this._collectSnapshotOfUniforms();
         this.snapshots.set(LATEST_SNAPSHOT_KEY, snapshot);
-        console.info('[PLAYGROUND] Loaded Snapshot:', snapshot);
     }
 
     _collectSnapshotOfUniforms() {
