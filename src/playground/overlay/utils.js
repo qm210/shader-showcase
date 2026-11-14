@@ -1,14 +1,5 @@
 import {urlSearchParam} from "../../app/layout/page.js";
 
-export function escape(value) {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-}
-
 export function formatRange(value) {
     if (value === null || value === undefined) {
         return '';

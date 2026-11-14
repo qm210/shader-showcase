@@ -5,7 +5,7 @@ import {deriveAutoBatches, UniformBatch} from './engine/uniformBatch.js';
 import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import {updateAllSliders} from "../app/layout/elements/uniforms.js";
-
+import './styles/overlay.css';
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {

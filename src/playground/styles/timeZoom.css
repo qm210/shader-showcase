@@ -1,0 +1,232 @@
+/* Time zoom: ruler with selection band, main slider, lens, detail slider.
+ *
+ * Both sliders get an explicit thumb width so that ruler, band, lens and
+ * tick labels can be inset by half a thumb and line up exactly with the
+ * thumb's center travel.
+ */
+
+#pg-overlay .time-range-bar {
+    --time-thumb: 12px;
+    --time-track: rgba(255, 255, 255, 0.18);
+    --time-accent: rgb(120, 200, 255);
+    --time-accent-soft: rgba(120, 200, 255, 0.18);
+    --zoom-start: 0;
+    --zoom-end: 1;
+}
+
+#pg-overlay .time-range-labels {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+}
+
+#pg-overlay .time-zoom-reset {
+    margin-left: auto;
+}
+
+/* ─── Ruler ─────────────────────────────────────────────────── */
+
+#pg-overlay .time-ruler {
+    position: relative;
+    height: 18px;
+    margin: 4px calc(var(--time-thumb) / 2) 0;
+    border-bottom: 1px solid var(--time-track);
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+}
+
+#pg-overlay .time-ticks {
+    position: relative;
+    pointer-events: none;
+}
+
+#pg-overlay .time-ruler .time-ticks {
+    position: absolute;
+    inset: 0;
+}
+
+#pg-overlay .time-tick {
+    position: absolute;
+    bottom: 0;
+    height: 4px;
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+#pg-overlay .time-tick-label {
+    position: absolute;
+    bottom: 4px;
+    transform: translateX(-50%);
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
+    opacity: 0.6;
+}
+
+#pg-overlay .time-ruler-hint {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 9px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+
+#pg-overlay .time-ruler:hover .time-ruler-hint {
+    opacity: 0.5;
+}
+
+#pg-overlay .time-range-bar.zoomed .time-ruler-hint {
+    display: none;
+}
+
+/* ─── Selection band ───────────────────────────────────────── */
+
+#pg-overlay .time-zoom-band {
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    box-sizing: border-box;
+    min-width: 2px;
+    border: 1px solid var(--time-accent);
+    border-radius: 3px;
+    background: var(--time-accent-soft);
+    cursor: grab;
+}
+
+#pg-overlay .time-zoom-band:active {
+    cursor: grabbing;
+}
+
+#pg-overlay .time-zoom-handle {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    width: 9px;
+    cursor: ew-resize;
+}
+
+#pg-overlay .time-zoom-handle[data-edge="start"] {
+    left: -5px;
+}
+
+#pg-overlay .time-zoom-handle[data-edge="end"] {
+    right: -5px;
+}
+
+#pg-overlay .time-zoom-handle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--time-accent);
+}
+
+/* ─── Sliders ──────────────────────────────────────────────── */
+
+#pg-overlay .time-range-bar input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 16px;
+    margin: 0;
+    background: transparent;
+}
+
+#pg-overlay .time-range-bar input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--time-track);
+}
+
+#pg-overlay .time-range-bar input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--time-track);
+}
+
+#pg-overlay .time-range-bar input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--time-thumb);
+    height: var(--time-thumb);
+    margin-top: calc(2px - var(--time-thumb) / 2);
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+}
+
+#pg-overlay .time-range-bar input[type="range"]::-moz-range-thumb {
+    width: var(--time-thumb);
+    height: var(--time-thumb);
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+}
+
+/* The zoomed window, highlighted on the main slider's track. */
+#pg-overlay .zoomed input.time-slider::-webkit-slider-runnable-track {
+    background: linear-gradient(to right,
+        var(--time-track) var(--zoom-from),
+        var(--time-accent) var(--zoom-from) var(--zoom-to),
+        var(--time-track) var(--zoom-to));
+}
+
+#pg-overlay .zoomed input.time-slider::-moz-range-track {
+    background: linear-gradient(to right,
+        var(--time-track) var(--zoom-from),
+        var(--time-accent) var(--zoom-from) var(--zoom-to),
+        var(--time-track) var(--zoom-to));
+}
+
+#pg-overlay input.time-slider {
+    --zoom-from: calc(var(--time-thumb) / 2
+        + (100% - var(--time-thumb)) * var(--zoom-start));
+    --zoom-to: calc(var(--time-thumb) / 2
+        + (100% - var(--time-thumb)) * var(--zoom-end));
+}
+
+/* ─── Lens and detail slider ───────────────────────────────── */
+
+#pg-overlay .time-zoom-lens {
+    height: 12px;
+    margin: 0 calc(var(--time-thumb) / 2);
+    background: linear-gradient(rgba(120, 200, 255, 0.35),
+        rgba(120, 200, 255, 0.08));
+}
+
+#pg-overlay .time-range-bar input.time-sub-slider::-webkit-slider-thumb {
+    background: var(--time-accent);
+}
+
+#pg-overlay .time-range-bar input.time-sub-slider::-moz-range-thumb {
+    background: var(--time-accent);
+}
+
+/* The playhead is outside the zoomed window. */
+#pg-overlay .time-range-bar input.time-sub-slider.out-of-view::-webkit-slider-thumb {
+    opacity: 0.25;
+}
+
+#pg-overlay .time-range-bar input.time-sub-slider.out-of-view::-moz-range-thumb {
+    opacity: 0.25;
+}
+
+#pg-overlay .time-sub-ticks {
+    height: 14px;
+    margin: 0 calc(var(--time-thumb) / 2);
+}
+
+#pg-overlay .time-sub-ticks .time-tick {
+    top: 0;
+    bottom: auto;
+}
+
+#pg-overlay .time-sub-ticks .time-tick-label {
+    top: 4px;
+    bottom: auto;
+}

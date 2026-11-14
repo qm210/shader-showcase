@@ -1,7 +1,5 @@
 import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 
-// ─── Track class ──────────────────────────────────────────────────
-
 const MAX_UNDO_STEPS = 50;
 
 export class TimelineTrack {

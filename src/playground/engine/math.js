@@ -1,18 +1,3 @@
-import {MIN_TIMELINE_SPAN} from "../overlay/overlay.dom.js";
-
-export function timelineSpan(engine, factor = 1) {
-    const tracks = engine.getAllTracks();
-    let maxTime = 0;
-    for (const track of tracks) {
-        for (const kf of track.keyframes) {
-            if (kf.time > maxTime) {
-                maxTime = kf.time;
-            }
-        }
-    }
-    return Math.max(maxTime, MIN_TIMELINE_SPAN) * factor;
-}
-
 export function percentOfSpan(time, span) {
     return (time / span) * 100;
 }

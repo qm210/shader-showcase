@@ -1,5 +1,5 @@
-import {timelineSpan} from "./engine/math.js";
-import {DEBUG} from "./overlay/helpers.js";
+import {DEBUG} from "./overlay/utils.js";
+import {timelineSpan} from "./engine/timeZoom.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: 'hide-overlay',
@@ -28,7 +28,7 @@ export const ACTION = Object.freeze({
 
 export function runAction(overlay, data) {
     DEBUG.log("runAction:", data);
-    
+
     switch (data.action) {
         case ACTION.HIDE_OVERLAY:
             overlay.element.classList.toggle("hidden");

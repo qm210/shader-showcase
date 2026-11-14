@@ -1,23 +1,33 @@
-import {
-    createContextActionBar,
-    createPlaygroundOverlay,
-    MIN_TIMELINE_SPAN,
-    renderContextActionBar,
-    renderPlayback,
-    renderPreview,
-    renderRandomizerPanel,
-    renderTracks
-} from './overlay.dom.js';
-import {DEBUG, isTypingTarget, parseRangeInput} from "./helpers.js";
-import {timelineSpan} from "../engine/math.js";
-import {ACTION, runAction} from "../actions.js";
+import {DEBUG, formatRange, isTypingTarget, parseRangeInput} from './utils.js';
+import {collectStorageJson, readStoredState} from './storage.js';
+import {calcTrackValueRange, isRangeValue} from '../engine/valueRanges.js';
+import {ACTION, runAction} from '../actions.js';
 import {CHAR, DELAY_MS, STORAGE_KEY} from '../../app/constants.js';
-import {calcTrackValueRange, isRangeValue} from "../engine/valueRanges.js";
-import {clamp} from "../../app/algorithms.js";
-import {collectStorageJson, readStoredState} from "./storage.js";
-import {renderBatchList, renderUniformList} from "./uniforms.dom.js";
-import "./overlay.css";
+import {clamp} from '../../app/algorithms.js';
+import {KeyframeBoxSelect} from './boxSelect.js';
+import {TimeZoomControl} from './timeZoomControl.js';
+import {timelineSpan, visibleRange} from '../engine/timeZoom.js';
+import {downloadJson, pickJsonFile} from './fileExchange.js';
+import {uploadUniforms} from './glUniforms.js';
+import {createPlaygroundOverlay} from './dom/shell.js';
+import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
+import {renderTracks, stripFraction} from './dom/tracks.js';
+import {renderUniformList} from './dom/uniformList.js';
+import {renderBatchList} from './dom/batchList.js';
+import {renderRandomizerPanel} from './dom/randomizer.js';
+import {createContextActionBar, positionContextBar, renderContextActionBar,} from './dom/contextBar.js';
 
+const DEFAULT_TARGET_RANGE = {min: -1, max: 1};
+
+const intAttr = (el, key) => parseInt(el.dataset[key], 10);
+
+/** A stored {start, end} zoom, or null if missing or malformed. */
+function parseTimeZoom(zoom) {
+    const {start, end} = zoom ?? {};
+    return Number.isFinite(start) && Number.isFinite(end) && start < end
+        ? {start, end}
+        : null;
+}
 
 export class Overlay {
     constructor(contextProvider) {
@@ -42,28 +52,15 @@ export class Overlay {
         this._editingBatchId = null;
         this._editingTrackId = null;
 
-        this._timeRangeStart = 0;
-        this._timeRangeEnd = MIN_TIMELINE_SPAN;
-
-        // Context action bar for selected keyframe
-        this.contextBar = createContextActionBar();
-        this.contextBar.style.display = 'none';
-        document.body.append(this.contextBar);
-
-        // Shift+drag selection rectangle
-        this._shiftDragRect = document.createElement('div');
-        this._shiftDragRect.className = 'shift-drag-rect';
-        this._shiftDragRect.style.cssText = 'position:absolute;border:1px dashed rgba(120,200,255,0.7);background:rgba(120,200,255,0.1);pointer-events:none;display:none;z-index:50;';
-        document.body.append(this._shiftDragRect);
+        // Zoomed time window {start, end} of the timeline, or null.
+        this.timeZoom = null;
 
         // Copy/paste state for track keyframes
         this._copiedTrack = null;
 
-        // Shift+drag multi-select state
-        this._shiftDragActive = false;
-        this._shiftDragStart = null;
-        this._selectedKeyframes = new Set();
-        this._shiftDragRect = null;
+        // Context action bar for the selected keyframe
+        this.contextBar = createContextActionBar();
+        document.body.append(this.contextBar);
 
         this.init();
     }
@@ -87,9 +84,42 @@ export class Overlay {
 
     bindEvents() {
         const overlay = this.element;
+        this._bindPanelDrag();
 
-        // Dragging
-        overlay.querySelector('[data-drag-handle]').addEventListener('mousedown', (e) => {
+        // Flush pending changes when the page goes away.
+        window.addEventListener('pagehide', () => this.saveState());
+        window.addEventListener('keydown', (e) => this._onGlobalKeyDown(e));
+
+        overlay.addEventListener('click', (e) => this._onClick(e));
+        overlay.addEventListener('dblclick', (e) => this._onDoubleClick(e));
+        overlay.addEventListener('change', (e) => this._onChange(e));
+        overlay.addEventListener('input', (e) => this._onInput(e));
+        overlay.addEventListener('keydown', (e) => this._onKeyDown(e));
+        overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
+        overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
+
+        this._boxSelect = new KeyframeBoxSelect(overlay, (selection) => {
+            if (selection) {
+                this.selectedKeyframe = selection;
+            }
+            this.renderTimeline();
+        });
+
+        this._timeZoom = new TimeZoomControl(this.ui, {
+            span: () => timelineSpan(this.engine),
+            zoom: () => this.timeZoom,
+            setZoom: (zoom) => this.setTimeZoom(zoom),
+            seek: (time) => this._seek(time),
+        });
+
+        this._bindContextBar();
+    }
+
+    _bindPanelDrag() {
+        const overlay = this.element;
+        const handle = overlay.querySelector('[data-drag-handle]');
+
+        handle.addEventListener('mousedown', (e) => {
             if (e.button !== 0 || e.target.closest('button')) {
                 return;
             }
@@ -104,7 +134,9 @@ export class Overlay {
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (!this.isDragging) return;
+            if (!this.isDragging) {
+                return;
+            }
             this._applyPosition(
                 this.origLeft + e.clientX - this.dragStartX,
                 this.origTop + e.clientY - this.dragStartY,
@@ -112,7 +144,9 @@ export class Overlay {
         });
 
         window.addEventListener('mouseup', () => {
-            if (!this.isDragging) return;
+            if (!this.isDragging) {
+                return;
+            }
             this.isDragging = false;
             overlay.classList.remove('dragging');
             this._scheduleSave();
@@ -124,80 +158,84 @@ export class Overlay {
                 this._applyPosition(this.position.left, this.position.top);
             }
         });
+    }
 
-        // Flush pending changes when the page goes away.
-        window.addEventListener('pagehide', () => this.saveState());
-
-        overlay.addEventListener('click', (e) => this._onClick(e));
-        overlay.addEventListener('dblclick', (e) => this._onDoubleClick(e));
-        overlay.addEventListener('change', (e) => this._onChange(e));
-        overlay.addEventListener('input', (e) => this._onInput(e));
-        overlay.addEventListener('keydown', (e) => this._onKeyDown(e));
-        overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
-        overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
-
-        // Shift+drag multi-select on strips
-        overlay.addEventListener('mousedown', (e) => this._onShiftDragStart(e));
-        window.addEventListener('mousemove', (e) => this._onShiftDragMove(e));
-        window.addEventListener('mouseup', () => this._onShiftDragEnd());
-
-        window.addEventListener('keydown', (e) => {
-            if (isTypingTarget(e.target)) {
-                return;
-            }
-            if (e.code === 'Space') {
-                e.preventDefault();
-                this.togglePlaying();
-            }
-            if (e.code === 'Delete' && this.selectedKeyframe) {
-                const track = this.engine.getTrack(this.selectedKeyframe.trackId);
-                const kf = track?.keyframes[this.selectedKeyframe.kfIndex];
-                if (kf) {
-                    track.removeKeyframe(kf.time);
-                    this.selectedKeyframe = null;
-                    this.renderTimeline();
-                }
-            }
-            // Ctrl+Z / Cmd+Z for undo on the selected track
-            if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
-                e.preventDefault();
-                this._doUndo();
-            }
-        });
-
-        // Context action bar events
+    _bindContextBar() {
         const bar = this.contextBar;
         bar.addEventListener('click', (e) => {
             if (e.target.classList.contains('kf-undo-btn')) {
                 this._doUndo();
             }
         });
-        bar.querySelector('.kf-transition-select')?.addEventListener('change', (e) => {
-            if (!this.selectedKeyframe) return;
-            const track = this.engine.getTrack(this.selectedKeyframe.trackId);
-            const kf = track?.keyframes[this.selectedKeyframe.kfIndex];
-            if (kf) {
-                kf.transition = e.target.value;
-                this.renderTimeline();
-            }
-        });
-        bar.querySelector('.kf-current-val')?.addEventListener('change', (e) => {
-            if (!this.selectedKeyframe) return;
-            const track = this.engine.getTrack(this.selectedKeyframe.trackId);
-            const kf = track?.keyframes[this.selectedKeyframe.kfIndex];
-            if (kf) {
-                const val = parseFloat(e.target.value);
-                if (!isNaN(val)) {
-                    kf.value = val;
-                    this.renderTimeline();
+        bar.querySelector('.kf-transition-select')
+            .addEventListener('change', (e) => {
+                this._editSelectedKeyframe(kf => {
+                    kf.transition = e.target.value;
+                });
+            });
+        bar.querySelector('.kf-current-val')
+            .addEventListener('change', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                    this._editSelectedKeyframe(kf => {
+                        kf.value = value;
+                    });
                 }
-            }
-        });
+            });
+    }
+
+    // ─── Selection helpers ──────────────────────────────────────
+
+    /** The selected keyframe with its track and index, or null. */
+    _selection() {
+        const selected = this.selectedKeyframe;
+        const track = selected && this.engine.getTrack(selected.trackId);
+        const kf = track?.keyframes[selected.kfIndex];
+        return kf ? {track, kf, index: selected.kfIndex} : null;
+    }
+
+    _editSelectedKeyframe(edit) {
+        const selection = this._selection();
+        if (selection) {
+            edit(selection.kf);
+            this.renderTimeline();
+        }
+    }
+
+    _selectTrackRow(row) {
+        this.selectedTrackId = row.dataset.trackId;
+        this.element.querySelectorAll('.track-wrapper.selected')
+            .forEach(el => el.classList.remove('selected'));
+        row.classList.add('selected');
+        this._scheduleSave();
     }
 
     // ─── Event handlers ─────────────────────────────────────────
 
-    /** Right-click on a uniform row for debugging */
+    _onGlobalKeyDown(e) {
+        if (isTypingTarget(e.target)) {
+            return;
+        }
+        if (e.code === 'Space') {
+            e.preventDefault();
+            this.togglePlaying();
+        }
+        if (e.code === 'Delete') {
+            const selection = this._selection();
+            if (selection) {
+                selection.track.removeKeyframe(selection.kf.time);
+                this.selectedKeyframe = null;
+                this.renderTimeline();
+            }
+        }
+        // Ctrl+Z / Cmd+Z for undo on the selected track
+        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
+            e.preventDefault();
+            this._doUndo();
+        }
+    }
+
+    /** Right-click on a uniform row logs its data for debugging. */
     _onContextMenu(e) {
         const row = e.target.closest('.uniform-row');
         if (!row) {
@@ -205,103 +243,35 @@ export class Overlay {
         }
         e.preventDefault();
 
-        const nameEl = row.querySelector('[data-uniform-name]');
-        if (!nameEl) {
+        const name = row.querySelector('[data-uniform-name]')
+            ?.dataset.uniformName;
+        if (!name) {
             return;
         }
-        const name = nameEl.dataset.uniformName;
-
-        // Find the entry in the current batch or autoBatches
-        let entry = null;
-        if (this.selectedBatchId) {
-            const batch = this.ctx.getBatch(this.selectedBatchId);
-            if (batch) {
-                entry = batch.uniforms.find(u => u.name === name);
-            }
-        }
-        if (!entry) {
-            for (const batch of this.ctx.batches.auto) {
-                const found = batch.uniforms.find(u => u.name === name);
-                if (found) {
-                    entry = found;
-                    break;
-                }
-            }
-        }
-
-        const range = this.ctx.getControlRange(name);
-
         console.group(`Uniform: ${name}`);
-        console.log('Entry:', entry || '(not in any batch)');
-        console.log("Control Range:", range);
+        console.log('Entry:', this._findUniformEntry(name)
+            ?? '(not in any batch)');
+        console.log('Control Range:', this.ctx.getControlRange(name));
         console.groupEnd();
     }
 
-    // ─── Shift+drag multi-select ────────────────────────────────
-
-    _onShiftDragStart(e) {
-        if (!e.shiftKey) return;
-        const strip = e.target.closest('.keyframe-strip');
-        if (!strip) return;
-        this._shiftDragActive = true;
-        this._shiftDragStart = { x: e.clientX, y: e.clientY };
-        this._selectedKeyframes.clear();
-        this._shiftDragRect.style.display = 'none';
-    }
-
-    _onShiftDragMove(e) {
-        if (!this._shiftDragActive || !this._shiftDragStart) return;
-        const rect = this._shiftDragRect;
-        const x = Math.min(this._shiftDragStart.x, e.clientX);
-        const y = Math.min(this._shiftDragStart.y, e.clientY);
-        const w = Math.abs(e.clientX - this._shiftDragStart.x);
-        const h = Math.abs(e.clientY - this._shiftDragStart.y);
-
-        rect.style.left = x + 'px';
-        rect.style.top = y + 'px';
-        rect.style.width = w + 'px';
-        rect.style.height = h + 'px';
-        rect.style.display = w > 5 || h > 5 ? '' : 'none';
-
-        // Highlight keyframes within the selection rectangle
-        this._selectedKeyframes.clear();
-        const allDots = document.querySelectorAll('.keyframe-dot');
-        for (const dot of allDots) {
-            const dotRect = dot.getBoundingClientRect();
-            const dotCenterX = dotRect.left + dotRect.width / 2;
-            const dotCenterY = dotRect.top + dotRect.height / 2;
-            if (
-                dotCenterX >= x && dotCenterX <= x + w &&
-                dotCenterY >= y && dotCenterY <= y + h
-            ) {
-                this._selectedKeyframes.add(dot.dataset.trackId + ':' + dot.dataset.kfIndex);
-                dot.classList.add('shift-selected');
-            } else {
-                dot.classList.remove('shift-selected');
+    /** Looks in the selected batch first, then in the auto batches. */
+    _findUniformEntry(name) {
+        const batches = [
+            this.ctx.getBatch(this.selectedBatchId),
+            ...this.ctx.batches.auto,
+        ].filter(Boolean);
+        for (const batch of batches) {
+            const entry = batch.uniforms.find(u => u.name === name);
+            if (entry) {
+                return entry;
             }
         }
-    }
-
-    _onShiftDragEnd() {
-        if (!this._shiftDragActive) return;
-        this._shiftDragActive = false;
-        this._shiftDragRect.style.display = 'none';
-
-        // If we have selected keyframes, select the first one as active
-        if (this._selectedKeyframes.size > 0) {
-            const first = Array.from(this._selectedKeyframes)[0].split(':');
-            this.selectedKeyframe = { trackId: first[0], kfIndex: parseInt(first[1], 10) };
-        }
-
-        // Clear shift-selected class from all dots
-        document.querySelectorAll('.keyframe-dot.shift-selected').forEach(d => d.classList.remove('shift-selected'));
-        this._selectedKeyframes.clear();
-        this._shiftDragStart = null;
-        this.renderTimeline();
+        return null;
     }
 
     _onClick(e) {
-        if (this._shiftDragActive) {
+        if (this._boxSelect.active) {
             return;
         }
 
@@ -315,7 +285,7 @@ export class Overlay {
         if (dot) {
             this.selectedKeyframe = {
                 trackId: dot.dataset.trackId,
-                kfIndex: parseInt(dot.dataset.kfIndex, 10),
+                kfIndex: intAttr(dot, 'kfIndex'),
             };
             this.renderTimeline();
             return;
@@ -323,73 +293,26 @@ export class Overlay {
 
         const strip = e.target.closest('.keyframe-strip');
         if (strip) {
-            const track = this.engine.getTrack(strip.dataset.trackId);
-            DEBUG.table(track);
-            if (!track) {
-                return;
-            }
-
-            let [minVal, maxVal] = calcTrackValueRange(track, this.ctx);
-
-            const rect = strip.getBoundingClientRect();
-            const yRatio = 1 - (e.clientY - rect.top) / rect.height;
-            const interpolatedValue = minVal + yRatio * (maxVal - minVal);
-
-            const inset = parseFloat(getComputedStyle(strip).fontSize) * 0.5;
-            const x = clamp(
-                (e.clientX - rect.left - inset) / (rect.width - 2 * inset),
-                0, 1
-            );
-            const span = timelineSpan(this.engine);
-            const time = span * x;
-
-            console.table({
-                minVal, maxVal, rect, yRatio, interpolatedValue,
-                inset, x, span, time
-            });
-
-            // If this is the first keyframe and time > 0, prepend a (0, value) keyframe
-            // so linear interpolation has a starting point.
-            if (track.keyframes.length === 0 && time > 0.01) {
-                track.addKeyframe(0, interpolatedValue);
-            }
-
-            // Add keyframe at computed time with interpolated value
-            track.addKeyframe(time, interpolatedValue);
-            this.selectedKeyframe = null;
-            this.renderTimeline();
+            this._addKeyframeAtPointer(strip, e);
             return;
         }
 
-        const trackName = e.target.closest(".track-name");
+        const trackName = e.target.closest('.track-name');
         if (trackName) {
-            const trackRow = trackName.closest(".track-wrapper");
-            const id = trackRow.dataset.trackId;
-            this._ifSingleClick(() => {
-                this.selectedTrackId = id;
-                this.element.querySelectorAll(".track-wrapper.selected")
-                    .forEach(el => el.classList.remove("selected"));
-                trackRow.classList.add("selected");
-                this._scheduleSave();
-            });
+            const row = trackName.closest('.track-wrapper');
+            this._ifSingleClick(() => this._selectTrackRow(row));
             return;
         }
 
-        // Click on track-widget body to select the track
         const trackWidget = e.target.closest('.track-widget');
         if (trackWidget) {
-            const trackRow = trackWidget.closest('.track-wrapper');
-            this.selectedTrackId = trackRow.dataset.trackId;
-            this.element.querySelectorAll(".track-wrapper.selected")
-                .forEach(el => el.classList.remove("selected"));
-            trackRow.classList.add("selected");
-            this._scheduleSave();
+            this._selectTrackRow(trackWidget.closest('.track-wrapper'));
             return;
         }
 
         const batchHeader = e.target.closest('.batch-card-header');
         if (batchHeader) {
-            const batchId = batchHeader.closest('.batch-card').dataset.batchId;
+            const {batchId} = batchHeader.closest('.batch-card').dataset;
             this._ifSingleClick(() => {
                 this.selectedBatchId = batchId;
                 this.updateOnTargetsChanged();
@@ -399,18 +322,7 @@ export class Overlay {
 
         const selectorDisplay = e.target.closest('.target-selector-display');
         if (selectorDisplay) {
-            const wrapper = selectorDisplay.closest('.target-selector-wrapper');
-            const dropdown = wrapper.querySelector('.target-selector-dropdown');
-            const isOpen = !dropdown.hidden;
-
-            if (!isOpen) {
-                const rect = selectorDisplay.getBoundingClientRect();
-                dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-                dropdown.style.left = `${rect.left + window.scrollX}px`;
-                dropdown.style.width = `${rect.width}px`;
-            }
-
-            dropdown.hidden = isOpen;
+            this._toggleTargetDropdown(selectorDisplay);
             return;
         }
 
@@ -421,82 +333,111 @@ export class Overlay {
             return;
         }
 
-        const wrapper = e.target.closest('.target-selector-wrapper');
-        if (!wrapper) {
-            document.querySelectorAll('.target-selector-dropdown:not([hidden])').forEach(dd => {
-                dd.hidden = true;
-            });
+        if (!e.target.closest('.target-selector-wrapper')) {
+            this.ui.batchSelectorDropdown.hidden = true;
         }
 
-        const groupHeader = e.target.closest('.uniform-group-header');
-        if (groupHeader) {
-            groupHeader.classList.toggle('collapsed');
+        e.target.closest('.uniform-group-header')
+            ?.classList.toggle('collapsed');
+    }
+
+    /** Adds a keyframe where the strip was clicked (x = time, y = value). */
+    _addKeyframeAtPointer(strip, e) {
+        const track = this.engine.getTrack(strip.dataset.trackId);
+        if (!track) {
+            return;
         }
+        const [minVal, maxVal] = calcTrackValueRange(track, this.ctx);
+        const rect = strip.getBoundingClientRect();
+        const yRatio = 1 - (e.clientY - rect.top) / rect.height;
+        const value = minVal + yRatio * (maxVal - minVal);
+
+        const {start, end} = this._timeView();
+        const time = start + stripFraction(strip, e.clientX) * (end - start);
+        DEBUG.table({track: track.id, minVal, maxVal, yRatio, value, time});
+
+        // A first keyframe after t = 0 gets a (0, value) partner so that
+        // the interpolation has a starting point.
+        if (track.keyframes.length === 0 && time > 0.01) {
+            track.addKeyframe(0, value);
+        }
+        track.addKeyframe(time, value);
+        this.selectedKeyframe = null;
+        this.renderTimeline();
+    }
+
+    _toggleTargetDropdown(display) {
+        const dropdown = this.ui.batchSelectorDropdown;
+        const isOpen = !dropdown.hidden;
+        if (!isOpen) {
+            const rect = display.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdown.style.left = `${rect.left + window.scrollX}px`;
+            dropdown.style.width = `${rect.width}px`;
+        }
+        dropdown.hidden = isOpen;
     }
 
     _onDoubleClick(e) {
         this._resetClickTimer();
 
-        // Edit keyframe value via context bar input (no prompt).
         const dot = e.target.closest('.keyframe-dot');
         if (dot) {
-            const track = this.engine.getTrack(dot.dataset.trackId);
-            const kfIdx = parseInt(dot.dataset.kfIndex, 10);
-            const kf = track?.keyframes[kfIdx];
-            if (!kf) return;
-
-            // Select the keyframe and show context bar with focus on value input
-            this.selectedKeyframe = { trackId: dot.dataset.trackId, kfIndex: kfIdx };
-            this.renderTimeline();
-            requestAnimationFrame(() => {
-                const input = this.contextBar.querySelector('.kf-current-val');
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
-            });
+            this._focusKeyframeValue(dot);
             return;
         }
 
-        if (e.target.classList.contains('target-name')) {
-            const track = this.engine.getTrack(e.target.dataset.trackId);
-            const target = track?.targets[parseInt(e.target.dataset.targetIdx, 10)];
-            const newName = target && prompt('Uniform name:', target.uniformName);
-            if (newName?.trim()) {
-                target.uniformName = newName.trim();
-                this.renderTimeline();
-            }
+        if (e.target.closest('button, input')) {
             return;
         }
 
-        const actuallyTargeted = !e.target.closest("button, input");
-
-        const trackHeader = e.target.closest(".track-name");
-        if (trackHeader && actuallyTargeted) {
-            const trackItem = trackHeader.closest('.track-wrapper');
-            const id = trackItem.dataset.trackId;
+        const trackName = e.target.closest('.track-name');
+        if (trackName) {
+            const id = trackName.closest('.track-wrapper').dataset.trackId;
             requestAnimationFrame(() => {
                 this._editingTrackId = id;
                 this._renderTracks();
-                this.element.querySelector(
-                    `.track-wrapper[data-track-id="${CSS.escape(id)}"] .name`
-                )?.focus();
+                this._focusName('.track-wrapper', 'track-id', id);
             });
             return;
         }
 
         const batchHeader = e.target.closest('.batch-card-header');
-        if (batchHeader && actuallyTargeted) {
-            const batchId = batchHeader.closest('.batch-card').dataset.batchId;
+        if (batchHeader) {
+            const {batchId} = batchHeader.closest('.batch-card').dataset;
             this._editingBatchId = batchId;
             this.renderUniformPanel();
-            requestAnimationFrame(() => {
-                this.element
-                    .querySelector(`.batch-card[data-batch-id="${CSS.escape(batchId)}"] .name`)
-                    ?.focus();
-            });
+            requestAnimationFrame(() =>
+                this._focusName('.batch-card', 'batch-id', batchId)
+            );
+        }
+    }
+
+    /** Selects the keyframe and focuses the value input of the bar. */
+    _focusKeyframeValue(dot) {
+        this.selectedKeyframe = {
+            trackId: dot.dataset.trackId,
+            kfIndex: intAttr(dot, 'kfIndex'),
+        };
+        if (!this._selection()) {
+            this.selectedKeyframe = null;
             return;
         }
+        this.renderTimeline();
+        requestAnimationFrame(() => {
+            const input = this.contextBar.querySelector('.kf-current-val');
+            input.focus();
+            input.select();
+        });
+    }
+
+    _focusName(containerSelector, dataKey, id) {
+        this.element
+            .querySelector(
+                `${containerSelector}[data-${dataKey}="${CSS.escape(id)}"]`
+                + ' .name'
+            )
+            ?.focus();
     }
 
     _ifSingleClick(callback) {
@@ -512,296 +453,247 @@ export class Overlay {
         this._clickTimer = null;
     }
 
+    _isEditingName(el) {
+        return el.classList.contains('name')
+            && Boolean(this._editingTrackId || this._editingBatchId);
+    }
+
     _onKeyDown(e) {
-        // Inline-edit track name: Enter to confirm, Escape to cancel.
-        if (this._editingTrackId && e.target.classList.contains('name')) {
+        const el = e.target;
+        if (this._isEditingName(el)) {
             if (e.code === 'Enter') {
-                const newName = e.target.value.trim();
-                if (newName) {
-                    this.engine.getTrack(this._editingTrackId).name = newName;
-                }
-                this._editingTrackId = null;
-                this.renderTimeline();
+                this._commitNameEdit(el);
             } else if (e.code === 'Escape') {
-                this._editingTrackId = null;
-                this.renderTimeline();
+                this._cancelNameEdit();
             }
             return;
         }
-
-        // Inline-edit batch name: Enter to confirm, Escape to cancel.
-        if (this._editingBatchId && e.target.classList.contains('name')) {
-            if (e.code === 'Enter') {
-                const newName = e.target.value.trim();
-                if (newName) {
-                    const batch = this.ctx.getBatch(this._editingBatchId);
-                    if (batch) {
-                        batch.name = newName;
-                    }
-                }
-                this._editingBatchId = null;
-                this.updateOnTargetsChanged();
-            } else if (e.code === 'Escape') {
-                this._editingBatchId = null;
-                this.renderUniformPanel();
-            }
-
-        // Handle target selector: Escape to remove empty targets (except the last placeholder)
-        } else if (e.target.classList.contains('target-selector')) {
-            const trackId = e.target.dataset.trackId;
-            const targetIdx = parseInt(e.target.dataset.targetIdx, 10);
-            const track = this.engine.getTrack(trackId);
-            if (!track) return;
-            
-            // Don't remove the last placeholder row
-            if (targetIdx === track.targets.length - 1) return;
-            
-            if (e.code === 'Escape') {
-                const target = track.targets[targetIdx];
-                if (target && !target.uniformName.trim()) {
-                    track.removeTarget(target.uniformName);
-                    this.renderTimeline();
-                }
-            }
+        if (el.classList.contains('target-selector') && e.code === 'Escape') {
+            this._removeEmptyTarget(el);
         }
     }
 
     _onBlur(e) {
-        if (this._editingTrackId && e.target.classList.contains('name')) {
-            const related = e.relatedTarget;
-            if (related?.closest(`[data-action="${ACTION.CANCEL_TRACK_NAME}"]`)) {
-                return;
+        const el = e.target;
+        if (this._isEditingName(el)) {
+            const cancelling = e.relatedTarget?.closest(
+                `[data-action="${ACTION.CANCEL_TRACK_NAME}"]`
+            );
+            if (!(this._editingTrackId && cancelling)) {
+                this._commitNameEdit(el);
             }
-            const newName = e.target.value.trim();
-            if (newName) {
-                this.engine.getTrack(this._editingTrackId).name = newName;
+            return;
+        }
+        if (el.classList.contains('target-selector')) {
+            this._removeEmptyTarget(el);
+        }
+    }
+
+    /** Applies the inline-edited track or batch name and leaves editing. */
+    _commitNameEdit(input) {
+        const name = input.value.trim();
+        if (this._editingTrackId) {
+            const track = this.engine.getTrack(this._editingTrackId);
+            if (name && track) {
+                track.name = name;
             }
             this._editingTrackId = null;
             this.renderTimeline();
-        } else if (this._editingBatchId && e.target.classList.contains('name')) {
-            const newName = e.target.value.trim();
-            if (newName) {
-                const batch = this.ctx.getBatch(this._editingBatchId);
-                if (batch) batch.name = newName;
+        } else if (this._editingBatchId) {
+            const batch = this.ctx.getBatch(this._editingBatchId);
+            if (name && batch) {
+                batch.name = name;
             }
             this._editingBatchId = null;
             this.updateOnTargetsChanged();
-        } else if (e.target.classList.contains('target-selector')) {
-            // Remove empty targets on blur (except the last placeholder row)
-            const trackId = e.target.dataset.trackId;
-            const targetIdx = parseInt(e.target.dataset.targetIdx, 10);
-            const track = this.engine.getTrack(trackId);
-            if (!track) return;
-            
-            const target = track.targets[targetIdx];
-            // Don't remove the last placeholder row
-            if (targetIdx === track.targets.length - 1) return;
-            
-            if (target && !target.uniformName.trim()) {
-                track.removeTarget(target.uniformName);
-                this.renderTimeline();
-            }
+        }
+    }
+
+    _cancelNameEdit() {
+        if (this._editingTrackId) {
+            this._editingTrackId = null;
+            this.renderTimeline();
+        } else if (this._editingBatchId) {
+            this._editingBatchId = null;
+            this.renderUniformPanel();
+        }
+    }
+
+    /** Removes a target whose name was cleared. */
+    _removeEmptyTarget(input) {
+        const track = this.engine.getTrack(input.dataset.trackId);
+        // The trailing "add" row has no target object and is never removed.
+        const target = track?.targets[intAttr(input, 'targetIdx')];
+        if (target && !target.uniformName.trim()) {
+            track.removeTarget(target.uniformName);
+            this.renderTimeline();
         }
     }
 
     _onChange(e) {
         const el = e.target;
-        const {trackId, targetIdx, kfIndex} = el.dataset;
 
-        if (el.classList.contains('speed-input')) {
+        if (el === this.ui.timeStart || el === this.ui.timeEnd) {
+            // On change, not input: half-typed numbers must not zoom.
+            this._timeZoom.applyTypedRange(
+                parseFloat(this.ui.timeStart.value),
+                parseFloat(this.ui.timeEnd.value)
+            );
+        } else if (el.classList.contains('speed-input')) {
             this.engine.speed = parseFloat(el.value) || 1.0;
             this._scheduleSave();
-            return;
-        }
-
-        if (el.classList.contains('target-enable')) {
-            const target = this.engine.getTrack(trackId)?.targets[parseInt(targetIdx, 10)];
+        } else if (el.classList.contains('target-enable')) {
+            const target = this.engine.getTrack(el.dataset.trackId)
+                ?.targets[intAttr(el, 'targetIdx')];
             if (target) {
                 target.enabled = el.checked;
                 this.renderTimeline();
             }
-            return;
-        }
-
-        if (el.classList.contains('target-min') || el.classList.contains('target-max')) {
-            const track = this.engine.getTrack(trackId);
-            const idx = parseInt(targetIdx, 10);
-            const target = track?.targets[idx];
-            const val = parseFloat(el.value);
-            if (!target || isNaN(val)) return;
-
-            if (el.classList.contains('target-min')) {
-                target.minValue = val;
-            } else {
-                target.maxValue = val;
-            }
-            // Re-clamp existing keyframes
-            for (const kf of track.keyframes) {
-                if (Array.isArray(kf.value)) {
-                    kf.value[idx] = Math.max(target.minValue, Math.min(target.maxValue, kf.value[idx]));
-                }
-            }
-            this._renderPreview();
-            this._scheduleSave();
-            return;
-        }
-
-        if (el.classList.contains('transition-select')) {
-            const kf = this.engine.getTrack(trackId)?.keyframes[parseInt(kfIndex, 10)];
-            if (kf) {
-                kf.transition = el.value;
-                this.renderTimeline();
-            }
-            return;
-        }
-
-        if (el.closest('.batch-uniform-row')) {
+        } else if (el.closest('.batch-uniform-row')) {
             this._updateBatchUniformField(el);
+        } else if (el.classList.contains('uniform-checkbox')) {
+            this._toggleUniformInBatch(el.dataset.uniformName, el.checked);
+        } else if (el.matches('.uniform-min, .uniform-max')) {
+            this._setUniformOverwrite(
+                el.dataset.uniformName,
+                el.classList.contains('uniform-min') ? 'min' : 'max',
+                parseRangeInput(el.value)
+            );
+        }
+    }
+
+    _toggleUniformInBatch(name, active) {
+        // While editing a batch, edit that one instead of the selected.
+        const batch = this.ctx.getBatch(
+            this._editingBatchId || this.selectedBatchId
+        );
+        if (!batch) {
             return;
         }
+        // Deactivating keeps the uniform's values in the batch.
+        batch.toggleUniform(name, active);
+        this.renderUniformPanel();
+        this._scheduleSave();
+    }
 
-        if (el.classList.contains('uniform-checkbox')) {
-            const name = el.dataset.uniformName;
-            // When editing a batch, use that batch; otherwise use selectedBatchId.
-            const batchId = this._editingBatchId || this.selectedBatchId;
-            if (!batchId) return;
-            const batch = this.ctx.getBatch(batchId);
-            if (!batch) return;
-            if (el.checked) {
-                // Add/activate uniform in batch.
-                batch.toggleUniform(name, true);
-            } else {
-                // Deactivate uniform in batch (preserves values).
-                batch.toggleUniform(name, false);
+    /** Sets min/max of the uniform in every batch; invalid -> default. */
+    _setUniformOverwrite(name, key, value) {
+        for (const batch of this.ctx.allBatches()) {
+            const entry = batch.uniforms.find(u => u.name === name);
+            if (entry) {
+                entry[key] = value ?? null;
             }
-            this.renderUniformPanel();
-            this._scheduleSave();
         }
-
-        if (el.classList.contains('uniform-min') || el.classList.contains('uniform-max')) {
-            const name = el.dataset.uniformName;
-            const isMin = el.classList.contains('uniform-min');
-            // Find the uniform in any batch to update its min/max.
-            for (const batch of this.ctx.allBatches()) {
-                const entry = batch.uniforms.find(u => u.name === name);
-                if (entry) {
-                    const value = parseRangeInput(el.value);
-                    if (value !== undefined) {
-                        entry[isMin ? 'min' : 'max'] = value;
-                    } else {
-                        entry[isMin ? 'min' : 'max'] = null;
-                    }
-                }
-            }
-            this._scheduleSave();
-        }
+        this._scheduleSave();
     }
 
     _onInput(e) {
         const el = e.target;
 
-        if (el === this.ui.timeSlider) {
-            this.engine.currentTime = parseFloat(el.value);
-            this._renderPlayback();
-            this._scheduleSave();
-            return;
-        }
-
-        if (el.classList.contains('time-start') || el.classList.contains('time-end')) {
-            const start = parseFloat(this.ui.timeStart.value) || 0;
-            const end = parseFloat(this.ui.timeEnd.value) || 60;
-            this._setTimeRange(start, end);
-            return;
-        }
-
-        if (el === this.ui.intensitySlider) {
+        if (el === this.ui.timeSlider || el === this.ui.timeSubSlider) {
+            this._seek(parseFloat(el.value));
+        } else if (el === this.ui.intensitySlider) {
             this.randomIntensity = parseFloat(el.value);
-            this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
+            this.ui.intensityValue.textContent =
+                this.randomIntensity.toFixed(2);
             this._scheduleSave();
-            return;
-        }
-
-        // Validate overwrite fields while typing; values are committed on change.
-        if (el.matches('.batch-uniform-row .min, .batch-uniform-row .max')) {
-            el.classList.toggle('invalid', parseRangeInput(el.value) === undefined);
-        }
-
-        // Validate uniform-list min/max inputs.
-        if (el.classList.contains('uniform-min') || el.classList.contains('uniform-max')) {
-            el.classList.toggle('invalid', parseRangeInput(el.value) === undefined);
-        }
-
-        // Handle uniform slider (value preview).
-        if (el.classList.contains('uniform-slider')) {
+        } else if (el.matches(
+            '.uniform-min, .uniform-max,'
+            + ' .batch-uniform-row .min, .batch-uniform-row .max'
+        )) {
+            // Validate while typing; values are committed on change.
+            el.classList.toggle(
+                'invalid', parseRangeInput(el.value) === undefined
+            );
+        } else if (el.classList.contains('uniform-slider')) {
             const tooltip = el.parentElement.querySelector('.slider-tooltip');
             if (tooltip) {
                 tooltip.textContent = parseFloat(el.value).toFixed(2);
             }
+        } else if (el.classList.contains('target-selector')) {
+            this._onTargetNameInput(el);
+        }
+    }
+
+    _onTargetNameInput(input) {
+        const {trackId} = input.dataset;
+        const targetIdx = intAttr(input, 'targetIdx');
+        const track = this.engine.getTrack(trackId);
+        if (!track) {
+            return;
+        }
+        const newName = input.value.trim();
+
+        // Typing into the trailing "add" row creates a real target.
+        if (newName && targetIdx === track.targets.length) {
+            track.addTarget(
+                newName, DEFAULT_TARGET_RANGE.min, DEFAULT_TARGET_RANGE.max
+            );
+            this.renderTimeline();
+            this._refocusTargetSelector(trackId, targetIdx);
+            return;
         }
 
-        // Handle target selector input - update ranges when name changes
-        if (el.classList.contains('target-selector')) {
-            const trackId = el.dataset.trackId;
-            const targetIdx = parseInt(el.dataset.targetIdx, 10);
-            const track = this.engine.getTrack(trackId);
-            if (!track) return;
-            
-            const newName = el.value.trim();
-            
-            // If this is the last row and it has a value, add it as a real target
-            if (newName && targetIdx === track.targets.length) {
-                track.addTarget(newName, -1, 1);
-                this.renderTimeline();
-                // Re-focus the newly added selector
-                const selectors = this.ui.timelineEditor.querySelectorAll('.target-selector');
-                const lastSelector = selectors[selectors.length - 2]; // second to last (last is the new empty one)
-                if (lastSelector) {
-                    lastSelector.focus();
-                    lastSelector.select();
-                }
-                return;
-            }
-            
-            const target = track.targets[targetIdx];
-            if (!target) return;
-            
-            if (newName !== target.uniformName) {
-                // Rename the target
-                if (target.uniformName) {
-                    track.removeTarget(target.uniformName);
-                }
-                target.uniformName = newName;
-                if (newName) {
-                    const range = this.ctx.getControlRange(newName);
-                    target.minValue = Array.isArray(range.min) ? -1 : range.min;
-                    target.maxValue = Array.isArray(range.max) ? 1 : range.max;
-                } else {
-                    target.minValue = -1;
-                    target.maxValue = 1;
-                }
-                this._scheduleSave();
-            }
+        const target = track.targets[targetIdx];
+        if (!target || newName === target.uniformName) {
+            return;
         }
+        if (target.uniformName) {
+            track.removeTarget(target.uniformName);
+        }
+        target.uniformName = newName;
+        this._resetTargetRange(target);
+        this._scheduleSave();
+    }
+
+    /** Puts the caret back into a target input after a re-render. */
+    _refocusTargetSelector(trackId, targetIdx) {
+        const input = this.ui.trackRows.querySelector(
+            `.target-selector[data-track-id="${CSS.escape(trackId)}"]`
+            + `[data-target-idx="${targetIdx}"]`
+        );
+        if (input) {
+            input.focus();
+            const end = input.value.length;
+            input.setSelectionRange(end, end);
+        }
+    }
+
+    /** Scalar control ranges are taken over, vectors use -1..1. */
+    _resetTargetRange(target) {
+        const range = target.uniformName
+            ? this.ctx.getControlRange(target.uniformName)
+            : DEFAULT_TARGET_RANGE;
+        const scalarOr = (value, fallback) =>
+            Array.isArray(value) ? fallback : value;
+        target.minValue = scalarOr(range.min, DEFAULT_TARGET_RANGE.min);
+        target.maxValue = scalarOr(range.max, DEFAULT_TARGET_RANGE.max);
     }
 
     _updateBatchUniformField(el) {
         const batch = this.ctx.getBatch(el.dataset.batchId);
-        const index = parseInt(el.dataset.index, 10);
-        if (!batch?.uniforms[index]) return;
+        const index = intAttr(el, 'index');
+        if (!batch?.uniforms[index]) {
+            return;
+        }
 
         if (el.classList.contains('name')) {
             const name = el.value.trim();
             batch.updateUniform(index, {name});
-            // Placeholders show the control's range; update them in place to keep focus/tab order.
+            // Update the range placeholders in place to keep the focus.
             const range = this.ctx.getControlRange(name);
             const row = el.closest('.batch-uniform-row');
             row.querySelector('.min').placeholder = formatRange(range.min);
             row.querySelector('.max').placeholder = formatRange(range.max);
         } else {
+            const key = ['min', 'max', 'factor']
+                .find(k => el.classList.contains(k));
             const value = parseRangeInput(el.value);
             el.classList.toggle('invalid', value === undefined);
-            if (value === undefined) return;
-            batch.updateUniform(index, {[el.classList.contains('min') ? 'min' : 'max']: value});
+            if (!key || value === undefined) {
+                return;
+            }
+            batch.updateUniform(index, {[key]: value});
         }
         this._scheduleSave();
     }
@@ -814,185 +706,131 @@ export class Overlay {
     }
 
     _syncPlayButton() {
-        if (!this.ui.playBtn) {
-            return;
-        }
-        this.ui.playBtn.textContent = this.engine.playing ? CHAR.PAUSE : CHAR.PLAY;
-        this.ui.playBtn.title = this.engine.playing ? 'Pause (Space)' : 'Play (Space)';
+        const {playBtn} = this.ui;
+        const playing = this.engine.playing;
+        playBtn.textContent = playing ? CHAR.PAUSE : CHAR.PLAY;
+        playBtn.title = playing ? 'Pause (Space)' : 'Play (Space)';
     }
 
+    /** Adds a keyframe at `time` with the first target's minimum. */
     _promptKeyframe(track, time) {
-        // No longer uses prompt; just add a keyframe at the given time with default value.
         const firstTarget = track.targets[0];
         const defaultVal = firstTarget?.enabled ? firstTarget.minValue : 0;
         track.addKeyframe(time, defaultVal);
         this.renderTimeline();
     }
 
-    /** Perform undo on the selected keyframe's track. */
+    /** Undo on the selected keyframe's track. */
     _doUndo() {
-        if (!this.selectedKeyframe) return;
-        const track = this.engine.getTrack(this.selectedKeyframe.trackId);
-        if (!track) return;
-        if (track.undo()) {
+        const track = this.selectedKeyframe
+            && this.engine.getTrack(this.selectedKeyframe.trackId);
+        if (track?.undo()) {
             this.renderTimeline();
         }
     }
 
-    /** Position and populate the context action bar near the selected keyframe. */
+    /** Fills and places the context action bar for the selection. */
     _positionContextBar() {
-        const bar = this.contextBar;
-        if (!this.selectedKeyframe) {
-            bar.style.display = 'none';
-            return;
-        }
-
-        const track = this.engine.getTrack(this.selectedKeyframe.trackId);
-        if (!track) {
-            bar.style.display = 'none';
-            return;
-        }
-
-        const kfIdx = this.selectedKeyframe.kfIndex;
-        if (kfIdx < 0 || kfIdx >= track.keyframes.length) {
-            bar.style.display = 'none';
-            return;
-        }
-
-        const kf = track.keyframes[kfIdx];
-        const span = timelineSpan(this.engine);
-
-        // Find the keyframe dot element to get its screen position
-        const dotEl = this.element.querySelector(
-            `.keyframe-dot[data-track-id="${CSS.escape(this.selectedKeyframe.trackId)}"][data-kf-index="${this.selectedKeyframe.kfIndex}"]`
+        const selection = this._selection();
+        renderContextActionBar(
+            this.contextBar,
+            selection?.kf,
+            selection?.track,
+            selection && this._neighbours(selection),
         );
-
-        if (dotEl) {
-            const dotRect = dotEl.getBoundingClientRect();
-            // Position the bar below and slightly offset from the keyframe dot
-            let left = dotRect.left + dotRect.width / 2 - bar.offsetWidth / 2;
-            let top = dotRect.bottom + window.scrollY + 8;
-
-            // Clamp to viewport
-            const barW = bar.offsetWidth || 400;
-            const barH = bar.offsetHeight || 50;
-            left = Math.max(8, Math.min(left, window.innerWidth - barW - 8));
-            top = Math.max(8, Math.min(top, window.innerHeight - barH - 8));
-
-            bar.style.left = `${left}px`;
-            bar.style.top = `${top}px`;
-        } else {
-            // Fallback: position near the playhead
-            const playheadLeft = (this.engine.currentTime / span) * 100;
-            const stripEl = this.element.querySelector('.keyframe-strip');
-            if (stripEl) {
-                const stripRect = stripEl.getBoundingClientRect();
-                bar.style.left = `${stripRect.left + stripRect.width * playheadLeft / 100 - bar.offsetWidth / 2}px`;
-                bar.style.top = `${stripRect.bottom + window.scrollY + 8}px`;
-            }
+        const anchor = selection && this._contextBarAnchor();
+        if (anchor) {
+            positionContextBar(this.contextBar, anchor);
         }
-
-        // Populate the bar with keyframe info
-        const surrounding = this._findSurrounding(track, kf);
-        renderContextActionBar(bar, kf, track, surrounding);
-
-        // Update undo button state
-        const undoBtn = bar.querySelector('.kf-undo-btn');
-        if (undoBtn) {
-            undoBtn.disabled = !track._undoStack.length;
-        }
-
-        bar.style.display = '';
     }
 
-    /** Find surrounding keyframes for a given keyframe. */
-    _findSurrounding(track, kf) {
-        const kfs = track.keyframes;
-        let prev = null, next = null;
-        for (let i = 0; i < kfs.length; i++) {
-            if (kfs[i] === kf) {
-                if (i > 0) prev = kfs[i - 1];
-                if (i < kfs.length - 1) next = kfs[i + 1];
-                break;
-            }
+    /** Rect of the selected dot, else the playhead on the first strip. */
+    _contextBarAnchor() {
+        const {trackId, kfIndex} = this.selectedKeyframe;
+        const dot = this.ui.trackRows.querySelector(
+            `.keyframe-dot[data-track-id="${CSS.escape(trackId)}"]`
+            + `[data-kf-index="${kfIndex}"]`
+        );
+        if (dot) {
+            return dot.getBoundingClientRect();
         }
-        return { prev, next };
+        const strip = this.ui.trackRows.querySelector('.keyframe-strip');
+        if (!strip) {
+            return null;
+        }
+        const rect = strip.getBoundingClientRect();
+        const {start, end} = this._timeView();
+        const fraction = (this.engine.currentTime - start) / (end - start);
+        return {
+            left: rect.left + rect.width * fraction,
+            width: 0,
+            bottom: rect.bottom,
+        };
+    }
+
+    _neighbours({track, index}) {
+        return {
+            prev: track.keyframes[index - 1] ?? null,
+            next: track.keyframes[index + 1] ?? null,
+        };
     }
 
     _exportTimeline() {
-        const json = JSON.stringify(this.engine.toJSON(), null, 2);
-        const blob = new Blob([json], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'timeline.json';
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadJson(this.engine.toJSON(), 'timeline.json');
     }
 
     _importTimeline() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    // Load into the existing engine so external references stay valid.
-                    this.engine.loadJSON(JSON.parse(ev.target.result));
-                    this.selectedKeyframe = null;
-                    this.syncUI();
-                    this.renderTimeline();
-                } catch (err) {
-                    alert('Invalid timeline file: ' + err.message);
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
+        pickJsonFile()
+            .then(json => {
+                // Load into the existing engine so references stay valid.
+                this.engine.loadJSON(json);
+                this.selectedKeyframe = null;
+                this.syncUI();
+                this.renderTimeline();
+            })
+            .catch(err => alert(`Invalid timeline file: ${err.message}`));
     }
 
     reset() {
-        clearTimeout(this._saveThrottle);
-        this._saveThrottle = null;
+        this._cancelPendingSave();
 
         this.engine.reset();
         this.selectedKeyframe = null;
         this.collapsedTrackIds.clear();
         this.selectedBatchId = null;
         this.randomIntensity = 1;
+        this.timeZoom = null;
         this.position = null;
-        this.element.style.left = "";
-        this.element.style.top = "";
-        this.element.classList.remove("collapsed");
-        this.element.classList.remove("selected");
+        this.element.style.left = '';
+        this.element.style.top = '';
+        this.element.classList.remove('collapsed', 'selected');
 
         this.syncUI();
         this.renderTimeline();
         this.renderRandomizer();
         this.renderUniformPanel();
 
-        clearTimeout(this._saveThrottle);
-        this._saveThrottle = null;
+        // The renders above schedule a save; drop it before clearing.
+        this._cancelPendingSave();
         try {
             localStorage.removeItem(STORAGE_KEY.PLAYGROUND_OVERLAY);
         } catch (error) {
-            console.warn('Failed to clear the playground overlay state:', error);
+            console.warn('Failed to clear the playground overlay state:',
+                error);
         }
     }
 
     // ─── Persistence ────────────────────────────────────────────
 
     saveState() {
-        clearTimeout(this._saveThrottle);
-        this._saveThrottle = null;
+        this._cancelPendingSave();
         try {
-            const json = collectStorageJson(this);
-            localStorage.setItem(STORAGE_KEY.PLAYGROUND_OVERLAY, json);
+            localStorage.setItem(
+                STORAGE_KEY.PLAYGROUND_OVERLAY, collectStorageJson(this)
+            );
         } catch (error) {
-            console.warn('Failed to store the playground overlay state:', error);
+            console.warn('Failed to store the playground overlay state:',
+                error);
         }
     }
 
@@ -1000,10 +838,15 @@ export class Overlay {
         if (this._saveThrottle) {
             return;
         }
-        this._saveThrottle = setTimeout(() =>
-            this.saveState(),
+        this._saveThrottle = setTimeout(
+            () => this.saveState(),
             DELAY_MS.STORAGE_THROTTLE
         );
+    }
+
+    _cancelPendingSave() {
+        clearTimeout(this._saveThrottle);
+        this._saveThrottle = null;
     }
 
     restoreState() {
@@ -1024,9 +867,12 @@ export class Overlay {
         this.ctx.loadCustomBatches(state.customBatches);
         this.selectedBatchId = state.selectedBatchId ?? null;
         const intensity = Number(state.randomIntensity);
-        this.randomIntensity = Number.isFinite(intensity) ? clamp(intensity, 0, 1) : 1;
+        this.randomIntensity = Number.isFinite(intensity)
+            ? clamp(intensity, 0, 1)
+            : 1;
         this.selectedTrackId = state.selectedTrackId ?? null;
         this.collapsedTrackIds = new Set(state.collapsedTracks ?? []);
+        this.timeZoom = parseTimeZoom(state.timeZoom);
         this.element.classList.toggle('collapsed', Boolean(state.collapsed));
 
         const {left, top} = state.position ?? {};
@@ -1037,50 +883,49 @@ export class Overlay {
 
     _applyPosition(left, top) {
         const rect = this.element.getBoundingClientRect();
-        const headerHeight = this.element.querySelector('.panel-header').offsetHeight || 32;
-        const clampedLeft = Math.min(Math.max(0, left), Math.max(0, window.innerWidth - rect.width));
-        const clampedTop = Math.min(Math.max(0, top), Math.max(0, window.innerHeight - headerHeight));
-        this.position = {left: Math.round(clampedLeft), top: Math.round(clampedTop)};
+        const headerHeight =
+            this.element.querySelector('.panel-header').offsetHeight || 32;
+        const maxLeft = Math.max(0, window.innerWidth - rect.width);
+        const maxTop = Math.max(0, window.innerHeight - headerHeight);
+        this.position = {
+            left: Math.round(clamp(left, 0, maxLeft)),
+            top: Math.round(clamp(top, 0, maxTop)),
+        };
         this.element.style.left = `${this.position.left}px`;
         this.element.style.top = `${this.position.top}px`;
     }
 
     syncUI() {
-        const span = timelineSpan(this.engine);
-        this._timeRangeEnd = Math.max(this._timeRangeEnd, span);
-        this.ui.timeSlider.min = this._timeRangeStart;
-        this.ui.timeSlider.max = this._timeRangeEnd;
         this.ui.timeSlider.value = this.engine.currentTime;
         this.ui.speedInput.value = this.engine.speed;
         this._syncPlayButton();
         this.ui.intensitySlider.value = this.randomIntensity;
         this.ui.intensityValue.textContent = this.randomIntensity.toFixed(2);
-        this.ui.timeStart.value = this._timeRangeStart;
-        this.ui.timeEnd.value = this._timeRangeEnd;
-        this._updateTimeRangeLabels();
     }
 
-    _setTimeRange(start, end) {
-        if (end <= start) {
-            this.ui.timeEnd.value = start + (start === 0 ? 1 : 10);
-            return;
-        }
-        this._timeRangeStart = start;
-        this._timeRangeEnd = end;
-        this.ui.timeSlider.min = start;
-        this.ui.timeSlider.max = end;
-        this.ui.timeStart.value = start;
-        this.ui.timeEnd.value = end;
-        this._updateTimeRangeLabels();
+    // ─── Time zoom ──────────────────────────────────────────────
+
+    /** Shows only `zoom` = {start, end} of the timeline; null = all. */
+    setTimeZoom(zoom) {
+        this.timeZoom = zoom;
         this.renderTimeline();
+    }
+
+    /** The visible time window, resolved against the current span. */
+    _timeView() {
+        return visibleRange(this.timeZoom, timelineSpan(this.engine));
+    }
+
+    _seek(time) {
+        this.engine.currentTime = time;
+        this._renderPlayback();
         this._scheduleSave();
     }
 
-    _updateTimeRangeLabels() {
-        // Labels are now input fields, values set directly by caller
-    }
+    // ─── Rendering ──────────────────────────────────────────────
 
     renderTimeline() {
+        renderTimeZoom(this.ui, timelineSpan(this.engine), this.timeZoom);
         this._renderTracks();
         this._renderPlayback();
         this._renderPreview();
@@ -1096,6 +941,7 @@ export class Overlay {
             this._editingTrackId,
             this.collapsedTrackIds,
             this.selectedKeyframe,
+            this._timeView(),
         );
     }
 
@@ -1104,26 +950,25 @@ export class Overlay {
     }
 
     _renderPlayback() {
-        renderPlayback(this.ui, this.engine);
+        renderPlayback(this.ui, this.engine, this._timeView());
     }
 
     renderRandomizer() {
-        const result = renderRandomizerPanel(
+        const {selectedBatchId} = renderRandomizerPanel(
             this.ui, this.ctx, this.selectedBatchId
         );
-        if (result) {
-            this.selectedBatchId = result.selectedBatchId;
-        }
+        this.selectedBatchId = selectedBatchId;
     }
 
     renderUniformPanel() {
-        renderBatchList(this.ui, this.ctx, this.selectedBatchId, this._editingBatchId);
-        renderUniformList(this.ui, this.ctx, this.selectedBatchId, this._editingBatchId);
+        const {ui, ctx, selectedBatchId, _editingBatchId} = this;
+        renderBatchList(ui, ctx, selectedBatchId, _editingBatchId);
+        renderUniformList(ui, ctx, selectedBatchId, _editingBatchId);
     }
 
+    /** Targets show up in nearly every section, so re-render them all. */
     updateOnTargetsChanged() {
-        // affects next to everything because of all the target selectors!
-        this.renderUniformPanel()
+        this.renderUniformPanel();
         this.renderTimeline();
         this.renderRandomizer();
         this._scheduleSave();
@@ -1144,48 +989,9 @@ export class Overlay {
     }
 
     syncToShader(gl, state) {
-        const types = this._getUniformTypes(gl, state.program);
-        for (const [name, value] of Object.entries(this.getUniformValues())) {
-            const loc = state.location[name];
-            const type = types.get(name);
-            if (loc === undefined || loc === null || type === undefined) continue;
-
-            if (type === gl.FLOAT) {
-                gl.uniform1f(loc, value);
-            } else if (type === gl.FLOAT_VEC2) {
-                gl.uniform2fv(loc, value);
-            } else if (type === gl.FLOAT_VEC3) {
-                gl.uniform3fv(loc, value);
-            } else if (type === gl.FLOAT_VEC4) {
-                gl.uniform4fv(loc, value);
-            } else if (type === gl.INT) {
-                gl.uniform1i(loc, Math.round(value));
-            } else if (type === gl.INT_VEC2) {
-                gl.uniform2iv(loc, value.map(Math.round));
-            } else if (type === gl.INT_VEC3) {
-                gl.uniform3iv(loc, value.map(Math.round));
-            } else if (type === gl.INT_VEC4) {
-                gl.uniform4iv(loc, value.map(Math.round));
-            }
-        }
-    }
-
-    /** getActiveUniform() takes an index, not a location, so map names to types once per program. */
-    _getUniformTypes(gl, program) {
-        this._uniformTypeCache ??= new WeakMap();
-        let types = this._uniformTypeCache.get(program);
-        if (!types) {
-            types = new Map();
-            const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-            for (let i = 0; i < count; i++) {
-                const info = gl.getActiveUniform(program, i);
-                if (info) {
-                    types.set(info.name.replace(/\[0]$/, ''), info.type);
-                }
-            }
-            this._uniformTypeCache.set(program, types);
-        }
-        return types;
+        uploadUniforms(
+            gl, state.program, state.location, this.getUniformValues()
+        );
     }
 
     setVisible(visible) {
@@ -1196,5 +1002,3 @@ export class Overlay {
         this.setVisible(this.element.hidden);
     }
 }
-
-

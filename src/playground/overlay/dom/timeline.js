@@ -1,0 +1,161 @@
+import {ACTION} from '../../actions.js';
+import {percentOfSpan} from '../../engine/math.js';
+import {CHAR} from '../../../app/constants.js';
+import {formatValue} from '../format.js';
+import {actionButton, esc, setShown} from './html.js';
+import {fullView, isInView, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
+
+function timeRangeField(label, className, min, value) {
+    return `
+        <div>
+            <span class="time-range-label">${label}</span>
+            <input type="number"
+                   class="field num ${className}"
+                   min="${min}" step="0.1" value="${value}">
+            <span class="time-range-unit">s</span>
+        </div>`;
+}
+
+export function timelineTemplate() {
+    return `
+        <div class="timeline-editor">
+            <div class="tracks-actions">
+                ${actionButton({
+                    action: ACTION.ADD_TRACK,
+                    label: '+ Track',
+                    title: 'Create a new track',
+                })}
+            </div>
+            <div class="timeline-controls">
+                <div class="play-controls">
+                    <div class="speed-control">
+                        <label for="playground-speed">${CHAR.TIMES}</label>
+                        <input type="number"
+                               id="playground-speed"
+                               class="field num speed-input"
+                               min="0.1" max="20" step="0.1"
+                               value="1.0">
+                    </div>
+                    ${actionButton({
+                        action: ACTION.PLAY,
+                        label: CHAR.PLAY,
+                        className: 'btn icon play-btn',
+                        title: 'Play/Pause (Space)',
+                    })}
+                </div>
+            </div>
+            <div class="time-range-bar">
+                <div class="time-range-labels">
+                    ${timeRangeField('Start:', 'time-start', 0, 0)}
+                    <div>
+                        <button type="button"
+                                class="btn time-zoom-reset"
+                                title="Show the whole timeline (Esc)"
+                                disabled>
+                            Full view
+                        </button>
+                    </div>
+                    ${timeRangeField('End:', 'time-end', 0, MIN_TIMELINE_SPAN)}
+                </div>
+                <div class="time-ruler"
+                     title="Drag to zoom into a time range, wheel to zoom">
+                    <div class="time-ticks"></div>
+                    <span class="time-ruler-hint">drag to zoom</span>
+                    <div class="time-zoom-band"
+                         title="Drag to move, double-click for full view">
+                        <div class="time-zoom-handle"
+                             data-edge="start"></div>
+                        <div class="time-zoom-handle"
+                             data-edge="end"></div>
+                    </div>
+                </div>
+                <input type="range"
+                       class="time-slider"
+                       aria-label="Time"
+                       min="0" max="${MIN_TIMELINE_SPAN}" step="0.1"
+                       value="0">
+                <div class="time-zoom-detail">
+                    <div class="time-zoom-lens"></div>
+                    <input type="range"
+                           class="time-sub-slider"
+                           aria-label="Time within the zoomed range"
+                           min="0" max="${MIN_TIMELINE_SPAN}" step="0.01"
+                           value="0">
+                    <div class="time-ticks time-sub-ticks"></div>
+                </div>
+            </div>
+            <div></div>
+            <div class="track-rows"></div>
+            <div class="value-preview"></div>
+        </div>`;
+}
+
+/** Fractions in [0, 1] as a CSS percentage. */
+const percent = (fraction) => `${(100 * fraction).toFixed(3)}%`;
+
+function tickMarks(view) {
+    const width = view.end - view.start;
+    return tickTimes(view).map(({time, label}) => `
+        <span class="time-tick"
+              style="left:${percent((time - view.start) / width)}">
+            <span class="time-tick-label">${label}</span>
+        </span>
+    `).join('');
+}
+
+export function renderTimeZoom(ui, span, zoom) {
+    const view = visibleRange(zoom, span);
+    const isZoomed = zoom !== null;
+    const left = view.start / span;
+    const right = view.end / span;
+
+    ui.timeSlider.max = span;
+    ui.timeSubSlider.min = view.start;
+    ui.timeSubSlider.max = view.end;
+    ui.timeStart.value = Number(view.start.toFixed(2));
+    ui.timeEnd.value = Number(view.end.toFixed(2));
+    ui.timeZoomReset.disabled = !isZoomed;
+
+    // Lets the CSS highlight the window on the main slider's track.
+    ui.timeRangeBar.style.setProperty('--zoom-start', left);
+    ui.timeRangeBar.style.setProperty('--zoom-end', right);
+    ui.timeRangeBar.classList.toggle('zoomed', isZoomed);
+
+    setShown(ui.timeZoomBand, isZoomed);
+    setShown(ui.timeZoomDetail, isZoomed);
+    Object.assign(ui.timeZoomBand.style, {
+        left: percent(left),
+        width: percent(right - left),
+    });
+    ui.timeZoomLens.style.clipPath =
+        `polygon(${percent(left)} 0, ${percent(right)} 0, 100% 100%, 0 100%)`;
+
+    ui.timeRulerTicks.innerHTML = tickMarks({start: 0, end: span});
+    ui.timeSubTicks.innerHTML = isZoomed ? tickMarks(view) : '';
+}
+
+export function renderPlayback(ui, engine, view = fullView(engine)) {
+    const time = engine.currentTime;
+    const inView = isInView(view, time);
+    ui.timeSlider.value = time;
+    ui.timeSubSlider.value = time;
+    ui.timeSubSlider.classList.toggle('out-of-view', !inView);
+
+    const left = percentOfSpan(time - view.start, view.end - view.start);
+    for (const playhead of ui.trackRows.querySelectorAll('.playhead')) {
+        playhead.style.left = left;
+        setShown(playhead, inView);
+    }
+}
+
+export function renderPreview(ui, engine) {
+    const lines = Object.entries(engine.getAllUniformValues())
+        .map(([name, value]) => `
+            <div class="val-line">
+                <span class="val-name">${esc(name)}</span>
+                <span class="val-num">${formatValue(value)}</span>
+            </div>`);
+    ui.preview.innerHTML = lines.length
+        ? lines.join('')
+        : '<div class="val-empty">No active tracks</div>';
+}

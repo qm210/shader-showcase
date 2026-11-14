@@ -1,3 +1,5 @@
+@import "timeZoom.css";
+
 #pg-overlay {
     --overlay-accent: #7df;
     --overlay-pink: #f9a;
@@ -301,7 +303,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 0.3em;
+    gap: 1ch;
     font-size: 0.7em;
     font-family: var(--overlay-mono), monospace;
     color: rgba(200, 220, 255, 0.5);
