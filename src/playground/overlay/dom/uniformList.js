@@ -119,6 +119,7 @@ function uniformRows(provider, entry, isChecked) {
                            step="${compRange.step}"
                            title="Drag to preview value">
                 </td>
+                ${overwriteCell('max', entry, i, compRange.max)}
             </tr>`;
     }).join('');
 }

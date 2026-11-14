@@ -27,6 +27,7 @@ const UI_SELECTORS = {
     timelineEditor:        '.timeline-editor',
     trackRows:             '.track-rows',
     preview:               '.value-preview',
+    timelineTooltip:       '.timeline-tooltip',
     batchSelectorDisplay:  '.target-selector-display',
     batchSelectorDropdown: '.target-selector-dropdown',
     randomizeBtn:          '.randomize-btn',

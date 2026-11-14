@@ -88,14 +88,14 @@ function stripPosition(time, view) {
 }
 
 /** Dots of the keyframes inside the visible window `view`. */
-function keyframeDots(track, view, selectedKeyframe, min, max) {
+function keyframeDots(track, view, selectedKeyframes, min, max) {
     const range = max - min;
     return track.keyframes.map((kf, i) => {
         if (!isInView(view, kf.time)) {
             return '';
         }
-        const selected = selectedKeyframe?.trackId === track.id
-            && selectedKeyframe.kfIndex === i;
+        const key = `${track.id}:${i}`;
+        const selected = selectedKeyframes.has(key);
         const title = `t=${kf.time.toFixed(1)}s, val=${kf.value}, `
             + kf.transition;
         return `
@@ -144,7 +144,7 @@ function valueLine(target, min, max, currentValue) {
         </div>`;
 }
 
-function keyframeStrip(track, provider, view, selectedKeyframe) {
+function keyframeStrip(track, provider, view, selectedKeyframes) {
     const [min, max] = calcTrackValueRange(track, provider);
     const playhead = stripPosition(provider.engine.currentTime, view);
     const values = provider.engine.getAllUniformValues();
@@ -152,7 +152,7 @@ function keyframeStrip(track, provider, view, selectedKeyframe) {
         .filter(t => t.uniformName)
         .map(t => valueLine(t, min, max, values))
         .join('');
-    const keyframes = keyframeDots(track, view, selectedKeyframe, min, max);
+    const keyframes = keyframeDots(track, view, selectedKeyframes, min, max);
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
@@ -178,7 +178,7 @@ function trackActions(trackId) {
 }
 
 function trackColumns(
-    track, provider, view, knownNames, editingTrackId, selectedKeyframe
+    track, provider, view, knownNames, editingTrackId, selectedKeyframes
 ) {
     const data = {trackId: track.id};
     const nameCol = editableName({
@@ -201,7 +201,7 @@ function trackColumns(
             ${targetRows(track, knownNames)}
         </div>
         <div class="track-widget">
-            ${keyframeStrip(track, provider, view, selectedKeyframe)}
+            ${keyframeStrip(track, provider, view, selectedKeyframes)}
         </div>
         <div class="track-actions-col">
             ${trackActions(track.id)}
@@ -213,7 +213,7 @@ function trackColumns(
  * `view`, the full timeline by default.
  */
 export function renderTracks(ui, provider, selectedTrackId, editingTrackId,
-                             collapsedTrackIds, selectedKeyframe,
+                             collapsedTrackIds, selectedKeyframes,
                              view = fullView(provider.engine)) {
     const knownNames = knownTargetNames(provider);
     const wrappers = provider.engine.getAllTracks().map(track => {
@@ -224,7 +224,7 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId,
         wrapper.dataset.trackId = track.id;
         wrapper.innerHTML = trackColumns(
             track, provider, view, knownNames,
-            editingTrackId, selectedKeyframe
+            editingTrackId, selectedKeyframes
         );
         return wrapper;
     });

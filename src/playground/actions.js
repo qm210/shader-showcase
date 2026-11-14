@@ -42,6 +42,10 @@ export function runAction(overlay, data) {
             const count = overlay.engine.getAllTracks().length + 1;
             const name = `Track ${count}`;
             overlay.engine.addTrack(name);
+            const tracks = overlay.engine.getAllTracks();
+            if (tracks.length === 1) {
+                overlay.selectedTrackId = tracks[0].id;
+            }
             overlay.renderTimeline();
             break;
         }
@@ -65,6 +69,10 @@ export function runAction(overlay, data) {
                 overlay.engine.removeTrack(data.trackId);
                 overlay.collapsedTrackIds.delete(data.trackId);
                 overlay.selectedKeyframe = null;
+                const tracks = overlay.engine.getAllTracks();
+                if (tracks.length === 1) {
+                    overlay.selectedTrackId = tracks[0].id;
+                }
                 overlay.renderTimeline();
             }
             break;
