@@ -56,18 +56,22 @@ function rowHTML(track, content, tooltipText, empty = false) {
 }
 
 function emptyRow(track, statusText, tooltipText) {
+    const fullTooltip = `${tooltipText} (${statusText})`;
     const content = `<span class="audio-status">${statusText}</span>`;
-    return rowHTML(track, content, tooltipText, true);
+    return rowHTML(track, content, fullTooltip, true);
 }
 
-function resolutionInfo(totalSamples) {
-    const kiloSamples = (totalSamples / 1000).toLocaleString();
+function basicResolutionInfo() {
+    return `Waveform Resolution ${_samplesPerPixel}/px`;
+}
+
+function withResolutionApplied(totalSamples) {
     const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
-    const pixels = totalPixels.toLocaleString();
-    return [
-        `Waveform Resolution ${_samplesPerPixel}/px`,
-        `(${kiloSamples}k samples take ${pixels} px)`
-    ].join(" ");
+    const str = {
+        samples: totalSamples.toLocaleString(),
+        pixels: totalPixels.toLocaleString(),
+    }
+    return `${str.samples} samples ~ ${str.pixels} px`;
 }
 
 const MAX_COLUMNS = 2048;
@@ -215,33 +219,26 @@ function analyzeBins(data, {start, end, duration, height}) {
 
 export function renderAudioWaveform(wave, currentTime = 0) {
     const {track, data} = wave;
+    let tooltipText = basicResolutionInfo();
 
     if (wave.loading) {
-        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (decoding...)`;
         return emptyRow(track, 'Decoding audio…', tooltipText);
     }
     if (!data) {
-        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (no audio data)`;
         return emptyRow(track, 'No audio data', tooltipText);
     }
     if (!wave.visible) {
         return '';
     }
-
     const {audioStart, audioEnd, path, width} = wave;
 
-    // Calculate playhead position (percentage within the widget)
+    tooltipText += ` (${withResolutionApplied(data.length)})`;
+
     const playheadPercent = track.duration > 0
         ? ((currentTime - audioStart) / (audioEnd - audioStart)) * 100
         : 0;
-    const showPlayhead = currentTime >= audioStart && currentTime <= audioEnd;
-
-    // Calculate total samples and pixels for tooltip
-    const totalSamples = data.length;
-    const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
-    const kiloSamples = (totalSamples / 1000).toLocaleString();
-    const tooltipText =
-        `Waveform Resolution ${_samplesPerPixel}/px (${kiloSamples}k samples take ${totalPixels.toLocaleString()} px)`;
+    const showPlayhead =
+        currentTime >= audioStart && currentTime <= audioEnd;
 
     const playhead = showPlayhead ? `
         <div class="playhead"
@@ -309,7 +306,6 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         ui.trackRows.after(container);
     }
 
-    // Add click-to-seek handler to audio widgets
     container.addEventListener('click', (e) => {
         const widget = e.target.closest('.audio-widget');
         if (!widget) return;
@@ -320,64 +316,55 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         ui.onSeek?.(time);
     });
 
-    // Add hover tooltip handler to audio widgets
     const tooltip = ui.timelineTooltip;
-    const timelineEditor = ui.timelineEditor;
+    const overlayEl = ui.timelineEditor.parentElement;
 
-    DEBUG.log("[TOOLTIP]", {tooltip, timelineEditor, container});
-
-    container.addEventListener('mousemove', (e) => {
+    /**
+     * @param e some Mouse Event, most probably via "mousemove"
+     * @return {boolean} whether this event is hereby consumed
+     */
+    ui.onAudioTooltip = (e) => {
         const widget = e.target.closest('.audio-widget');
         if (!widget) {
-            DEBUG.log("[TOOLTIP] no widget -> hide");
             tooltip?.classList.remove('visible');
-            return;
+            return false;
         }
         const svg = widget.querySelector('.audio-waveform');
         if (!svg) {
-            DEBUG.log("[TOOLTIP] no svg", {widget});
-            return;
+            return false;
         }
         const audioTrackId = svg.dataset.audioId;
-        const analyzed = audioData.find(t => t.id === audioTrackId);
+        const analyzed = audioData.find(it => it.track.id === audioTrackId);
         const bins = analyzed?.bins;
         if (!bins) {
-            DEBUG.log("[TOOLTIP] no bins", {widget, svg, audioTrackId, analyzed});
-            return;
+            return false;
         }
 
-        const overlayRect = timelineEditor.getBoundingClientRect();
         const widgetRect = widget.getBoundingClientRect();
         const x = e.clientX - widgetRect.left;
         const percentage = Math.max(0, Math.min(1, x / widgetRect.width));
-
         const binIndex = Math.floor(percentage * 100);
         const binStart = binIndex * 2;
         const binEnd = Math.min(binStart + 1, bins.length - 1);
         const minVal = parseFloat(bins[binStart]);
         const maxVal = parseFloat(bins[binEnd]);
-
         const time = view.start + percentage * (view.end - view.start);
-        const timeStr = time.toFixed(2) + 's';
-        const rangeStr = `${minVal.toFixed(3)} .. ${maxVal.toFixed(3)}`;
 
-        tooltip.textContent = `${timeStr}\n${rangeStr}`;
-        tooltip.style.left = `${e.clientX - overlayRect.left + 10}px`;
-        tooltip.style.top = `${e.clientY - overlayRect.top - 40}px`;
+        tooltip.textContent = [
+            `t = ${time.toFixed(2).padStart(6)} s`,
+            `-- bin #${binIndex} --`,
+            `min = ${minVal.toFixed(3).padStart(6)}`,
+            `max = ${maxVal.toFixed(3).padStart(6)}`,
+        ].join("\n");
+
+        const overlayRect = overlayEl.getBoundingClientRect();
+        tooltip.style.left = `${e.clientX - overlayRect.left + 12}px`;
+        tooltip.style.top = `${e.clientY - overlayRect.top - 28}px`;
         tooltip.classList.add('visible');
-
-        DEBUG.log("[TOOLTIP] visible", {
-            left: tooltip.style.left,
-            top: tooltip.style.top,
-            opacity: tooltip.style.opacity,
-            visibility: tooltip.style.visibility,
-            zIndex: tooltip.style.zIndex,
-            hasClass: tooltip.classList.contains('visible'),
-        });
-    });
+        return true;
+    };
 
     container.addEventListener('mouseleave', () => {
-        DEBUG.log("[TOOLTIP] leave -> hide");
         tooltip?.classList.remove('visible');
     });
 }

@@ -118,6 +118,10 @@ export function createPlaygroundOverlay() {
         contextBarTemplate(),
     ].join('');
 
+    document.queryTooltips = () => [
+        ...overlay.querySelectorAll('.timeline-tooltip')
+    ];
+
     const ui = queryUI(overlay, UI_SELECTORS);
 
     return {element: overlay, ui};

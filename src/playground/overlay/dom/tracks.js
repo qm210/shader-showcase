@@ -3,7 +3,7 @@ import {percentOfSpan, smoothstep} from '../../engine/math.js';
 import {calcTrackValueRange} from '../../engine/valueRanges.js';
 import {CHAR, clamp} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
-import {DATALIST} from "./shell.js";
+import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
 
 function easedT(t, ease) {
@@ -174,7 +174,7 @@ function keyframeDots(track, view, selectedKeyframes, min, max) {
         }
         const key = `${track.id}:${kf.id}`;
         const selected = selectedKeyframes.has(key);
-        const title = `t=${kf.time.toFixed(1)}s, val=${kf.value}, `
+        const title = `t = ${kf.time.toFixed(1)}s, val = ${kf.value}, `
             + kf.ease;
         return `
             <div class="${cls('keyframe-dot', selected && 'selected')}"

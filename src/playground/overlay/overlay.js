@@ -6,7 +6,7 @@ import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
 import {TimeZoomControl} from './timeZoomControl.js';
 import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from '../engine/timeZoom.js';
-import {createPlaygroundOverlay} from './dom/shell.js';
+import {createPlaygroundOverlay} from './dom/scaffold.js';
 import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
 import {renderAllTracks, renderTrack, stripFraction} from './dom/tracks.js';
 import {findAllUniformComponents, renderUniformList} from './dom/uniformList.js';
@@ -76,7 +76,7 @@ export class Overlay {
         // Copy/paste state for track keyframes.
         this.clipboard = { track: null };
 
-        // Context action bar for the selected keyframe (created in shell.js)
+        // Context action bar for the selected keyframe (created in scaffold.js)
         this.contextBar = null;
     }
 
@@ -376,6 +376,11 @@ export class Overlay {
             return;
         }
 
+        // Delegate audio-widget hover to audioTrack.js
+        if (this.ui.onAudioTooltip?.(e)) {
+            return;
+        }
+
         const strip = e.target.closest('.keyframe-strip');
         if (!strip) {
             this._highlightValueLine(null);
@@ -413,8 +418,8 @@ export class Overlay {
 
     _setTooltipText(time, value) {
         this.ui.timelineTooltip.innerHTML = [
-            `t= ${time.toFixed(2).padStart(7)} s`,
-            `y= ${formatNumber(value).padStart(7)}`
+            `t = ${time.toFixed(2).padStart(7)} s`,
+            `y = ${formatNumber(value).padStart(7)}`
         ].join('<br>');
     }
 

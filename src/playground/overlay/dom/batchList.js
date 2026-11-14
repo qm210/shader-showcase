@@ -3,7 +3,7 @@ import {CHAR} from '../index.js';
 import {formatOverwrite, formatRange} from '../format.js';
 import {actionButton, cls, dataAttrs, editableName, esc} from './html.js';
 
-import {DATALIST} from "./shell.js";
+import {DATALIST} from "./scaffold.js";
 
 function overwriteInput(kind, value, placeholder, data) {
     const label = kind === 'min' ? 'Min' : 'Max';
