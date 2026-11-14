@@ -1,5 +1,5 @@
 export function percentOfSpan(time, span) {
-    return (time / span) * 100;
+    return ((time / span) * 100).toFixed(3) + "%";
 }
 
 export function lerp(a, b, t) {

@@ -5,7 +5,7 @@ import {ACTION, runAction} from '../actions.js';
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
 import {TimeZoomControl} from './timeZoomControl.js';
-import {timelineSpan, visibleRange} from '../engine/timeZoom.js';
+import {MIN_TIME_STEP, timelineSpan, visibleRange} from '../engine/timeZoom.js';
 import {uploadUniforms} from './glUniforms.js';
 import {createPlaygroundOverlay} from './dom/shell.js';
 import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
@@ -339,7 +339,20 @@ export class Overlay {
             ?.classList.toggle('collapsed');
     }
 
-    /** Adds a keyframe where the strip was clicked (x = time, y = value). */
+    _addKeyframe(track, time, value) {
+        DEBUG.log("[KEYFRAMES] length before adding =", track.keyframes.length);
+        if (track.keyframes.length === 0 && time > MIN_TIME_STEP) {
+            track.addKeyframe(0, value);
+        }
+        const kf = track.addKeyframe(time, value);
+        DEBUG.log("[KEYFRAMES] After adding: ", track.keyframes);
+        this.selectedKeyframe = {
+            trackId: track.id,
+            kfIndex: track.keyframes.indexOf(kf),
+        };
+        this.renderTimeline();
+    }
+
     _addKeyframeAtPointer(strip, e) {
         const track = this.engine.getTrack(strip.dataset.trackId);
         if (!track) {
@@ -353,16 +366,9 @@ export class Overlay {
         const {start, end} = this._timeView();
         const time = start + stripFraction(strip, e.clientX) * (end - start);
 
-        DEBUG.table({track: track.id, minVal, maxVal, yRatio, value, time});
+        DEBUG.table({track: track.id, minVal, maxVal, yRatio, value, time, start, end});
 
-        // A first keyframe after t = 0 gets a (0, value) partner so that
-        // the interpolation has a starting point.
-        if (track.keyframes.length === 0 && time > 0.01) {
-            track.addKeyframe(0, value);
-        }
-        track.addKeyframe(time, value);
-        this.selectedKeyframe = null;
-        this.renderTimeline();
+        this._addKeyframe(track, time, value);
     }
 
     _toggleTargetDropdown(display) {
@@ -558,6 +564,11 @@ export class Overlay {
                 el.classList.contains('uniform-min') ? 'min' : 'max',
                 parseRangeInput(el.value)
             );
+        } else if (el === this.ui.timeSlider || el === this.ui.timeSubSlider) {
+            const tooltip = el.parentElement.querySelector('.slider-tooltip');
+            if (tooltip) {
+                tooltip.classList.remove('dragging');
+            }
         }
     }
 
@@ -590,7 +601,13 @@ export class Overlay {
         const el = e.target;
 
         if (el === this.ui.timeSlider || el === this.ui.timeSubSlider) {
-            this._seek(parseFloat(el.value));
+            const time = parseFloat(el.value);
+            this._seek(time);
+            const tooltip = el.parentElement.querySelector('.slider-tooltip');
+            if (tooltip) {
+                tooltip.textContent = time.toFixed(2) + 's';
+                tooltip.classList.add('dragging');
+            }
         } else if (el === this.ui.intensitySlider) {
             this.randomIntensity = parseFloat(el.value);
             this.ui.intensityValue.textContent =
@@ -904,13 +921,11 @@ export class Overlay {
 
     // ─── Time zoom ──────────────────────────────────────────────
 
-    /** Shows only `zoom` = {start, end} of the timeline; null = all. */
     setTimeZoom(zoom) {
         this.timeZoom = zoom;
         this.renderTimeline();
     }
 
-    /** The visible time window, resolved against the current span. */
     _timeView() {
         return visibleRange(this.timeZoom, timelineSpan(this.engine));
     }

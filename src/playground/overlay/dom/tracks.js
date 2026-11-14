@@ -1,7 +1,7 @@
 import {ACTION} from '../../actions.js';
 import {percentOfSpan} from '../../engine/math.js';
 import {calcTrackValueRange} from '../../engine/valueRanges.js';
-import {CHAR} from '../index.js';
+import {CHAR, clamp} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
 import {DATALIST} from "./shell.js";
 import {fullView, isInView} from "../../engine/timeZoom.js";
@@ -81,7 +81,6 @@ export function stripFraction(strip, clientX) {
     return pointerFraction(strip, clientX, inset);
 }
 
-/** Position on the strip, or hidden when outside the window `view`. */
 function stripPosition(time, view) {
     return isInView(view, time)
         ? `left:${percentOfSpan(time - view.start, view.end - view.start)}`
@@ -89,7 +88,8 @@ function stripPosition(time, view) {
 }
 
 /** Dots of the keyframes inside the visible window `view`. */
-function keyframeDots(track, view, selectedKeyframe) {
+function keyframeDots(track, view, selectedKeyframe, min, max) {
+    const range = max - min;
     return track.keyframes.map((kf, i) => {
         if (!isInView(view, kf.time)) {
             return '';
@@ -101,9 +101,23 @@ function keyframeDots(track, view, selectedKeyframe) {
         return `
             <div class="${cls('keyframe-dot', selected && 'selected')}"
                  ${dataAttrs({trackId: track.id, kfIndex: i})}
-                 style="${stripPosition(kf.time, view)}"
+                 style="${position(kf, view)}"
                  title="${esc(title)}"></div>`;
     }).join('');
+
+    function position(kf, view) {
+        const left = stripPosition(kf.time, view);
+        const top = `top:${valuePosition(kf.value)}`;
+        return `${left}; ${top}`;
+    }
+
+    function valuePosition(value) {
+        if (range === 0) {
+            return '50%';
+        }
+        const fraction = 1 - (value - min) / range;
+        return `${clamp(fraction * 100, 0, 100).toFixed(1)}%`;
+    }
 }
 
 function valueLine(target, min, max, currentValue) {
@@ -136,12 +150,13 @@ function keyframeStrip(track, provider, view, selectedKeyframe) {
         .filter(t => t.uniformName)
         .map(t => valueLine(t, min, max, values))
         .join('');
+    const keyframes = keyframeDots(track, view, selectedKeyframe, min, max);
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
              title="Click to set keyframe">
             <div class="strip-bg"></div>
-            ${keyframeDots(track, view, selectedKeyframe)}
+            ${keyframes}
             <div class="playhead"
                  style="${playhead}"></div>
             ${uniformLines}
@@ -160,8 +175,9 @@ function trackActions(trackId) {
         .join('');
 }
 
-function trackColumns(track, provider, view, knownNames, editingTrackId,
-                      selectedKeyframe) {
+function trackColumns(
+    track, provider, view, knownNames, editingTrackId, selectedKeyframe
+) {
     const data = {trackId: track.id};
     const nameCol = editableName({
         isEditing: editingTrackId === track.id,
@@ -176,12 +192,18 @@ function trackColumns(track, provider, view, knownNames, editingTrackId,
         }),
     });
     return `
-        <div class="track-name-col">${nameCol}</div>
-        <div class="track-targets-col">${targetRows(track, knownNames)}</div>
+        <div class="track-name-col">
+            ${nameCol}
+        </div>
+        <div class="track-targets-col">
+            ${targetRows(track, knownNames)}
+        </div>
         <div class="track-widget">
             ${keyframeStrip(track, provider, view, selectedKeyframe)}
         </div>
-        <div class="track-actions-col">${trackActions(track.id)}</div>`;
+        <div class="track-actions-col">
+            ${trackActions(track.id)}
+        </div>`;
 }
 
 /**
@@ -199,8 +221,8 @@ export function renderTracks(ui, provider, selectedTrackId, editingTrackId,
         wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
         wrapper.dataset.trackId = track.id;
         wrapper.innerHTML = trackColumns(
-            track, provider, view, knownNames, editingTrackId,
-            selectedKeyframe
+            track, provider, view, knownNames,
+            editingTrackId, selectedKeyframe
         );
         return wrapper;
     });

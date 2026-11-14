@@ -324,6 +324,18 @@
     width: 100%;
 }
 
+#pg-overlay .time-slider-cell {
+    position: relative;
+}
+
+#pg-overlay .time-slider-cell:hover .slider-tooltip {
+    opacity: 1;
+}
+
+#pg-overlay .slider-tooltip.dragging {
+    opacity: 1;
+}
+
 #pg-overlay .timeline-editor:empty {
     display: none;
 }

@@ -1,4 +1,3 @@
-import {MIN_TIME_STEP, timelineSpan} from "./engine/timeZoom.js";
 import {DEBUG} from "./overlay/index.js";
 import {calcTrackValueRange} from "./engine/valueRanges.js";
 
@@ -28,7 +27,7 @@ export const ACTION = Object.freeze({
 });
 
 export function runAction(overlay, data) {
-    DEBUG.log("runAction:", data);
+    DEBUG.log("runAction()", data.action, data);
 
     switch (data.action) {
         case ACTION.HIDE_OVERLAY:
@@ -102,14 +101,7 @@ export function runAction(overlay, data) {
             if (!track) {
                 return;
             }
-
-            // If no targets, add a default one so we can place keyframes
-            if (!track.targets.length) {
-                track.addTarget('default', -1, 1);
-            }
-
             // Use prompt for X (time) and Y (value) coordinates per user override.
-            const span = timelineSpan(overlay.engine);
             const defaultTime = overlay.engine.currentTime.toFixed(1);
             const timeStr = prompt('Keyframe time (s):', defaultTime);
             if (timeStr === null) {
@@ -119,9 +111,9 @@ export function runAction(overlay, data) {
             if (isNaN(time)) {
                 return;
             }
-
             const [minVal, maxVal] = calcTrackValueRange(track, overlay.ctx);
-            const defaultVal = ((minVal + maxVal) / 2).toFixed(3);
+            const midVal = ((minVal + maxVal) / 2).toFixed(3);
+            const defaultVal = overlay.ctx.getControlValue() ?? midVal;
             const valStr = prompt('Keyframe value:', defaultVal);
             if (valStr === null) {
                 return;
@@ -130,15 +122,7 @@ export function runAction(overlay, data) {
             if (isNaN(value)) {
                 return;
             }
-
-            // If this is the first keyframe and time > 0, prepend a (0, value) keyframe
-            if (track.keyframes.length === 0 && time > MIN_TIME_STEP) {
-                track.addKeyframe(0, value);
-            }
-
-            track.addKeyframe(time, value);
-            overlay.selectedKeyframe = null;
-            overlay.renderTimeline();
+            overlay._addKeyframe(track, time, value);
             break;
         }
 

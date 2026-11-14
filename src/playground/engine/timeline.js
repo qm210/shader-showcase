@@ -40,12 +40,10 @@ export class TimelineTrack {
         return target;
     }
 
-    /** Remove a target by uniform name */
     removeTarget(uniformName) {
         this.targets = this.targets.filter(t => t.uniformName !== uniformName);
     }
 
-    /** Add a keyframe at the given time with the given value */
     addKeyframe(time, value, transition = 'linear') {
         // Clamp value to target ranges if possible
         const clampedValue = Array.isArray(value)
@@ -70,7 +68,9 @@ export class TimelineTrack {
                 break;
             }
         }
-        if (!inserted) this.keyframes.push(kf);
+        if (!inserted) {
+            this.keyframes.push(kf);
+        }
 
         this._pushUndo({ type: 'add', keyframes: [kf] });
         this.updateDuration();

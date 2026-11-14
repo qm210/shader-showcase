@@ -6,6 +6,7 @@ import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import {updateAllSliders} from "../app/layout/elements/uniforms.js";
 import './styles/overlay.css';
+import {DEBUG} from "./overlay/index.js";
 
 /** Check if a GLSL type is an integer type (int, ivec*). */
 function isIntegerType(type) {
@@ -59,13 +60,13 @@ export class PlaygroundContext {
             }
             callbacks.set("overlay", value => {
                 state.uni[control.name] = value;
-                console.log("SYNC MAIN -> OVERLAY", control.name, value);
+                console.log("TODO: SYNC MAIN -> OVERLAY", control.name, value);
             });
         }
 
         this.batches.auto = deriveAutoBatches(list);
 
-        console.log("[PLAYGROUND] connectControls(…) ->", {
+        DEBUG.log("[PLAYGROUND] connectControls(…) ->", {
             controls: this._controls,
             controlMap: this._controlMap,
             batches: structuredClone(this.batches)
@@ -147,7 +148,7 @@ export class PlaygroundContext {
             }
         }
         this._snapshot = snapshot;
-        console.log('[PLAYGROUND] Snapshot loaded:', snapshot);
+        DEBUG.log('[PLAYGROUND] Snapshot loaded:', snapshot);
         return snapshot;
     }
 
@@ -189,8 +190,8 @@ export class PlaygroundContext {
                 return ctx.resolveRange({ name });
             },
 
-            getControlType(name) {
-                return ctx._controlMap?.get(name)?.type;
+            getControlValue(name) {
+                return ctx._controlMap?.get(name)?.getValue();
             },
 
             getKnownUniformNames() {

@@ -69,11 +69,14 @@ export function timelineTemplate() {
                              data-edge="end"></div>
                     </div>
                 </div>
-                <input type="range"
-                       class="time-slider"
-                       aria-label="Time"
-                       min="0" max="${MIN_TIMELINE_SPAN}" step="0.1"
-                       value="0">
+                <div class="time-slider-cell">
+                    <input type="range"
+                           class="time-slider"
+                           aria-label="Time"
+                           min="0" max="${MIN_TIMELINE_SPAN}" step="0.1"
+                           value="0">
+                    <span class="slider-tooltip"></span>
+                </div>
                 <div class="time-zoom-detail">
                     <div class="time-zoom-lens"></div>
                     <input type="range"
@@ -140,9 +143,10 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
     ui.timeSubSlider.value = time;
     ui.timeSubSlider.classList.toggle('out-of-view', !inView);
 
-    const left = percentOfSpan(time - view.start, view.end - view.start);
-    for (const playhead of ui.trackRows.querySelectorAll('.playhead')) {
-        playhead.style.left = left;
+    const percentage = percentOfSpan(time - view.start, view.end - view.start);
+    const playheadElements = ui.trackRows.querySelectorAll('.playhead');
+    for (const playhead of playheadElements) {
+        playhead.style.left = percentage;
         setShown(playhead, inView);
     }
 }
