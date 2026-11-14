@@ -1,4 +1,5 @@
 import {isInView} from '../../engine/timeZoom.js';
+import {DEBUG} from "../index.js";
 
 let _samplesPerPixel = 16;
 
@@ -59,22 +60,22 @@ function emptyRow(track, statusText, tooltipText) {
     return rowHTML(track, content, tooltipText, true);
 }
 
+function resolutionInfo(totalSamples) {
+    const kiloSamples = (totalSamples / 1000).toLocaleString();
+    const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
+    const pixels = totalPixels.toLocaleString();
+    return [
+        `Waveform Resolution ${_samplesPerPixel}/px`,
+        `(${kiloSamples}k samples take ${pixels} px)`
+    ].join(" ");
+}
+
 const MAX_COLUMNS = 2048;
 const WAVE_HEIGHT = 200;
 
 /** Last computed path per waveform buffer, reused while the view is unchanged. */
 const _pathCache = new WeakMap();
 
-/**
- * Generate SVG path data for a waveform display.
- * x runs in whole columns and y in whole units of WAVE_HEIGHT, so the
- * coordinates stay short integers; the viewBox stretches them to the widget.
- * @param {Float32Array} data - Waveform samples
- * @param {number} start - Start time (seconds)
- * @param {number} end - End time (seconds)
- * @param {number} duration - Total audio duration
- * @returns {{path: string, columns: number}}
- */
 function waveformPath(data, start, end, duration) {
     const first = Math.max(0, Math.floor((start / duration) * data.length));
     const last =
@@ -129,44 +130,118 @@ function waveformPath(data, start, end, duration) {
     return result;
 }
 
-/**
- * Render the audio waveform row HTML.
- * @param {AudioTrack} track
- * @param {object} view - {start, end} time range
- * @param {number} span - Total timeline span
- * @param {number} currentTime - Current playback time
- * @returns {string}
- */
-export function renderAudioWaveform(track, view, span, currentTime = 0) {
-    // Show loading indicator while track is being decoded
+export function analyzeAudioWaveform(track, view, span) {
     if (track.loading) {
-        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (decoding...)`;
-        return emptyRow(track, 'Decoding audio…', tooltipText);
+        return {track, loading: true};
     }
 
     const data = track.getWaveformData();
     if (!data) {
-        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (no audio data)`;
-        return emptyRow(track, 'No audio data', tooltipText);
+        return {track, data};
     }
 
     const audioStart = Math.max(view.start, 0);
     const audioEnd = Math.min(view.end, track.duration);
 
     if (!isInView({start: audioStart, end: audioEnd}, 0)) {
-        return '';
+        return {track, data, visible: false};
     }
 
     const {path, columns} =
         waveformPath(data, audioStart, audioEnd, track.duration);
-    const width = columns - 1;
 
+    return {
+        track,
+        data,
+        visible: true,
+        audioStart,
+        audioEnd,
+        path,
+        width: columns - 1,
+        ...analyzeBins(data, {
+            start: audioStart,
+            end: audioEnd,
+            duration: track.duration,
+            width: 100,
+            height: 40
+        })
+    };
+}
+
+function analyzeBins(data, {start, end, duration, height}) {
+    const counts = {
+        columns: 0,
+        perColumn: 0,
+        tops: [],
+        bottoms: [],
+        bins: [],
+    };
+    if (!data || data.length === 0) {
+        return counts;
+    }
+    const startSample = Math.floor((start / duration) * data.length);
+    const endSample = Math.ceil((end / duration) * data.length);
+    const visibleSamples = endSample - startSample;
+    if (visibleSamples <= 0) {
+        return counts;
+    }
+
+    // Downsample: for each pixel column, find min/max of samples
+    counts.columns = Math.max(1, Math.floor(visibleSamples / _samplesPerPixel));
+    counts.perColumn = Math.ceil(visibleSamples / counts.columns);
+
+    for (let col = 0; col < counts.columns; col++) {
+        const sStart = startSample + col * counts.perColumn;
+        const sEnd = Math.min(sStart + counts.perColumn, endSample);
+
+        let min = 1;
+        let max = -1;
+        for (let s = sStart; s < sEnd; s++) {
+            const val = data[s];
+            if (val < min) min = val;
+            if (val > max) max = val;
+        }
+
+        counts.tops.push(normalize(max));
+        counts.bottoms.push(normalize(min));
+        counts.bins.push(min, max);
+    }
+    return counts;
+
+    function normalize(value) {
+        return ((1 - value) / 2) * height;
+    }
+}
+
+export function renderAudioWaveform(wave, currentTime = 0) {
+    const {track, data} = wave;
+
+    if (wave.loading) {
+        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (decoding...)`;
+        return emptyRow(track, 'Decoding audio…', tooltipText);
+    }
+    if (!data) {
+        const tooltipText = `Waveform resolution ${_samplesPerPixel}/px (no audio data)`;
+        return emptyRow(track, 'No audio data', tooltipText);
+    }
+    if (!wave.visible) {
+        return '';
+    }
+
+    const {audioStart, audioEnd, path, width} = wave;
+
+    // Calculate playhead position (percentage within the widget)
     const playheadPercent = track.duration > 0
         ? ((currentTime - audioStart) / (audioEnd - audioStart)) * 100
         : 0;
     const showPlayhead = currentTime >= audioStart && currentTime <= audioEnd;
 
-    const tooltipText = resolutionInfo(data.length);
+    // Calculate total samples and pixels for tooltip
+    const totalSamples = data.length;
+    const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
+    const kiloSamples = (totalSamples / 1000).toLocaleString();
+    const tooltipText =
+        `Waveform Resolution ${_samplesPerPixel}/px (${kiloSamples}k samples take ${totalPixels.toLocaleString()} px)`;
 
     const playhead = showPlayhead ? `
         <div class="playhead"
@@ -177,7 +252,9 @@ export function renderAudioWaveform(track, view, span, currentTime = 0) {
         <div class="audio-waveform-container">
             <svg class="audio-waveform"
                  viewBox="0 0 ${width} ${WAVE_HEIGHT}"
-                 preserveAspectRatio="none">
+                 preserveAspectRatio="none"
+                 data-audio-id="${track.id}"
+                 >
                 <rect x="0"
                       y="0"
                       width="${width}"
@@ -201,12 +278,106 @@ export function renderAudioWaveform(track, view, span, currentTime = 0) {
     return rowHTML(track, content, tooltipText);
 }
 
-function resolutionInfo(totalSamples) {
-    const kiloSamples = (totalSamples / 1000).toLocaleString();
-    const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
-    const pixels = totalPixels.toLocaleString();
-    return [
-        `Waveform Resolution ${_samplesPerPixel}/px`,
-        `(${kiloSamples}k samples take ${pixels} px)`
-    ].join(" ");
+/**
+ * Render audio waveform rows in the timeline-editor.
+ * @param {object} ui
+ * @param {PlaygroundEngine} engine
+ * @param {object} view - {start, end}
+ * @param {number} span - Total timeline span
+ */
+export function renderAudioWaveforms(ui, engine, view, span) {
+    const editor = ui.trackRows.parentElement;
+    const audioTracks = engine.getAllAudioTracks();
+    const audioData = audioTracks.map(t => analyzeAudioWaveform(t, view, span));
+    const rows = audioData
+        .map(wave => renderAudioWaveform(wave, engine.currentTime))
+        .filter(Boolean);
+
+    DEBUG.log("[AUDIO]", {audioTracks, audioData, editor, rows});
+    if (!editor || rows.length === 0) {
+        return;
+    }
+
+    const className = "audio-waveform-rows";
+    const existing = editor.querySelector(`.${className}`);
+    const container = document.createElement('div');
+    container.className = className;
+    container.innerHTML = rows.join('');
+    if (existing) {
+        existing.replaceWith(container);
+    } else {
+        ui.trackRows.after(container);
+    }
+
+    // Add click-to-seek handler to audio widgets
+    container.addEventListener('click', (e) => {
+        const widget = e.target.closest('.audio-widget');
+        if (!widget) return;
+        const rect = widget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percentage = x / rect.width;
+        const time = view.start + percentage * (view.end - view.start);
+        ui.onSeek?.(time);
+    });
+
+    // Add hover tooltip handler to audio widgets
+    const tooltip = ui.timelineTooltip;
+    const timelineEditor = ui.timelineEditor;
+
+    DEBUG.log("[TOOLTIP]", {tooltip, timelineEditor, container});
+
+    container.addEventListener('mousemove', (e) => {
+        const widget = e.target.closest('.audio-widget');
+        if (!widget) {
+            DEBUG.log("[TOOLTIP] no widget -> hide");
+            tooltip?.classList.remove('visible');
+            return;
+        }
+        const svg = widget.querySelector('.audio-waveform');
+        if (!svg) {
+            DEBUG.log("[TOOLTIP] no svg", {widget});
+            return;
+        }
+        const audioTrackId = svg.dataset.audioId;
+        const analyzed = audioData.find(t => t.id === audioTrackId);
+        const bins = analyzed?.bins;
+        if (!bins) {
+            DEBUG.log("[TOOLTIP] no bins", {widget, svg, audioTrackId, analyzed});
+            return;
+        }
+
+        const overlayRect = timelineEditor.getBoundingClientRect();
+        const widgetRect = widget.getBoundingClientRect();
+        const x = e.clientX - widgetRect.left;
+        const percentage = Math.max(0, Math.min(1, x / widgetRect.width));
+
+        const binIndex = Math.floor(percentage * 100);
+        const binStart = binIndex * 2;
+        const binEnd = Math.min(binStart + 1, bins.length - 1);
+        const minVal = parseFloat(bins[binStart]);
+        const maxVal = parseFloat(bins[binEnd]);
+
+        const time = view.start + percentage * (view.end - view.start);
+        const timeStr = time.toFixed(2) + 's';
+        const rangeStr = `${minVal.toFixed(3)} .. ${maxVal.toFixed(3)}`;
+
+        tooltip.textContent = `${timeStr}\n${rangeStr}`;
+        tooltip.style.left = `${e.clientX - overlayRect.left + 10}px`;
+        tooltip.style.top = `${e.clientY - overlayRect.top - 40}px`;
+        tooltip.classList.add('visible');
+
+        DEBUG.log("[TOOLTIP] visible", {
+            left: tooltip.style.left,
+            top: tooltip.style.top,
+            opacity: tooltip.style.opacity,
+            visibility: tooltip.style.visibility,
+            zIndex: tooltip.style.zIndex,
+            hasClass: tooltip.classList.contains('visible'),
+        });
+    });
+
+    container.addEventListener('mouseleave', () => {
+        DEBUG.log("[TOOLTIP] leave -> hide");
+        tooltip?.classList.remove('visible');
+    });
 }

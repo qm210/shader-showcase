@@ -1,10 +1,9 @@
 import {ACTION} from '../../actions.js';
 import {percentOfSpan} from '../../engine/math.js';
-import {CHAR, DEBUG} from '../index.js';
+import {CHAR} from '../index.js';
 import {formatValue} from '../format.js';
 import {actionButton, esc, setShown} from './html.js';
 import {fullView, isInView, MIN_TIME_STEP, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
-import {renderAudioWaveform} from './audioTrack.js';
 
 function timeRangeField(label, className, min, value) {
     return `
@@ -185,103 +184,3 @@ export function renderPreview(ui, engine, {debug = false} = {}) {
         : '<div class="val-empty">No active tracks</div>';
 }
 
-/**
- * Render audio waveform rows in the timeline-editor.
- * @param {object} ui
- * @param {PlaygroundEngine} engine
- * @param {object} view - {start, end}
- * @param {number} span - Total timeline span
- */
-export function renderAudioWaveforms(ui, engine, view, span) {
-    const editor = ui.trackRows.parentElement;
-    const audioTracks = engine.getAllAudioTracks();
-    const rows = audioTracks
-        .map(track => renderAudioWaveform(track, view, span))
-        .filter(Boolean);
-
-    DEBUG.log("[AUDIO]", {audioTracks, editor, rows});
-    if (!editor || rows.length === 0) {
-        return;
-    }
-
-    const className = "audio-waveform-rows";
-    const existing = editor.querySelector(`.${className}`);
-    const container = document.createElement('div');
-    container.className = className;
-    container.innerHTML = rows.join('');
-    if (existing) {
-        existing.replaceWith(container);
-    } else {
-        ui.trackRows.after(container);
-    }
-
-    // Add click-to-seek handler to audio widgets
-    container.addEventListener('click', (e) => {
-        const widget = e.target.closest('.audio-widget');
-        if (!widget) return;
-        const rect = widget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const percentage = x / rect.width;
-        const time = view.start + percentage * (view.end - view.start);
-        ui.onSeek?.(time);
-    });
-
-    // Add hover tooltip handler to audio widgets
-    const tooltip = ui.timelineTooltip;
-    const timelineEditor = ui.timelineEditor;
-
-    DEBUG.log("[TOOLTIP]", {tooltip, timelineEditor, container});
-
-    container.addEventListener('mousemove', (e) => {
-        const widget = e.target.closest('.audio-widget');
-        if (!widget) {
-            DEBUG.log("[TOOLTIP] no widget -> hide");
-            tooltip?.classList.remove('visible');
-            return;
-        }
-        const svg = widget.querySelector('.audio-waveform');
-        if (!svg) {
-            DEBUG.log("[TOOLTIP] no svg", {widget});
-            return;
-        }
-        const bins = svg.dataset.bins;
-        if (!bins) {
-            DEBUG.log("[TOOLTIP] no bins", {widget, svg});
-            return;
-        }
-
-        const overlayRect = timelineEditor.getBoundingClientRect();
-        const widgetRect = widget.getBoundingClientRect();
-        const x = e.clientX - widgetRect.left;
-        const percentage = Math.max(0, Math.min(1, x / widgetRect.width));
-
-        const binIndex = Math.floor(percentage * 100);
-        const binStart = binIndex * 2;
-        const binEnd = Math.min(binStart + 1, bins.length - 1);
-        const minVal = parseFloat(bins[binStart]);
-        const maxVal = parseFloat(bins[binEnd]);
-
-        const time = view.start + percentage * (view.end - view.start);
-        const timeStr = time.toFixed(2) + 's';
-        const rangeStr = `${minVal.toFixed(3)} .. ${maxVal.toFixed(3)}`;
-
-        tooltip.textContent = `${timeStr}\n${rangeStr}`;
-        tooltip.style.left = `${e.clientX - overlayRect.left + 10}px`;
-        tooltip.style.top = `${e.clientY - overlayRect.top - 40}px`;
-        tooltip.classList.add('visible');
-
-        DEBUG.log("[TOOLTIP] visible", {
-            left: tooltip.style.left,
-            top: tooltip.style.top,
-            opacity: tooltip.style.opacity,
-            visibility: tooltip.style.visibility,
-            zIndex: tooltip.style.zIndex,
-            hasClass: tooltip.classList.contains('visible'),
-        });
-    });
-
-    container.addEventListener('mouseleave', () => {
-        DEBUG.log("[TOOLTIP] leave -> hide");
-        tooltip?.classList.remove('visible');
-    });
-}
