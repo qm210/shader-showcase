@@ -1,5 +1,6 @@
 import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
+import {FALLBACK_RANGE} from "./valueRanges.js";
 
 const MAX_UNDO_STEPS = 50;
 
@@ -26,8 +27,9 @@ export class TimelineTrack {
         this.duration = Math.max(...this.keyframes.map(k => k.time));
     }
 
-    /** Add a target uniform to this track */
-    addTarget(uniformName, minValue = -1, maxValue = 1) {
+    addTarget(uniformName, minValue = undefined, maxValue = undefined) {
+        minValue ??= FALLBACK_RANGE.min;
+        maxValue ??= FALLBACK_RANGE.max;
         const existing = this.targets.find(t => t.uniformName === uniformName);
         if (existing) {
             existing.minValue = minValue;

@@ -53,7 +53,7 @@ export class PlaygroundContext {
                 max: control.max,
                 defaultValue: control.defaultValue,
                 type: control.type,
-                getValue: () => state.uni[control.name],
+                actualValue: () => state.uni[control.name],
                 mainElements,
             });
             const callbacks = mainElements?.synchronize?.onChange;
@@ -176,7 +176,6 @@ export class PlaygroundContext {
             min,
             max,
             components,
-            value: control?.getValue()
         };
     }
 
@@ -194,7 +193,7 @@ export class PlaygroundContext {
             },
 
             getControlValue(name) {
-                return ctx._controlMap?.get(name)?.getValue();
+                return ctx._controlMap?.get(name)?.actualValue();
             },
 
             getKnownUniformNames() {

@@ -443,7 +443,7 @@ export class Overlay {
         drag.moved = true;
         this.renderTrack(drag.track.id);
     }
-    
+
     /** Keeps the keyframe order, so indices and curves stay valid. */
     _timeBetweenNeighbours(track, kf, time) {
         const kfs = track.keyframes;
@@ -994,9 +994,7 @@ export class Overlay {
 
         // Typing into the trailing "add" row creates a real target.
         if (newName && targetIdx === track.targets.length) {
-            track.addTarget(
-                newName, DEFAULT_TARGET_RANGE.min, DEFAULT_TARGET_RANGE.max
-            );
+            track.addTarget(newName);
             this.renderTrack(trackId);
             this._refocusTargetSelector(trackId, targetIdx);
             return;

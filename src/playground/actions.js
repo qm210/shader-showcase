@@ -59,7 +59,7 @@ export function runAction(overlay, data) {
             break;
 
         case ACTION.RESET:
-            if (confirm('Reset the playground? This clears all tracks, batches and values, including the stored ones.')) {
+            if (confirm('Reset? This clears all tracks, batches and values, including the stored ones.')) {
                 overlay.reset();
             }
             break;
@@ -81,7 +81,7 @@ export function runAction(overlay, data) {
             const track = overlay.engine.getTrack(data.trackId);
             if (track) {
                 // Add an empty target that the user can fill in
-                track.addTarget('', -1, 1);
+                track.addTarget('');
                 overlay.renderTimeline();
                 // Focus the new selector (last one added)
                 const selectors = overlay.ui.trackList.querySelectorAll('.target-selector');
