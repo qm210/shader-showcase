@@ -148,7 +148,7 @@ export class PlaygroundContext {
             }
         }
         this._snapshot = snapshot;
-        DEBUG.log('[PLAYGROUND] Snapshot loaded:', snapshot);
+        console.info('[PLAYGROUND] Loaded Snapshot:', snapshot);
         return snapshot;
     }
 

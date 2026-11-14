@@ -1,6 +1,7 @@
 import {formatRange, isTypingTarget, parseRangeInput} from './utils.js';
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from '../persistence.js';
 import {calcTrackValueRange, isRangeValue} from '../engine/valueRanges.js';
+import {TRANSITION_TYPES} from '../engine/keyframes.js';
 import {ACTION, runAction} from '../actions.js';
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
@@ -14,6 +15,7 @@ import {renderUniformList} from './dom/uniformList.js';
 import {renderBatchList} from './dom/batchList.js';
 import {renderRandomizerPanel} from './dom/randomizer.js';
 import {createContextActionBar, positionContextBar, renderContextActionBar} from './dom/contextBar.js';
+import {percentOfSpan} from "../engine/math.js";
 
 const DEFAULT_TARGET_RANGE = {min: -1, max: 1};
 
@@ -96,6 +98,7 @@ export class Overlay {
         overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
         overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
         overlay.addEventListener('mousemove', (e) => this._onTimelineMouseMove(e));
+        overlay.addEventListener('mousedown', (e) => this._onKeyframeMouseDown(e));
 
         this._boxSelect = new KeyframeBoxSelect(overlay, (selection) => {
             if (selection) {
@@ -169,10 +172,10 @@ export class Overlay {
                 this._doUndo();
             }
         });
-        bar.querySelector('.kf-transition-select')
+        bar.querySelector('.kf-ease-select')
             .addEventListener('change', (e) => {
                 this._editSelectedKeyframe(kf => {
-                    kf.transition = e.target.value;
+                    kf.ease = e.target.value;
                 });
             });
         bar.querySelector('.kf-current-val')
@@ -271,6 +274,18 @@ export class Overlay {
         const targetRows = this.ui.trackRows.querySelectorAll('.target-row');
         const tooltip = this.ui.timelineTooltip;
 
+        if (this._dragState) {
+            const { kf } = this._dragState;
+            const timeStr = String(kf.time.toFixed(2)).padStart(7);
+            const valStr = String(kf.value.toFixed(2)).padStart(7);
+            tooltip.innerHTML = [
+                `t= ${timeStr} s`,
+                `y= ${valStr}`
+            ].join('<br>');
+            tooltip.classList.add('visible');
+            return;
+        }
+
         if (!strip) {
             this._clearValueLineHighlights(targetRows);
             tooltip.classList.remove('visible');
@@ -278,14 +293,11 @@ export class Overlay {
         }
 
         const view = this._timeView();
-        const track = strip.closest('.track-wrapper')
-            ?.querySelector('.target-selector')
-            ?.closest('.track-wrapper');
-        const trackId = strip.dataset.trackId;
-        const time = this._timeFromEvent(e, strip, view);
+        const track = this.engine.getTrack(strip.dataset.trackId);
         const [minVal, maxVal] = track
-            ? calcTrackValueRange(this.engine.getTrack(trackId), this.ctx)
+            ? calcTrackValueRange(track, this.ctx)
             : [0, 1];
+        const time = this._timeFromEvent(e, strip, view);
         const rect = strip.getBoundingClientRect();
         const value = minVal + (1 - (e.clientY - rect.top) / rect.height)
             * (maxVal - minVal);
@@ -328,6 +340,84 @@ export class Overlay {
         for (const row of targetRows) {
             row.classList.remove('highlighted');
         }
+    }
+
+    _onKeyframeMouseDown(e) {
+        if (e.button !== 0) {
+            return;
+        }
+        const dot = e.target.closest('.keyframe-dot');
+        if (!dot) {
+            return;
+        }
+        e.stopPropagation();
+        const trackId = dot.dataset.trackId;
+        const kfIndex = intAttr(dot, 'kfIndex');
+        const track = this.engine.getTrack(trackId);
+        if (!track) {
+            return;
+        }
+        const kf = track.keyframes[kfIndex];
+        if (!kf) {
+            return;
+        }
+        this._dragState = { trackId, kfIndex, kf };
+        this._dragStartY = e.clientY;
+        this._dragStartTime = kf.time;
+        this._dragStartValue = kf.value;
+        this._dragMoveBound = (e) => this._onKeyframeDrag(e);
+        this._dragEndBound = (e) => this._onKeyframeDragEnd(e);
+        window.addEventListener('mousemove', this._dragMoveBound);
+        window.addEventListener('mouseup', this._dragEndBound);
+    }
+
+    _onKeyframeDrag(e) {
+        if (!this._dragState) {
+            return;
+        }
+        const { trackId, kfIndex } = this._dragState;
+        const track = this.engine.getTrack(trackId);
+        if (!track) {
+            return;
+        }
+        const kf = track.keyframes[kfIndex];
+        if (!kf) {
+            return;
+        }
+        const strip = this.element.querySelector(
+            `.keyframe-strip[data-track-id="${CSS.escape(trackId)}"]`
+        );
+        if (!strip) {
+            return;
+        }
+        const rect = strip.getBoundingClientRect();
+        const view = this._timeView();
+        const [minVal, maxVal] = calcTrackValueRange(track, this.ctx);
+        const range = maxVal - minVal;
+
+        // Horizontal drag (only for non-t=0 keyframes)
+        const fraction = (e.clientX - rect.left) / rect.width;
+        const newTime = view.start + fraction * (view.end - view.start);
+        if (kf.time !== 0) {
+            kf.time = clamp(newTime, 0, view.end);
+        }
+
+        // Vertical drag (all keyframes)
+        const yFraction = 1 - (e.clientY - rect.top) / rect.height;
+        const newValue = minVal + clamp(yFraction, 0, 1) * range;
+        kf.value = newValue;
+
+        this.renderTimeline();
+        this._repositionKeyframePopups();
+        this._scheduleSave();
+    }
+
+    _onKeyframeDragEnd(e) {
+        window.removeEventListener('mousemove', this._dragMoveBound);
+        window.removeEventListener('mouseup', this._dragEndBound);
+        this._dragState = null;
+        this._dragMoveBound = null;
+        this._dragEndBound = null;
     }
 
     _timeFromEvent(e, strip, view) {
@@ -388,7 +478,7 @@ export class Overlay {
         const strip = e.target.closest('.keyframe-strip');
         if (strip) {
             this._addKeyframeAtPointer(strip, e);
-            this._removeKeyframePopup();
+            this._removeKeyframePopups();
             return;
         }
 
@@ -514,6 +604,13 @@ export class Overlay {
         }
     }
 
+    queryTrackWidgetFor(trackId) {
+        trackId = CSS.escape(trackId);
+        return this.ui.trackRows.querySelector(
+            `.track-wrapper[data-track-id="${trackId}"]  .track-widget`
+        );
+    }
+
     /** Selects the keyframe and focuses the value input of the bar. */
     _focusKeyframeValue(dot) {
         const key = {
@@ -551,9 +648,15 @@ export class Overlay {
             const popup = document.createElement('div');
             popup.className = 'keyframe-popup';
             popup.innerHTML = `
+                <div class="popup-title">Keyframe #${kfIndex}</div>
                 <div class="popup-row">
                     <span class="popup-label">Time:</span>
-                    <span class="popup-value">${kf.time.toFixed(2)}s</span>
+                    <button class="popup-value kf-seek-btn"
+                            data-time="${kf.time}"
+                            title="Seek"
+                        >
+                        ${kf.time.toFixed(2)}&nbsp;s
+                    </button>
                 </div>
                 <div class="popup-row">
                     <span class="popup-label">Value:</span>
@@ -561,21 +664,26 @@ export class Overlay {
                         typeof kf.value === 'number'
                               ? kf.value.toFixed(2)
                               : JSON.stringify(kf.value)
-                    }</span>
+                    }&nbsp;&nbsp;&nbsp;</span>
                 </div>
                 <div class="popup-row">
-                    <span class="popup-label">Type:</span>
-                    <span class="popup-value">${kf.type || 'linear'}</span>
+                    <span class="popup-label">Ease:</span>
+                    <select class="field kf-ease-select-popup"
+                            data-track-id="${trackId}"
+                            data-kf-index="${kfIndex}">
+                        ${TRANSITION_TYPES.map(t =>
+                            `<option value="${t}"${t === (kf.ease || 'linear') ? ' selected' : ''}>
+                                ${t}
+                            </option>`
+                        ).join('')}
+                    </select>
                 </div>
                 <div class="popup-remove"
                      data-track-id="${trackId}"
                      data-kf-index="${kfIndex}">
-                    🗑️ Remove
+                    ${CHAR.TRASH}️ Remove Keyframe
                 </div>`;
-            const trackWidget = this.ui.trackRows.querySelector(
-                `.track-wrapper[data-track-id="${CSS.escape(trackId)}"]`
-                + ' .track-widget'
-            );
+            const trackWidget = this.queryTrackWidgetFor(trackId);
             if (!trackWidget) {
                 continue;
             }
@@ -600,6 +708,28 @@ export class Overlay {
                         parseInt(e.target.dataset.trackId),
                         parseInt(e.target.dataset.kfIndex)
                     );
+                });
+            popup.querySelector('.kf-ease-select-popup')
+                .addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const trackId = e.target.dataset.trackId;
+                    const kfIndex = parseInt(e.target.dataset.kfIndex);
+                    const track = this.engine.getTrack(trackId);
+                    const kf = track?.keyframes[kfIndex];
+                    if (kf) {
+                        kf.ease = e.target.value;
+                        this.renderTimeline();
+                    }
+                });
+            popup.querySelector('.kf-seek-btn')
+                .addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const btn = e.currentTarget;
+                    const time = parseFloat(btn.dataset.time);
+                    this.ui.timeSlider.value = percentOfSpan(time, this._view);
+                    this.engine.currentTime = time;
+                    this._renderPlayback();
+                    this._removeKeyframePopup();
                 });
         }
     }
@@ -644,10 +774,7 @@ export class Overlay {
         for (const key of this.selectedKeyframes) {
             const [trackId, kfIndexStr] = key.split(':');
             const kfIndex = parseInt(kfIndexStr, 10);
-            const trackWidget = this.ui.trackRows.querySelector(
-                `.track-wrapper[data-track-id="${CSS.escape(trackId)}"]`
-                + ' .track-widget'
-            );
+            const trackWidget = this.queryTrackWidgetFor(trackId);
             if (!trackWidget) {
                 continue;
             }

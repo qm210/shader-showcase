@@ -9,7 +9,7 @@ export class TimelineTrack {
         this.name = name;
         // List of target uniforms this track drives
         this.targets = []; // [{ uniformName, minValue, maxValue, enabled }]
-        this.keyframes = []; // [{ time, value, transition }]
+        this.keyframes = []; // [{ time, value, ease }]
         this.loop = false;
         this.duration = 0;
         this._undoStack = [];
@@ -44,7 +44,7 @@ export class TimelineTrack {
         this.targets = this.targets.filter(t => t.uniformName !== uniformName);
     }
 
-    addKeyframe(time, value, transition = 'linear') {
+    addKeyframe(time, value, ease = 'linear') {
         // Clamp value to target ranges if possible
         const clampedValue = Array.isArray(value)
             ? value.map((v, i) => {
@@ -58,7 +58,7 @@ export class TimelineTrack {
                 ? Math.max(this.targets[0].minValue, Math.min(this.targets[0].maxValue, value))
                 : value;
 
-        const kf = { time, value: clampedValue, transition };
+        const kf = { time, value: clampedValue, ease };
         // Insert sorted by time
         let inserted = false;
         for (let i = 0; i < this.keyframes.length; i++) {
@@ -145,7 +145,7 @@ export class TimelineTrack {
         if (!surrounding) return target.minValue;
 
         const rawValue = interpolateKeyframes(surrounding.prev, surrounding.next, surrounding.t,
-            surrounding.prev.transition);
+            surrounding.prev.ease);
 
         // Clamp to target range
         if (Array.isArray(rawValue)) {

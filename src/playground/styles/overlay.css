@@ -22,10 +22,8 @@
     z-index: 10000;
     display: grid;
     width: 60vw;
-    min-width: 50vw;
     max-width: calc(100vw - 2em);
-    height: 85vh;
-    min-height: 85vh;
+    height: 90vh;
     max-height: calc(100dvh - 2em);
     overflow: hidden;
     border: 1px solid var(--overlay-border);
@@ -275,7 +273,7 @@
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.1s;
-    z-index: 100;
+    z-index: 200;
     white-space: pre;
     line-height: 1.4;
 }
@@ -300,10 +298,35 @@
     min-width: 140px;
 }
 
+#pg-overlay .keyframe-popup .popup-title {
+    color: #89a;
+    font-weight: bold;
+    text-align: center;
+    padding-bottom: 0.15em;
+    border-bottom: 1px solid var(--overlay-border);
+    margin-bottom: 0.05em;
+}
+
 #pg-overlay .keyframe-popup .popup-row {
     display: flex;
-    justify-content: space-between;
     gap: 0.5em;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#pg-overlay .keyframe-popup .popup-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+#pg-overlay .keyframe-popup .popup-row .kf-seek-btn {
+    flex: none;
+}
+
+#pg-overlay .keyframe-popup .popup-row select option {
+    background: rgb(30, 35, 55);
+    color: #cde;
+    padding: 0.3em 0.5em;
 }
 
 #pg-overlay .keyframe-popup .popup-label {
@@ -312,6 +335,26 @@
 
 #pg-overlay .keyframe-popup .popup-value {
     color: var(--overlay-accent);
+}
+
+#pg-overlay span.popup-value {
+    white-space: pre;
+}
+
+#pg-overlay .keyframe-popup .popup-value.kf-seek-btn {
+    background: var(--overlay-field);
+    border: 1px solid var(--overlay-border);
+    border-radius: var(--overlay-radius-sm);
+    padding: 0.1em 0.35em;
+    cursor: pointer;
+    color: var(--overlay-accent);
+    font-family: var(--overlay-mono), monospace;
+    font-size: inherit;
+    transition: background 0.15s;
+}
+
+#pg-overlay .keyframe-popup .popup-value.kf-seek-btn:hover {
+    background: rgba(130, 170, 255, 0.2);
 }
 
 #pg-overlay .keyframe-popup .popup-remove {
@@ -500,8 +543,12 @@
 #pg-overlay .track-actions-col .btn {
     width: 100%;
     text-align: center;
-    font-size: 0.95em;
-    padding: 0.1em 0.15em 0.2em;
+    font-size: 1.15em;
+    padding: 0.05em 0.05em 0.1em;
+}
+
+#pg-overlay .track-actions-col .btn.icon {
+    min-width: 1.5em;
 }
 
 /* Hide Copy, Rescale and Clear buttons when track is not selected */
@@ -681,6 +728,37 @@
         rgba(255, 255, 255, 0.03) calc(100% / 20 - 1px),
         rgba(255, 255, 255, 0.03) calc(100% / 20)
     );
+}
+
+#pg-overlay .keyframe-strip .easing-line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#pg-overlay .keyframe-strip .easing-line path {
+    fill: none;
+    stroke: var(--overlay-accent);
+    stroke-width: 1;
+    opacity: 0.5;
+}
+
+#pg-overlay .keyframe-strip .tail-line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#pg-overlay .keyframe-strip .tail-line path {
+    fill: none;
+    stroke: var(--overlay-accent);
+    stroke-width: 1;
+    opacity: 0.3;
+    stroke-dasharray: 4 2;
 }
 
 #pg-overlay .keyframe-strip .range-label {

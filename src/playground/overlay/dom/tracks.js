@@ -1,10 +1,100 @@
 import {ACTION} from '../../actions.js';
-import {percentOfSpan} from '../../engine/math.js';
+import {percentOfSpan, smoothstep} from '../../engine/math.js';
 import {calcTrackValueRange} from '../../engine/valueRanges.js';
 import {CHAR, clamp} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
 import {DATALIST} from "./shell.js";
 import {fullView, isInView} from "../../engine/timeZoom.js";
+
+/** Compute eased t for a given ease type. */
+function easedT(t, ease) {
+    if (ease === 'step') {
+        return 0;
+    }
+    if (ease === 'smoothstep') {
+        return smoothstep(0, 1, t);
+    }
+    return t;
+}
+
+/** Generate SVG path for easing curve between two keyframes. */
+function easingPath(kf1, kf2, view, stripWidth, min, max) {
+    const span = view.end - view.start;
+    if (span <= 0) {
+        return '';
+    }
+    const t1 = (kf1.time - view.start) / span;
+    const t2 = (kf2.time - view.start) / span;
+    const x1 = t1 * stripWidth;
+    const x2 = t2 * stripWidth;
+    const range = max - min;
+    const y1 = range === 0 ? 50 : (1 - (kf1.value - min) / range) * 100;
+    const y2 = range === 0 ? 50 : (1 - (kf2.value - min) / range) * 100;
+    const steps = 20;
+    const ease = kf1.ease || 'linear';
+
+    if (ease === 'step') {
+        return `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y1.toFixed(1)} L ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    }
+
+    let d = `M ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+    for (let i = 1; i <= steps; i++) {
+        const frac = i / steps;
+        const eased = easedT(frac, ease);
+        const x = x1 + (x2 - x1) * frac;
+        const y = y1 + (y2 - y1) * eased;
+        d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    return d;
+}
+
+/** Generate SVG element for a single easing curve segment. */
+function easingSegment(kf1, kf2, view, min, max) {
+    if (!isInView(view, kf1.time) && !isInView(view, kf2.time)) {
+        return '';
+    }
+    const path = easingPath(kf1, kf2, view, 100, min, max);
+    if (!path) {
+        return '';
+    }
+    return `<svg class="easing-line" viewBox="0 0 100 100"
+                 preserveAspectRatio="none">
+            <path d="${path}" />
+        </svg>`;
+}
+
+/** Generate all easing line SVGs for a track's keyframes. */
+function easingLines(track, view, min, max) {
+    if (track.keyframes.length <= 1) {
+        return '';
+    }
+    return track.keyframes.slice(0, -1)
+        .map((kf, i) => easingSegment(kf, track.keyframes[i + 1], view, min, max))
+        .filter(Boolean)
+        .join('');
+}
+
+/** Generate the tail line from the last keyframe to the right edge. */
+function tailLine(track, view, min, max) {
+    const kfs = track.keyframes;
+    if (kfs.length === 0) {
+        return '';
+    }
+    const last = kfs[kfs.length - 1];
+    const span = view.end - view.start;
+    if (span <= 0 || last.time < view.start) {
+        return '';
+    }
+    const range = max - min;
+    const y = range === 0
+        ? 50
+        : (1 - (last.value - min) / range) * 100;
+    const xStart = ((last.time - view.start) / span) * 100;
+    return `<svg class="tail-line" viewBox="0 0 100 100"
+                 preserveAspectRatio="none">
+            <path d="M ${xStart.toFixed(1)} ${y.toFixed(1)} L 100 ${y.toFixed(1)}" />
+        </svg>`;
+}
 
 const TRACK_ACTIONS = [
     {action: ACTION.ADD_KEYFRAME, label: '+',
@@ -16,7 +106,7 @@ const TRACK_ACTIONS = [
     {action: ACTION.PASTE_TRACK, label: CHAR.ARROW_PAIR_LEFT,
         title: 'Paste keyframes'},
     {action: ACTION.CLEAR_TRACK, label: CHAR.CLEAR,
-        title: 'Clear track keyframes'},
+        title: 'Clear track keyframes', className: 'btn icon danger'},
     {action: ACTION.DELETE_TRACK, label: CHAR.TRASH,
         title: 'Delete track', className: 'btn icon danger'},
 ];
@@ -97,7 +187,7 @@ function keyframeDots(track, view, selectedKeyframes, min, max) {
         const key = `${track.id}:${i}`;
         const selected = selectedKeyframes.has(key);
         const title = `t=${kf.time.toFixed(1)}s, val=${kf.value}, `
-            + kf.transition;
+            + kf.ease;
         return `
             <div class="${cls('keyframe-dot', selected && 'selected')}"
                  ${dataAttrs({trackId: track.id, kfIndex: i})}
@@ -153,12 +243,15 @@ function keyframeStrip(track, provider, view, selectedKeyframes) {
         .map(t => valueLine(t, min, max, values))
         .join('');
     const keyframes = keyframeDots(track, view, selectedKeyframes, min, max);
+    const tail = tailLine(track, view, min, max);
     return `
         <div class="keyframe-strip"
              ${dataAttrs({trackId: track.id})}
              title="Click to set keyframe">
             <div class="strip-bg"></div>
             ${keyframes}
+            ${easingLines(track, view, min, max)}
+            ${tail}
             <div class="playhead"
                  style="${playhead}"></div>
             ${uniformLines}

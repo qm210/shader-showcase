@@ -1,12 +1,14 @@
 import {lerp, smoothstep} from "./math.js";
 
-export function interpolateKeyframes(from, to, t, transition) {
-    if (transition === 'step') {
+export const TRANSITION_TYPES = ['linear', 'smoothstep', 'step'];
+
+export function interpolateKeyframes(from, to, t, ease) {
+    if (ease === 'step') {
         // "step" means to hold until next keyframe
         return from.value;
     }
 
-    const easedT = transition === 'smoothstep' ? smoothstep(0, 1, t) : t;
+    const easedT = ease === 'smoothstep' ? smoothstep(0, 1, t) : t;
 
     if (Array.isArray(from.value)) {
         return from.value.map((v, i) => lerp(v, to.value[i], easedT));
