@@ -7,6 +7,7 @@ import './styles/overlay.css';
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
+import {PlaybackSync} from "./engine/playbackSync.js";
 
 export class PlaygroundContext {
     constructor(state, controls, elements) {
@@ -21,6 +22,8 @@ export class PlaygroundContext {
         this._provider = this._createProvider();
         this.randomizer = new Randomizer(this._provider);
         this.overlay = new Overlay(this._provider);
+        this._playbackSync = new PlaybackSync(state, this.engine);
+        this._playbackSync.connectOverlay(this.overlay);
 
         DEBUG.log("[PLAYGROUND] Context constructed.", {
             overlay: this.overlay,
@@ -91,6 +94,7 @@ export class PlaygroundContext {
     update(dt) {
         this.engine.update(dt);
         this.overlay.update();
+        this._playbackSync.updateFromEngine();
     }
 
     resolveRange(entry) {

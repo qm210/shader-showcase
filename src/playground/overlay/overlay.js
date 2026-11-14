@@ -1060,6 +1060,7 @@ export class Overlay {
 
     togglePlaying() {
         this.engine.playing = !this.engine.playing;
+        this.ctx._playbackSync.onOverlayPlayToggled(this.engine.playing);
         this._syncPlayButton();
     }
 
@@ -1276,6 +1277,7 @@ export class Overlay {
 
     _seek(time) {
         this.engine.currentTime = time;
+        this.ctx._playbackSync.onOverlaySeek(time);
         this._renderPlayback();
         this._scheduleSave();
     }
