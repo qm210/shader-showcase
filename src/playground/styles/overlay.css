@@ -535,6 +535,11 @@
     margin-inline-start: 0.3rem;
 }
 
+#pg-overlay .target-row.highlighted .target-selector {
+    color: black;
+    background: var(--overlay-pink-soft);
+}
+
 #pg-overlay .target-name {
     flex: 1 1 6em;
     min-width: 0;
@@ -645,11 +650,19 @@
     position: absolute;
     left: 0;
     right: 0;
-    height: 1px;
+    height: 5px;
+    margin-top: -2px;
+    z-index: 1;
+}
+
+#pg-overlay .keyframe-strip .value-line::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
     border-top: 1px dashed var(--overlay-pink-soft);
     opacity: 0.66;
-    pointer-events: none;
-    z-index: 1;
 }
 
 #pg-overlay .keyframe-strip .value-line.outside {

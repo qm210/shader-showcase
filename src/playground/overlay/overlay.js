@@ -95,6 +95,7 @@ export class Overlay {
         overlay.addEventListener('keydown', (e) => this._onKeyDown(e));
         overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
         overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
+        overlay.addEventListener('mousemove', (e) => this._onValueLineHover(e));
 
         this._boxSelect = new KeyframeBoxSelect(overlay, (selection) => {
             if (selection) {
@@ -251,6 +252,35 @@ export class Overlay {
             ?? '(not in any batch)');
         console.log('Control Range:', this.ctx.getControlRange(name));
         console.groupEnd();
+    }
+
+    _onValueLineHover(e) {
+        const strip = e.target.closest('.keyframe-strip');
+        const targetRows = this.ui.trackRows.querySelectorAll('.target-row');
+        if (!strip) {
+            for (const row of targetRows) {
+                row.classList.remove('highlighted');
+            }
+            return;
+        }
+        // Use elementFromPoint to detect value-line under cursor
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const valueLine = el?.closest('.value-line');
+        const name = valueLine?.dataset.uniformName;
+        if (name) {
+            for (const row of targetRows) {
+                const selector = row.querySelector('.target-selector');
+                if (selector?.value === name) {
+                    row.classList.add('highlighted');
+                } else {
+                    row.classList.remove('highlighted');
+                }
+            }
+        } else {
+            for (const row of targetRows) {
+                row.classList.remove('highlighted');
+            }
+        }
     }
 
     /** Looks in the selected batch first, then in the auto batches. */

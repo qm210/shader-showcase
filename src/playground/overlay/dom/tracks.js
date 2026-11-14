@@ -138,6 +138,7 @@ function valueLine(target, min, max, currentValue) {
     const outside = clamped !== fraction;
     return `
         <div class="value-line ${outside && 'outside'}"
+             ${dataAttrs({uniformName: target.uniformName})}
              style="top:${topPercent}%"
              title="${esc(target.uniformName)}">
         </div>`;
