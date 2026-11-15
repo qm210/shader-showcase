@@ -39,3 +39,20 @@ export function findSurroundingKeyframes(keyframes, time) {
     return {prev: keyframes[keyframes.length - 2], next: keyframes[keyframes.length - 1], t: 1};
 }
 
+let _keyframeIdCounter = 0;
+
+export function createKeyframeId() {
+    return `kf_${++_keyframeIdCounter}${Date.now().toString(36)}`;
+}
+
+export function keyframeKey(trackId, kfId) {
+    return `${trackId}:${kfId}`;
+}
+
+export function parseKeyframeKey(key) {
+    const sep = key.lastIndexOf(':');
+    return {
+        trackId: key.slice(0, sep),
+        kfId: key.slice(sep + 1),
+    };
+}

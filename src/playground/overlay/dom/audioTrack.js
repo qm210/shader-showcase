@@ -1,5 +1,4 @@
 import {isInView} from '../../engine/timeZoom.js';
-import {DEBUG} from "../index.js";
 
 let _samplesPerPixel = 16;
 
@@ -290,7 +289,7 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         .map(wave => renderAudioWaveform(wave, engine.currentTime))
         .filter(Boolean);
 
-    DEBUG.log("[AUDIO]", {audioTracks, audioData, editor, rows});
+    // DEBUG.log("[AUDIO]", {audioTracks, audioData, editor, rows});
     if (!editor || rows.length === 0) {
         return;
     }

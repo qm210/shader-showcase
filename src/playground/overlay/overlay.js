@@ -1,6 +1,6 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from '../persistence.js';
 import {calcTrackValueRange, FALLBACK_RANGE, isRangeValue} from '../engine/valueRanges.js';
-import {EASING_TYPES} from '../engine/keyframes.js';
+import {EASING_TYPES, keyframeKey, parseKeyframeKey} from '../engine/keyframes.js';
 import {ACTION, runAction} from '../actions.js';
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
 import {KeyframeBoxSelect} from './boxSelect.js';
@@ -16,7 +16,6 @@ import {positionContextBar, renderContextActionBar} from './dom/contextBar.js';
 import {renderAudioWaveforms, setWaveformSamples} from './dom/audioTrack.js';
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
-import {keyframeKey, parseKeyframeKey} from "../engine/timeline.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
 
 // Default audio file for development (Vite asset import).
@@ -597,16 +596,19 @@ export class Overlay {
             ?.classList.toggle('collapsed');
     }
 
-    /** Shift selects a range, Ctrl/Cmd toggles, else selects only it. */
     _onKeyframeDotClick(dot, e) {
+        const mode = {
+            toggle: e.shiftKey,
+            range: e.ctrlKey || e.metaKey
+        };
         const trackId = dot.dataset.trackId;
         const kfId = dot.dataset.kfId;
         const key = keyframeKey(trackId, kfId);
         const selected = this.track.selectedKeyframes;
 
-        if (e.shiftKey) {
+        if (mode.toggle) {
             this._selectRange(trackId, kfId);
-        } else if (e.ctrlKey || e.metaKey) {
+        } else if (mode.range) {
             if (selected.has(key)) {
                 selected.delete(key);
             } else {
@@ -615,9 +617,20 @@ export class Overlay {
         } else {
             this._selectOnly(trackId, kfId);
         }
+
+        this._debugKeyFrames(trackId);
+
         // Selection may change on several tracks, so render them all.
         this.renderTimeline();
         this._showKeyframePopups();
+    }
+
+    _debugKeyFrames(trackId) {
+        const track = this.engine.getTrack(trackId);
+        console.group("[KEYFRAMES] on Track", trackId, track, " - Keyframes:");
+        console.table(track.keyframes);
+        console.log("Selected:", this.track.selectedKeyframes);
+        console.groupEnd();
     }
 
     _addKeyframe(track, time, value) {
@@ -626,7 +639,6 @@ export class Overlay {
             track.addKeyframe(0, value);
         }
         const kf = track.addKeyframe(time, value);
-        DEBUG.log("[KEYFRAMES] After adding: ", track.keyframes, "had before:", lengthBefore);
         this.track.selectedKeyframes.add(
             keyframeKey(track.id, kf.id)
         );

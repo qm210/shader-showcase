@@ -11,7 +11,7 @@
     --overlay-pink-soft: #fca;
     --overlay-text: #e8e8f0;
     --overlay-bg: rgb(50, 55, 75);
-    --overlay-neutral: rgb(140, 170, 255);
+    --overlay-neutral: rgba(140, 170, 255);
     --overlay-border: rgba(from var(--overlay-neutral) r g b / 35%);
     --overlay-divider: rgba(255, 255, 255, 0.1);
     --overlay-field: rgba(255, 255, 255, 0.08);
@@ -25,7 +25,10 @@
     --slider-color: var(--overlay-accent);
     --track-widget-pad: 0.1em 0.5em 0.1em 2em;
     --track-widget-min-width: 15em;
-    --curve-color: var(--overlay-neutral);
+    --keyframe-color-idle: var(--overlay-neutral);
+    --keyframe-dot-size: 0.5em;
+    --keyframe-hit-size: 24px;
+    --curve-color: rgba(from var(--overlay-neutral) r g b / 72%);
 
     position: fixed;
     top: 1em;

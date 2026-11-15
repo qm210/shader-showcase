@@ -1,4 +1,5 @@
 // Shift+drag rectangle selection of keyframe dots.
+import {keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 
 const MIN_VISIBLE_SIZE = 5;
 const RECT_STYLE = [
@@ -10,7 +11,7 @@ const RECT_STYLE = [
     'z-index:50',
 ].join(';');
 
-const keyOf = (dot) => `${dot.dataset.trackId}:${dot.dataset.kfId}`;
+
 
 export class KeyframeBoxSelect {
     /** onSelect({trackId, kfId}) receives the first dot in the box. */
@@ -63,7 +64,7 @@ export class KeyframeBoxSelect {
             const inside = this._contains(box, dot.getBoundingClientRect());
             dot.classList.toggle('shift-selected', inside);
             if (inside) {
-                this.selected.add(keyOf(dot));
+                this.selected.add(keyframeKey(dot.dataset.trackId, dot.dataset.kfId));
             }
         }
     }
@@ -88,8 +89,7 @@ export class KeyframeBoxSelect {
         const [first] = this.selected;
         this.selected.clear();
         if (first) {
-            const [trackId, kfId] = first.split(':');
-            this.onSelect({trackId, kfId});
+            this.onSelect(parseKeyframeKey(first));
         } else {
             this.onSelect(null);
         }

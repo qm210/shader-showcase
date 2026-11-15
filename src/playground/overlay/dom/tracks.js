@@ -5,6 +5,7 @@ import {CHAR, clamp} from '../index.js';
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
+import {keyframeKey} from "../../engine/keyframes.js";
 
 function easedT(t, ease) {
     if (ease === 'step') {
@@ -166,16 +167,19 @@ function stripPosition(time, view) {
         : 'display:none';
 }
 
-/** Dots of the keyframes inside the visible window `view`. */
 function keyframeDots(track, view, selectedKeyframes, min, max) {
     return track.keyframes.map(kf => {
         if (!isInView(view, kf.time)) {
             return '';
         }
-        const key = `${track.id}:${kf.id}`;
+        const key = keyframeKey(track.id, kf.id);
         const selected = selectedKeyframes.has(key);
-        const title = `t = ${kf.time.toFixed(1)}s, val = ${kf.value}, `
-            + kf.ease;
+        const title = [
+            `t = ${kf.time.toFixed(1)}s`,
+            `val = ${kf.value.toFixed(4)}`,
+            kf.ease
+        ].join("; ");
+
         return `
             <div class="${cls('keyframe-dot', selected && 'selected')}"
                  ${dataAttrs({trackId: track.id, kfId: kf.id})}
@@ -285,16 +289,6 @@ function trackColumns(
         </div>`;
 }
 
-function trackColor(trackId) {
-    let hash = 0;
-    for (let i = 0; i < trackId.length; i++) {
-        hash = ((hash << 5) - hash) + trackId.charCodeAt(i);
-        hash |= 0;
-    }
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 65%, 65%)`;
-}
-
 function createTrackRow(track, provider, knownNames, selectedTrackId,
                         editingTrackId, collapsedTrackIds, selectedKeyframes,
                         view) {
@@ -303,7 +297,6 @@ function createTrackRow(track, provider, knownNames, selectedTrackId,
     wrapper.classList.toggle('selected', selectedTrackId === track.id);
     wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
     wrapper.dataset.trackId = track.id;
-    wrapper.style.setProperty('--curve-color', trackColor(track.id));
     wrapper.innerHTML = trackColumns(
         track, provider, view, knownNames, editingTrackId,
         selectedKeyframes

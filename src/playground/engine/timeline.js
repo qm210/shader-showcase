@@ -1,22 +1,12 @@
-import {findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
+import {createKeyframeId, findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
 import {FALLBACK_RANGE} from "./valueRanges.js";
-
-let _keyframeIdCounter = 0;
-
-export function createKeyframeId() {
-    return `kf_${++_keyframeIdCounter}_${Date.now().toString(36)}`;
-}
-
-export function keyframeKey(trackId, kfId) {
-    return `${trackId}:${kfId}`;
-}
 
 const MAX_UNDO_STEPS = 50;
 
 export class TimelineTrack {
     constructor(name) {
-        this.id = 'track_' + Math.random().toString(36).slice(2, 11);
+        this.id = TimelineTrack.createId();
         this.name = name;
         this.targets = [];
         this.keyframes = [];
@@ -24,6 +14,10 @@ export class TimelineTrack {
         this.duration = 0;
         this._undoStack = [];
         this.updateDuration();
+    }
+
+    static createId() {
+        return 'track_' + Math.random().toString(36).slice(2, 11);
     }
 
     updateDuration() {
@@ -55,6 +49,13 @@ export class TimelineTrack {
         this.targets = this.targets.filter(t => t.uniformName !== uniformName);
     }
 
+    createKeyframe(time, value, ease = "linear") {
+        return {
+            id: createKeyframeId(),
+            time, value, ease
+        };
+    }
+
     addKeyframe(time, value, ease = 'linear') {
         // Clamp value to target ranges if possible
         const clampedValue = Array.isArray(value)
@@ -69,7 +70,7 @@ export class TimelineTrack {
                 ? Math.max(this.targets[0].minValue, Math.min(this.targets[0].maxValue, value))
                 : value;
 
-        const kf = { id: createKeyframeId(), time, value: clampedValue, ease };
+        const kf = this.createKeyframe(time, value, ease);
         // Insert sorted by time
         let inserted = false;
         for (let i = 0; i < this.keyframes.length; i++) {
@@ -165,7 +166,6 @@ export class TimelineTrack {
         return Math.max(target.minValue, Math.min(target.maxValue, rawValue));
     }
 
-    /** Get all target values at current time as a map */
     getAllValues(currentTime) {
         const result = {};
         for (const target of this.targets) {
@@ -176,7 +176,6 @@ export class TimelineTrack {
         return result;
     }
 
-    /** Serialize to JSON */
     toJSON() {
         return {
             id: this.id,
@@ -187,22 +186,17 @@ export class TimelineTrack {
         };
     }
 
-    /** Deserialize from JSON */
     static fromJSON(json) {
         const track = new TimelineTrack(json.name);
         track.id = json.id ?? track.id;
+        track.loop = json.loop || false;
         track.targets = json.targets || [];
         track.keyframes = json.keyframes || [];
-        track.loop = json.loop || false;
+        for (const kf of track.keyframes) {
+            kf.id ??= createKeyframeId();
+        }
         track.updateDuration();
         return track;
     }
 }
 
-export function parseKeyframeKey(key) {
-    const sep = key.lastIndexOf(':');
-    return {
-        trackId: key.slice(0, sep),
-        kfId: key.slice(sep + 1),
-    };
-}
