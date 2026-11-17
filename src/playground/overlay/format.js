@@ -1,12 +1,12 @@
-import {CHAR} from './index.js';
+import {CHAR} from "./index.js";
 
-const VECTOR_COMPONENTS = ['x', 'y', 'z', 'w'];
+const VECTOR_COMPONENTS = ["x", "y", "z", "w"];
 
 const isNil = (value) => value === null || value === undefined;
 
 /** Check if a GLSL type is an integer type (int, ivec*). */
 export function isIntegerType(type) {
-    return /^i(ivec|nt)$/.test(type ?? '');
+    return /^i(ivec|nt)$/.test(type ?? "");
 }
 
 /** Uniform value for display: vectors with 3, scalars with 4 decimals. */
@@ -23,20 +23,20 @@ export function formatValue(value, empty = CHAR.NO_VALUE) {
 /** Content of an overwrite field: "a/b/c" for vectors, "" when unset. */
 export function formatOverwrite(value) {
     if (isNil(value)) {
-        return '';
+        return "";
     }
     return Array.isArray(value)
-        ? value.join('/')
+        ? value.join("/")
         : String(value);
 }
 
 /** One component of a scalar or vector value as text, "" when unset. */
 export function formatComponent(value, index) {
     if (isNil(value)) {
-        return '';
+        return "";
     }
     return Array.isArray(value)
-        ? String(value[index] ?? '')
+        ? String(value[index] ?? "")
         : String(value);
 }
 
@@ -55,25 +55,25 @@ export function componentRange(range, index, isInteger) {
 
 /** Component suffixes of a GLSL type: vec3 -> ['x','y','z'], else [null]. */
 export function vectorComponents(type) {
-    const match = /^vec([2-4])$/.exec(type ?? '');
+    const match = /^vec([2-4])$/.exec(type ?? "");
     return match
         ? VECTOR_COMPONENTS.slice(0, Number(match[1]))
         : [null];
 }
 
 export const formatNumber = (value, digits = 2) =>
-    typeof value === 'number' ? value.toFixed(digits) : JSON.stringify(value);
+    typeof value === "number" ? value.toFixed(digits) : JSON.stringify(value);
 
 export function formatRange(value) {
     if (value === null || value === undefined) {
-        return '';
+        return "";
     }
-    return Array.isArray(value) ? value.join(', ') : String(value);
+    return Array.isArray(value) ? value.join(", ") : String(value);
 }
 
 export function parseRangeInput(text) {
     const trimmed = text.trim();
-    if (trimmed === '') {
+    if (trimmed === "") {
         return null;
     }
     const parts = trimmed.split(/[\s,;]+/).filter(Boolean).map(Number);

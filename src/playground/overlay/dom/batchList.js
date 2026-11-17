@@ -1,12 +1,12 @@
-import {ACTION} from '../../actions.js';
-import {CHAR} from '../index.js';
-import {formatOverwrite, formatRange} from '../format.js';
-import {actionButton, cls, dataAttrs, editableName, esc} from './html.js';
+import {ACTION} from "../../actions.js";
+import {CHAR} from "../index.js";
+import {formatOverwrite, formatRange} from "../format.js";
+import {actionButton, cls, dataAttrs, editableName, esc} from "./html.js";
 
 import {DATALIST} from "./scaffold.js";
 
 function overwriteInput(kind, value, placeholder, data) {
-    const label = kind === 'min' ? 'Min' : 'Max';
+    const label = kind === "min" ? "Min" : "Max";
     return `
         <input class="field ${kind}"
                placeholder="${esc(formatRange(placeholder))}"
@@ -64,20 +64,20 @@ function batchHeaderButtons(batchId, isSelected) {
     const toggle = isSelected
         ? actionButton({
             action: ACTION.DESELECT_BATCHES,
-            label: 'Deselect',
-            className: 'btn subtle clear-batch-btn',
-            title: 'Deselect this batch',
+            label: "Deselect",
+            className: "btn subtle clear-batch-btn",
+            title: "Deselect this batch",
         })
         : actionButton({
             action: ACTION.ADD_UNIFORM,
-            label: '+',
+            label: "+",
             data: {batchId},
         });
     const remove = actionButton({
         action: ACTION.REMOVE_BATCH,
         label: CHAR.TRASH,
-        className: 'btn icon danger',
-        title: 'Delete batch',
+        className: "btn icon danger",
+        title: "Delete batch",
         data: {batchId},
     });
     return toggle + remove;
@@ -89,7 +89,7 @@ function batchCard(provider, batch, selectedBatchId, editingBatchId) {
     const data = {batchId: batch.id};
     const rows = batch.uniforms
         .map((entry, i) => batchUniformRow(provider, batch.id, entry, i))
-        .join('');
+        .join("");
     return `
         <div class="${cls(
                 'batch-card', isSelected && 'selected', isEditing && 'editing'
@@ -113,5 +113,5 @@ export function renderBatchList(ui, provider, {selectedId, renamingId}) {
     ui.batchList.innerHTML = provider.batches.custom
         .map(batch =>
             batchCard(provider, batch, selectedId, renamingId)
-        ).join('');
+        ).join("");
 }

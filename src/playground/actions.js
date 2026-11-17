@@ -2,31 +2,31 @@ import {DEBUG} from "./overlay/index.js";
 import {calcTrackValueRange} from "./engine/valueRanges.js";
 
 export const ACTION = Object.freeze({
-    HIDE_OVERLAY: 'hide-overlay',
-    PLAY: 'play',
-    ADD_TRACK: 'add-track',
+    HIDE_OVERLAY: "hide-overlay",
+    PLAY: "play",
+    ADD_TRACK: "add-track",
     REMOVE_ALL_TRACKS: "remove-all-tracks",
-    EXPORT: 'export',
-    IMPORT: 'import',
-    RESET: 'reset',
-    DELETE_TRACK: 'delete-track',
-    ADD_TARGET: 'add-target',
-    REMOVE_TARGET: 'remove-target',
-    ADD_KEYFRAME: 'add-keyframe',
-    ADD_BATCH: 'add-batch',
-    REMOVE_BATCH: 'remove-batch',
-    DESELECT_BATCHES: 'deselect-batches',
-    ADD_UNIFORM: 'add-uniform',
-    REMOVE_UNIFORM: 'remove-uniform',
-    RANDOMIZE: 'randomize',
-    CANCEL_TRACK_NAME: 'cancel-track-name',
-    CLEAR_TRACK: 'clear-track',
-    RESCALE_TRACK: 'rescale-track',
-    COPY_TRACK: 'copy-track',
-    PASTE_TRACK: 'paste-track',
-    LOAD_SNAPSHOT: 'load-snapshot',
-    CLEAR_OVERRIDES: 'clear-overrides',
-    LOAD_AUDIO: 'load-audio',
+    EXPORT: "export",
+    IMPORT: "import",
+    RESET: "reset",
+    DELETE_TRACK: "delete-track",
+    ADD_TARGET: "add-target",
+    REMOVE_TARGET: "remove-target",
+    ADD_KEYFRAME: "add-keyframe",
+    ADD_BATCH: "add-batch",
+    REMOVE_BATCH: "remove-batch",
+    DESELECT_BATCHES: "deselect-batches",
+    ADD_UNIFORM: "add-uniform",
+    REMOVE_UNIFORM: "remove-uniform",
+    RANDOMIZE: "randomize",
+    CANCEL_TRACK_NAME: "cancel-track-name",
+    CLEAR_TRACK: "clear-track",
+    RESCALE_TRACK: "rescale-track",
+    COPY_TRACK: "copy-track",
+    PASTE_TRACK: "paste-track",
+    LOAD_SNAPSHOT: "load-snapshot",
+    CLEAR_OVERRIDES: "clear-overrides",
+    LOAD_AUDIO: "load-audio",
 });
 
 export function runAction(overlay, data) {
@@ -62,13 +62,13 @@ export function runAction(overlay, data) {
             break;
 
         case ACTION.RESET:
-            if (confirm('Reset? This clears all tracks, batches and values, including the stored ones.')) {
+            if (confirm("Reset? This clears all tracks, batches and values, including the stored ones.")) {
                 overlay.reset();
             }
             break;
 
         case ACTION.DELETE_TRACK:
-            if (confirm('Delete this track?')) {
+            if (confirm("Delete this track?")) {
                 overlay.engine.removeTrack(data.trackId);
                 overlay.collapsedTrackIds.delete(data.trackId);
                 overlay.selectedKeyframe = null;
@@ -84,10 +84,10 @@ export function runAction(overlay, data) {
             const track = overlay.engine.getTrack(data.trackId);
             if (track) {
                 // Add an empty target that the user can fill in
-                track.addTarget('');
+                track.addTarget("");
                 overlay.renderTimeline();
                 // Focus the new selector (last one added)
-                const selectors = overlay.ui.trackList.querySelectorAll('.target-selector');
+                const selectors = overlay.ui.trackList.querySelectorAll(".target-selector");
                 const lastSelector = selectors[selectors.length - 1];
                 if (lastSelector) {
                     lastSelector.focus();
@@ -114,7 +114,7 @@ export function runAction(overlay, data) {
             }
             // Use prompt for X (time) and Y (value) coordinates per user override.
             const defaultTime = overlay.engine.currentTime.toFixed(1);
-            const timeStr = prompt('Keyframe time (s):', defaultTime);
+            const timeStr = prompt("Keyframe time (s):", defaultTime);
             if (timeStr === null) {
                 return;
             }
@@ -125,7 +125,7 @@ export function runAction(overlay, data) {
             const [minVal, maxVal] = calcTrackValueRange(track, overlay.ctx);
             const midVal = ((minVal + maxVal) / 2).toFixed(3);
             const defaultVal = overlay.ctx.getControlValue() ?? midVal;
-            const valStr = prompt('Keyframe value:', defaultVal);
+            const valStr = prompt("Keyframe value:", defaultVal);
             if (valStr === null) {
                 return;
             }
@@ -166,7 +166,7 @@ export function runAction(overlay, data) {
         case ACTION.ADD_UNIFORM: {
             const batch = overlay.ctx.getBatch(data.batchId);
             if (batch) {
-                batch.addUniform('');
+                batch.addUniform("");
                 overlay.batch.selectedId = batch.id;
                 overlay.renderUniformPanel();
                 overlay.element
@@ -187,7 +187,7 @@ export function runAction(overlay, data) {
                         batch.removeUniform(parseInt(data.index, 10));
                     } else {
                         // First click: clear the name and associated overrides
-                        entry.name = '';
+                        entry.name = "";
                         entry.min = null;
                         entry.max = null;
                     }
@@ -213,7 +213,7 @@ export function runAction(overlay, data) {
 
         case ACTION.CLEAR_TRACK: {
             const track = overlay.engine.getTrack(data.trackId);
-            if (track && confirm('Clear all keyframes from this track?')) {
+            if (track && confirm("Clear all keyframes from this track?")) {
                 track.keyframes = [];
                 track.updateDuration();
                 overlay.selectedKeyframe = null;
@@ -231,8 +231,8 @@ export function runAction(overlay, data) {
             if (range <= 0) return;
 
             // Use a small inline prompt-like input via the overlay itself to avoid window.prompt
-            const newStartStr = prompt('New start time:', oldStart.toFixed(1));
-            const newEndStr = prompt('New end time:', oldEnd.toFixed(1));
+            const newStartStr = prompt("New start time:", oldStart.toFixed(1));
+            const newEndStr = prompt("New end time:", oldEnd.toFixed(1));
             if (newStartStr === null || newEndStr === null) return;
 
             const s = parseFloat(newStartStr);
@@ -252,7 +252,7 @@ export function runAction(overlay, data) {
             const track = overlay.engine.getTrack(data.trackId);
             if (track && track.keyframes.length) {
                 overlay.clipboard.track = JSON.parse(JSON.stringify(track.keyframes));
-                alert('Keyframes copied! Use the paste button on another track.');
+                alert("Keyframes copied! Use the paste button on another track.");
             }
             break;
         }

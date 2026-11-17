@@ -170,7 +170,7 @@ export class PlaygroundEngine {
         const entries = Object.entries(this._mainState.uni);
         const snapshot = {};
         for (const [name, value] of entries) {
-            if (typeof value === 'number' || Array.isArray(value)) {
+            if (typeof value === "number" || Array.isArray(value)) {
                 snapshot[name] = value;
             }
         }

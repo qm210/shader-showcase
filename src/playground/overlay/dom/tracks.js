@@ -1,17 +1,17 @@
-import {ACTION} from '../../actions.js';
-import {percentOfSpan, smoothstep} from '../../engine/math.js';
-import {calcTrackValueRange} from '../../engine/valueRanges.js';
-import {CHAR, clamp} from '../index.js';
-import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from './html.js';
+import {ACTION} from "../../actions.js";
+import {percentOfSpan, smoothstep} from "../../engine/math.js";
+import {calcTrackValueRange} from "../../engine/valueRanges.js";
+import {CHAR, clamp} from "../index.js";
+import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from "./html.js";
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
 import {keyframeKey} from "../../engine/keyframes.js";
 
 function easedT(t, ease) {
-    if (ease === 'step') {
+    if (ease === "step") {
         return 0;
     }
-    if (ease === 'smoothstep') {
+    if (ease === "smoothstep") {
         return smoothstep(0, 1, t);
     }
     return t;
@@ -27,13 +27,13 @@ const CURVE_STEPS = 20;
 const fmt = (n) => n.toFixed(2);
 
 function easingPath(kf1, kf2, toPoint) {
-    const ease = kf1.ease || 'linear';
+    const ease = kf1.ease || "linear";
     const [x1, y1] = toPoint(kf1.time, kf1.value);
     const [x2, y2] = toPoint(kf2.time, kf2.value);
-    if (ease === 'step') {
+    if (ease === "step") {
         return `M ${fmt(x1)} ${fmt(y1)} H ${fmt(x2)} V ${fmt(y2)}`;
     }
-    const steps = ease === 'linear' ? 1 : CURVE_STEPS;
+    const steps = ease === "linear" ? 1 : CURVE_STEPS;
     const points = [];
     for (let i = 0; i <= steps; i++) {
         const frac = i / steps;
@@ -53,7 +53,7 @@ function curveLines(track, view, min, max) {
     const kfs = track.keyframes;
     const span = view.end - view.start;
     if (kfs.length === 0 || span <= 0) {
-        return '';
+        return "";
     }
     const toPoint = (time, value) => [
         (time - view.start) / span * 100,
@@ -64,10 +64,10 @@ function curveLines(track, view, min, max) {
         .map((kf, i) => [kf, kfs[i + 1]])
         .filter(([a, b]) => a.time <= view.end && b.time >= view.start)
         .map(([a, b]) => easingPath(a, b, toPoint))
-        .join(' ');
+        .join(" ");
 
     const last = kfs[kfs.length - 1];
-    let tail = '';
+    let tail = "";
     if (last.time < view.end) {
         const [x, y] = toPoint(last.time, last.value);
         tail = `M ${fmt(x)} ${fmt(y)} H 100`;
@@ -87,18 +87,18 @@ function curveLines(track, view, min, max) {
 }
 
 const TRACK_ACTIONS = [
-    {action: ACTION.ADD_KEYFRAME, label: '+',
-        title: 'Add keyframe at current time'},
+    {action: ACTION.ADD_KEYFRAME, label: "+",
+        title: "Add keyframe at current time"},
     {action: ACTION.RESCALE_TRACK, label: CHAR.RESCALE,
-        title: 'Rescale time range'},
+        title: "Rescale time range"},
     {action: ACTION.COPY_TRACK, label: CHAR.ARROW_PAIR_RIGHT,
-        title: 'Copy keyframes'},
+        title: "Copy keyframes"},
     {action: ACTION.PASTE_TRACK, label: CHAR.ARROW_PAIR_LEFT,
-        title: 'Paste keyframes'},
+        title: "Paste keyframes"},
     {action: ACTION.CLEAR_TRACK, label: CHAR.CLEAR,
-        title: 'Clear track keyframes', className: 'btn icon danger'},
+        title: "Clear track keyframes", className: "btn icon danger"},
     {action: ACTION.DELETE_TRACK, label: CHAR.TRASH,
-        title: 'Delete track', className: 'btn icon danger'},
+        title: "Delete track", className: "btn icon danger"},
 ];
 
 function knownTargetNames(provider) {
@@ -112,7 +112,7 @@ function knownTargetNames(provider) {
 /** One target row; target = null renders the empty "add" row. */
 function targetRow(trackId, index, target, knownNames) {
     const data = dataAttrs({trackId, targetIdx: index});
-    const name = target?.uniformName ?? '';
+    const name = target?.uniformName ?? "";
     const isValid = !name || knownNames.has(name);
     const checked = target && (!isValid || target.enabled);
     const disabled = target && !isValid && target.enabled;
@@ -120,8 +120,8 @@ function targetRow(trackId, index, target, knownNames) {
         actionButton({
             action: ACTION.REMOVE_TARGET,
             label: CHAR.TIMES,
-            className: 'btn icon subtle',
-            title: 'Remove target',
+            className: "btn icon subtle",
+            title: "Remove target",
             data: {trackId, targetIdx: index},
             style: !target ? "visibility:hidden" : "",
             disabled: !target,
@@ -151,7 +151,7 @@ function targetRows(track, knownNames) {
         targetRow(track.id, i, target, knownNames)
     );
     rows.push(targetRow(track.id, track.targets.length, null, knownNames));
-    return rows.join('');
+    return rows.join("");
 }
 
 /** Pointer x on a keyframe strip as a fraction of its time axis. */
@@ -164,13 +164,13 @@ export function stripFraction(strip, clientX) {
 function stripPosition(time, view) {
     return isInView(view, time)
         ? `left:${percentOfSpan(time - view.start, view.end - view.start)}`
-        : 'display:none';
+        : "display:none";
 }
 
 function keyframeDots(track, view, selectedKeyframes, min, max) {
     return track.keyframes.map(kf => {
         if (!isInView(view, kf.time)) {
-            return '';
+            return "";
         }
         const key = keyframeKey(track.id, kf.id);
         const selected = selectedKeyframes.has(key);
@@ -185,7 +185,7 @@ function keyframeDots(track, view, selectedKeyframes, min, max) {
                  ${dataAttrs({trackId: track.id, kfId: kf.id})}
                  style="${position(kf, view)}"
                  title="${esc(title)}"></div>`;
-    }).join('');
+    }).join("");
 
     function position(kf, view) {
         const left = stripPosition(kf.time, view);
@@ -201,14 +201,14 @@ function keyframeDots(track, view, selectedKeyframes, min, max) {
 
 function valueLine(target, min, max, currentValue) {
     if (!target || !target.uniformName) {
-        return '';
+        return "";
     }
     const value = currentValue?.[target.uniformName];
     if (value === undefined || value === null) {
-        return '';
+        return "";
     }
     if (max === min) {
-        return '';
+        return "";
     }
     const fraction = valueFraction(value, min, max);
     const clamped = clamp(fraction, 0, 1);
@@ -229,7 +229,7 @@ function keyframeStrip(track, provider, view, selectedKeyframes) {
     const uniformLines = track.targets
         .filter(t => t.uniformName)
         .map(t => valueLine(t, min, max, values))
-        .join('');
+        .join("");
     const keyframes = keyframeDots(track, view, selectedKeyframes, min, max);
     const showHint = track.keyframes.length === 0 ? "Click to set keyframe" : "";
     return `
@@ -252,10 +252,10 @@ function keyframeStrip(track, provider, view, selectedKeyframes) {
 
 function trackActions(trackId) {
     return TRACK_ACTIONS
-        .map(({className = 'btn icon', ...button}) =>
+        .map(({className = "btn icon", ...button}) =>
             actionButton({...button, className, data: {trackId}})
         )
-        .join('');
+        .join("");
 }
 
 function trackColumns(
@@ -266,11 +266,11 @@ function trackColumns(
         isEditing: editingTrackId === track.id,
         name: track.name,
         data,
-        labelClass: 'track-name',
+        labelClass: "track-name",
         extra: actionButton({
             action: ACTION.CANCEL_TRACK_NAME,
             label: CHAR.X_MARK,
-            className: 'btn subtle cancel-name',
+            className: "btn subtle cancel-name",
             data,
         }),
     });
@@ -292,10 +292,10 @@ function trackColumns(
 function createTrackRow(track, provider, knownNames, selectedTrackId,
                         editingTrackId, collapsedTrackIds, selectedKeyframes,
                         view) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'track-wrapper';
-    wrapper.classList.toggle('selected', selectedTrackId === track.id);
-    wrapper.classList.toggle('collapsed', collapsedTrackIds.has(track.id));
+    const wrapper = document.createElement("div");
+    wrapper.className = "track-wrapper";
+    wrapper.classList.toggle("selected", selectedTrackId === track.id);
+    wrapper.classList.toggle("collapsed", collapsedTrackIds.has(track.id));
     wrapper.dataset.trackId = track.id;
     wrapper.innerHTML = trackColumns(
         track, provider, view, knownNames, editingTrackId,

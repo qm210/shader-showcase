@@ -1,6 +1,6 @@
-import {ACTION} from '../../actions.js';
-import {componentRange, formatComponent, formatRange, isIntegerType, vectorComponents,} from '../format.js';
-import {actionButton, cls, dataAttrs, esc} from './html.js';
+import {ACTION} from "../../actions.js";
+import {componentRange, formatComponent, formatRange, isIntegerType, vectorComponents,} from "../format.js";
+import {actionButton, cls, dataAttrs, esc} from "./html.js";
 
 const TABLE_HEADER = `
     <thead><tr>
@@ -13,8 +13,8 @@ const TABLE_HEADER = `
     </tr></thead>`;
 
 const OVERWRITE_TITLE = {
-    min: 'Min overwrite (empty = control default)',
-    max: 'Max overwrite (empty = control default)',
+    min: "Min overwrite (empty = control default)",
+    max: "Max overwrite (empty = control default)",
 };
 
 export function uniformPanelTemplate() {
@@ -92,7 +92,7 @@ function uniformRows(provider, entry, isChecked) {
         const data = dataAttrs({uniformName: entry.name, component: i});
         const checkInputId = `check-${entry.name}`;
         const checkCell = isComponent
-            ? '<span class="component-placeholder"></span>'
+            ? "<span class="component-placeholder"></span>"
             : `<input type="checkbox"
                       class="uniform-checkbox"
                       id="${checkInputId}"
@@ -100,7 +100,7 @@ function uniformRows(provider, entry, isChecked) {
                       ${isChecked ? 'checked' : ''}>
             </td>`;
         const rowClass = cls(
-            'uniform-row', isComponent && 'uniform-row-component'
+            "uniform-row", isComponent && "uniform-row-component"
         );
         return `
             <tr class="${rowClass}">
@@ -128,16 +128,16 @@ function uniformRows(provider, entry, isChecked) {
                 </td>
                 ${overwriteCell('max', entry, i, compRange.max)}
             </tr>`;
-    }).join('');
+    }).join("");
 }
 
 export function findAllUniformComponents(uniformName, container) {
-    const table = container.closest('.uniform-table');
+    const table = container.closest(".uniform-table");
     const sliders = Array.from(
         table?.querySelectorAll(
             `input[data-uniform-name="${uniformName}"]`
         ) ?? []
-    ).filter(s => s.classList.contains('uniform-slider'));
+    ).filter(s => s.classList.contains("uniform-slider"));
     return sliders.map(s => ({
             idx: parseInt(s.dataset.component, 10),
             value: parseFloat(s.value)
@@ -148,10 +148,10 @@ export function findAllUniformComponents(uniformName, container) {
         .map(s => s.value);
 }
 
-function uniformTable(provider, entries, isChecked, extraClass = '') {
+function uniformTable(provider, entries, isChecked, extraClass = "") {
     const rows = entries
         .map(entry => uniformRows(provider, entry, isChecked(entry)))
-        .join('');
+        .join("");
     return `
         <table class="${cls('uniform-table', extraClass)}">
             ${TABLE_HEADER}
@@ -176,7 +176,7 @@ function groupSection(provider, groupName, entries, isChecked) {
 // is only non-empty when a batch is selected, which returns early here.
 function selectedSection(provider, selectedEntries, selectedBatchId) {
     if (selectedBatchId || !selectedEntries.length) {
-        return '';
+        return "";
     }
     return `
         <div class="uniform-section selected-section">
@@ -193,7 +193,7 @@ export function renderUniformList(ui, provider, uiBatch) {
     const groups = groupByBatch(provider.batches.auto);
     if (!groups.size) {
         uniformListBody.innerHTML =
-            '<div class="uniform-empty">No uniforms known yet</div>';
+            "<div class="uniform-empty">No uniforms known yet</div>";
         return;
     }
 
@@ -213,5 +213,5 @@ export function renderUniformList(ui, provider, uiBatch) {
         + [...groups]
             .map(([name, entries]) =>
                 groupSection(provider, name, entries, isChecked))
-            .join('');
+            .join("");
 }

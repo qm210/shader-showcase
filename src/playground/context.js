@@ -1,8 +1,8 @@
-import {Overlay} from './overlay/overlay.js';
-import {Randomizer} from './engine/randomizer.js';
+import {Overlay} from "./overlay/overlay.js";
+import {Randomizer} from "./engine/randomizer.js";
 import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
-import './styles/overlay.css';
+import "./styles/overlay.css";
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
@@ -28,7 +28,7 @@ export class PlaygroundContext {
         
         // Initialize overlay asynchronously (loads default audio, etc.)
         this.overlay.init().catch(err => {
-            console.error('[PLAYGROUND] Overlay init failed:', err);
+            console.error("[PLAYGROUND] Overlay init failed:", err);
         });
 
         DEBUG.log("[PLAYGROUND] Context constructed.", {

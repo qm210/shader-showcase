@@ -1,26 +1,26 @@
-import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from '../persistence.js';
-import {calcTrackValueRange, FALLBACK_RANGE, isRangeValue} from '../engine/valueRanges.js';
-import {EASING_TYPES, keyframeKey, parseKeyframeKey} from '../engine/keyframes.js';
-import {ACTION, runAction} from '../actions.js';
-import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from './index.js';
-import {KeyframeBoxSelect} from './boxSelect.js';
-import {TimeZoomControl} from './timeZoomControl.js';
-import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from '../engine/timeZoom.js';
-import {createPlaygroundOverlay} from './dom/scaffold.js';
-import {renderPlayback, renderPreview, renderTimeZoom,} from './dom/timeline.js';
-import {renderAllTracks, renderTrack, stripFraction} from './dom/tracks.js';
-import {findAllUniformComponents, renderUniformList} from './dom/uniformList.js';
-import {renderBatchList} from './dom/batchList.js';
-import {renderRandomizerPanel} from './dom/randomizer.js';
-import {positionContextBar, renderContextActionBar} from './dom/contextBar.js';
-import {renderAudioWaveforms, setWaveformSamples} from './dom/audioTrack.js';
+import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from "../persistence.js";
+import {calcTrackValueRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
+import {EASING_TYPES, keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
+import {ACTION, runAction} from "../actions.js";
+import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from "./index.js";
+import {KeyframeBoxSelect} from "./boxSelect.js";
+import {TimeZoomControl} from "./timeZoomControl.js";
+import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from "../engine/timeZoom.js";
+import {createPlaygroundOverlay} from "./dom/scaffold.js";
+import {renderPlayback, renderPreview, renderTimeZoom,} from "./dom/timeline.js";
+import {renderAllTracks, renderTrack, stripFraction} from "./dom/tracks.js";
+import {findAllUniformComponents, renderUniformList} from "./dom/uniformList.js";
+import {renderBatchList} from "./dom/batchList.js";
+import {renderRandomizerPanel} from "./dom/randomizer.js";
+import {positionContextBar, renderContextActionBar} from "./dom/contextBar.js";
+import {renderAudioWaveforms, setWaveformSamples} from "./dom/audioTrack.js";
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
 
 // Default audio file for development (Vite asset import).
 // Place your audio file in the public/ directory and update the path below.
-const DEFAULT_AUDIO_FILE = '/DreamySchilfester2024_3_2025-12-11_2128.ogg';
+const DEFAULT_AUDIO_FILE = "/DreamySchilfester2024_3_2025-12-11_2128.ogg";
 
 
 export class Overlay {
@@ -110,21 +110,21 @@ export class Overlay {
         try {
             const response = await fetch(DEFAULT_AUDIO_FILE);
             if (!response.ok) {
-                DEBUG.log('[AUDIO] Default audio file not found, skipping.');
+                DEBUG.log("[AUDIO] Default audio file not found, skipping.");
                 return;
             }
             const blob = await response.blob();
             const file = audioFile(blob, DEFAULT_AUDIO_FILE);
             const track = await this.engine.loadAudioTrack(file);
 
-            DEBUG.log('[AUDIO] Loaded default audio:', {file, track});
+            DEBUG.log("[AUDIO] Loaded default audio:", {file, track});
         } catch (err) {
-            console.warn('[AUDIO] Failed to load default audio:', err.message);
+            console.warn("[AUDIO] Failed to load default audio:", err.message);
             console.error(err);
         }
 
         function audioFile(blob, filepath, fallbackType = "audio/ogg") {
-            const filename = filepath.split('/').pop();
+            const filename = filepath.split("/").pop();
             const type = blob.type || fallbackType;
             return new File([blob], filename, {type});
         }
@@ -136,17 +136,17 @@ export class Overlay {
         this._bindKeyframeDrag();
 
         // Flush pending changes when the page goes away.
-        window.addEventListener('pagehide', () => this.saveState());
-        window.addEventListener('keydown', (e) => this._onGlobalKeyDown(e));
+        window.addEventListener("pagehide", () => this.saveState());
+        window.addEventListener("keydown", (e) => this._onGlobalKeyDown(e));
 
-        overlay.addEventListener('click', (e) => this._onClick(e));
-        overlay.addEventListener('dblclick', (e) => this._onDoubleClick(e));
-        overlay.addEventListener('change', (e) => this._onChange(e));
-        overlay.addEventListener('input', (e) => this._onInput(e));
-        overlay.addEventListener('keydown', (e) => this._onKeyDown(e));
-        overlay.addEventListener('focusout', (e) => this._onBlur(e), true);
-        overlay.addEventListener('contextmenu', (e) => this._onContextMenu(e));
-        overlay.addEventListener('mousemove', (e) => this._onTimelineMouseMove(e));
+        overlay.addEventListener("click", (e) => this._onClick(e));
+        overlay.addEventListener("dblclick", (e) => this._onDoubleClick(e));
+        overlay.addEventListener("change", (e) => this._onChange(e));
+        overlay.addEventListener("input", (e) => this._onInput(e));
+        overlay.addEventListener("keydown", (e) => this._onKeyDown(e));
+        overlay.addEventListener("focusout", (e) => this._onBlur(e), true);
+        overlay.addEventListener("contextmenu", (e) => this._onContextMenu(e));
+        overlay.addEventListener("mousemove", (e) => this._onTimelineMouseMove(e));
 
         this._boxSelect = new KeyframeBoxSelect(overlay, (selection) => {
             if (selection) {
@@ -167,11 +167,11 @@ export class Overlay {
 
     _bindPanelDrag() {
         const overlay = this.element;
-        const handle = overlay.querySelector('[data-drag-handle]');
+        const handle = overlay.querySelector("[data-drag-handle]");
         const drag = this.drag;
 
-        handle.addEventListener('mousedown', (e) => {
-            if (e.button !== 0 || e.target.closest('button')) {
+        handle.addEventListener("mousedown", (e) => {
+            if (e.button !== 0 || e.target.closest("button")) {
                 return;
             }
             const rect = overlay.getBoundingClientRect();
@@ -180,11 +180,11 @@ export class Overlay {
             drag.startY = e.clientY;
             drag.origLeft = rect.left;
             drag.origTop = rect.top;
-            overlay.classList.add('dragging');
+            overlay.classList.add("dragging");
             e.preventDefault();
         });
 
-        window.addEventListener('mousemove', (e) => {
+        window.addEventListener("mousemove", (e) => {
             if (!drag.active) {
                 return;
             }
@@ -194,17 +194,17 @@ export class Overlay {
             );
         });
 
-        window.addEventListener('mouseup', () => {
+        window.addEventListener("mouseup", () => {
             if (!drag.active) {
                 return;
             }
             drag.active = false;
-            overlay.classList.remove('dragging');
+            overlay.classList.remove("dragging");
             this._scheduleSave();
         });
 
         // Keep a stored position reachable when the window shrinks.
-        window.addEventListener('resize', () => {
+        window.addEventListener("resize", () => {
             if (drag.position) {
                 this._applyPosition(drag.position.left, drag.position.top);
             }
@@ -212,29 +212,29 @@ export class Overlay {
     }
 
     _bindKeyframeDrag() {
-        this.element.addEventListener('mousedown', (e) => {
+        this.element.addEventListener("mousedown", (e) => {
             this._ignoreNextClick = false;
             this._onKeyframeMouseDown(e);
         });
-        window.addEventListener('mousemove', (e) => this._onKeyframeDrag(e));
-        window.addEventListener('mouseup', () => this._onKeyframeDragEnd());
+        window.addEventListener("mousemove", (e) => this._onKeyframeDrag(e));
+        window.addEventListener("mouseup", () => this._onKeyframeDragEnd());
     }
 
     _bindContextBar() {
         const bar = this.contextBar;
-        bar.addEventListener('click', (e) => {
-            if (e.target.classList.contains('kf-undo-btn')) {
+        bar.addEventListener("click", (e) => {
+            if (e.target.classList.contains("kf-undo-btn")) {
                 this._doUndo();
             }
         });
-        bar.querySelector('.kf-ease-select')
-            .addEventListener('change', (e) => {
+        bar.querySelector(".kf-ease-select")
+            .addEventListener("change", (e) => {
                 this._editSelectedKeyframe(kf => {
                     kf.ease = e.target.value;
                 });
             });
-        bar.querySelector('.kf-current-val')
-            .addEventListener('change', (e) => {
+        bar.querySelector(".kf-current-val")
+            .addEventListener("change", (e) => {
                 const value = parseFloat(e.target.value);
                 if (!isNaN(value)) {
                     this._editSelectedKeyframe(kf => {
@@ -292,9 +292,9 @@ export class Overlay {
 
     _selectTrackRow(row) {
         this.track.selectedId = row.dataset.trackId;
-        this.element.querySelectorAll('.track-wrapper.selected')
-            .forEach(el => el.classList.remove('selected'));
-        row.classList.add('selected');
+        this.element.querySelectorAll(".track-wrapper.selected")
+            .forEach(el => el.classList.remove("selected"));
+        row.classList.add("selected");
         this._scheduleSave();
     }
 
@@ -312,15 +312,15 @@ export class Overlay {
         if (isTypingTarget(e.target)) {
             return;
         }
-        if (e.code === 'Space') {
+        if (e.code === "Space") {
             e.preventDefault();
             this.togglePlaying();
         }
-        if (e.code === 'Delete') {
+        if (e.code === "Delete") {
             this._deleteSelectedKeyframes();
         }
         // Ctrl+Z / Cmd+Z for undo on the selected track
-        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
+        if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
             e.preventDefault();
             this._doUndo();
         }
@@ -347,21 +347,21 @@ export class Overlay {
 
     /** Right-click on a uniform row logs its data for debugging. */
     _onContextMenu(e) {
-        const row = e.target.closest('.uniform-row');
+        const row = e.target.closest(".uniform-row");
         if (!row) {
             return;
         }
         e.preventDefault();
 
-        const name = row.querySelector('[data-uniform-name]')
+        const name = row.querySelector("[data-uniform-name]")
             ?.dataset.uniformName;
         if (!name) {
             return;
         }
         console.group(`Uniform: ${name}`);
-        console.log('Entry:', this._findUniformEntry(name)
-            ?? '(not in any batch)');
-        console.log('Control Range:', this.ctx.getControlRange(name));
+        console.log("Entry:", this._findUniformEntry(name)
+            ?? "(not in any batch)");
+        console.log("Control Range:", this.ctx.getControlRange(name));
         console.groupEnd();
     }
 
@@ -371,7 +371,7 @@ export class Overlay {
         if (this._keyframeDrag) {
             const {kf} = this._keyframeDrag;
             this._setTooltipText(kf.time, kf.value);
-            tooltip.classList.add('visible');
+            tooltip.classList.add("visible");
             return;
         }
 
@@ -380,10 +380,10 @@ export class Overlay {
             return;
         }
 
-        const strip = e.target.closest('.keyframe-strip');
+        const strip = e.target.closest(".keyframe-strip");
         if (!strip) {
             this._highlightValueLine(null);
-            tooltip.classList.remove('visible');
+            tooltip.classList.remove("visible");
             return;
         }
 
@@ -393,11 +393,11 @@ export class Overlay {
         this._setTooltipText(time, value);
         tooltip.style.left = `${e.clientX - editorRect.left + 12}px`;
         tooltip.style.top = `${e.clientY - editorRect.top - 28}px`;
-        tooltip.classList.add('visible');
+        tooltip.classList.add("visible");
 
         // Use elementFromPoint to detect value-line under cursor
         const el = document.elementFromPoint(e.clientX, e.clientY);
-        const valueLine = el?.closest('.value-line');
+        const valueLine = el?.closest(".value-line");
         this._highlightValueLine(valueLine?.dataset.uniformName ?? null);
     }
 
@@ -419,13 +419,13 @@ export class Overlay {
         this.ui.timelineTooltip.innerHTML = [
             `t = ${time.toFixed(2).padStart(7)} s`,
             `y = ${formatNumber(value).padStart(7)}`
-        ].join('<br>');
+        ].join("<br>");
     }
 
     /** Re-reads the target rows; call after every track render. */
     _refreshTargetRows() {
         this.render.targetRows = [
-            ...this.ui.trackRows.querySelectorAll('.target-row')
+            ...this.ui.trackRows.querySelectorAll(".target-row")
         ];
         this.render.highlightedUniform = null;
     }
@@ -437,9 +437,9 @@ export class Overlay {
         }
         this.render.highlightedUniform = name;
         for (const row of this.render.targetRows) {
-            const selector = row.querySelector('.target-selector');
+            const selector = row.querySelector(".target-selector");
             row.classList.toggle(
-                'highlighted', name !== null && selector?.value === name
+                "highlighted", name !== null && selector?.value === name
             );
         }
     }
@@ -448,7 +448,7 @@ export class Overlay {
         if (e.button !== 0) {
             return;
         }
-        const dot = e.target.closest('.keyframe-dot');
+        const dot = e.target.closest(".keyframe-dot");
         if (!dot) {
             return;
         }
@@ -468,7 +468,7 @@ export class Overlay {
             return;
         }
         // Re-query, as every move replaces the row of the track.
-        const strip = this._queryInTrack(drag.track.id, '.keyframe-strip');
+        const strip = this._queryInTrack(drag.track.id, ".keyframe-strip");
         if (!strip) {
             return;
         }
@@ -522,48 +522,48 @@ export class Overlay {
         }
 
         // Close sample selector dropdown when clicking outside
-        const selector = e.target.closest('.sample-selector');
+        const selector = e.target.closest(".sample-selector");
         if (!selector) {
-            document.querySelectorAll('.sample-selector.open').forEach(el =>
-                el.classList.remove('open')
+            document.querySelectorAll(".sample-selector.open").forEach(el =>
+                el.classList.remove("open")
             );
         }
 
-        const actionData = e.target.closest('[data-action]')?.dataset;
+        const actionData = e.target.closest("[data-action]")?.dataset;
         if (actionData) {
             runAction(this, actionData);
             return;
         }
 
-        const dot = e.target.closest('.keyframe-dot');
+        const dot = e.target.closest(".keyframe-dot");
         if (dot) {
             this._onKeyframeDotClick(dot, e);
             return;
         }
 
-        const strip = e.target.closest('.keyframe-strip');
+        const strip = e.target.closest(".keyframe-strip");
         if (strip) {
             this._addKeyframeAtPointer(strip, e);
             this._removeKeyframePopups();
             return;
         }
 
-        const trackName = e.target.closest('.track-name');
+        const trackName = e.target.closest(".track-name");
         if (trackName) {
-            const row = trackName.closest('.track-wrapper');
+            const row = trackName.closest(".track-wrapper");
             this._ifSingleClick(() => this._selectTrackRow(row));
             return;
         }
 
-        const trackWidget = e.target.closest('.track-widget');
+        const trackWidget = e.target.closest(".track-widget");
         if (trackWidget) {
-            this._selectTrackRow(trackWidget.closest('.track-wrapper'));
+            this._selectTrackRow(trackWidget.closest(".track-wrapper"));
             return;
         }
 
-        const batchHeader = e.target.closest('.batch-card-header');
+        const batchHeader = e.target.closest(".batch-card-header");
         if (batchHeader) {
-            const {batchId} = batchHeader.closest('.batch-card').dataset;
+            const {batchId} = batchHeader.closest(".batch-card").dataset;
             this._ifSingleClick(() => {
                 this.batch.selectedId = batchId;
                 this.updateOnTargetsChanged();
@@ -572,7 +572,7 @@ export class Overlay {
         }
 
         const targetSelector = e.target.closest(
-            '.target-selector > .selector-display'
+            ".target-selector > .selector-display"
         );
         if (targetSelector) {
             toggleTargetDropdown(
@@ -581,19 +581,19 @@ export class Overlay {
             return;
         }
 
-        const selectorItem = e.target.closest('.selector-item');
+        const selectorItem = e.target.closest(".selector-item");
         if (selectorItem) {
             this.batch.selectedId = selectorItem.dataset.targetId || null;
             this.updateOnTargetsChanged();
             return;
         }
 
-        if (!e.target.closest('.target-selector')) {
+        if (!e.target.closest(".target-selector")) {
             this.ui.randomize.targetDropdown.hidden = true;
         }
 
-        e.target.closest('.uniform-group-header')
-            ?.classList.toggle('collapsed');
+        e.target.closest(".uniform-group-header")
+            ?.classList.toggle("collapsed");
     }
 
     _onKeyframeDotClick(dot, e) {
@@ -658,38 +658,38 @@ export class Overlay {
     _onDoubleClick(e) {
         this._resetClickTimer();
 
-        const dot = e.target.closest('.keyframe-dot');
+        const dot = e.target.closest(".keyframe-dot");
         if (dot) {
             this._focusKeyframeValue(dot);
             return;
         }
 
-        if (e.target.closest('button, input')) {
+        if (e.target.closest("button, input")) {
             return;
         }
 
-        const trackName = e.target.closest('.track-name');
+        const trackName = e.target.closest(".track-name");
         if (trackName) {
-            const id = trackName.closest('.track-wrapper').dataset.trackId;
+            const id = trackName.closest(".track-wrapper").dataset.trackId;
             requestAnimationFrame(() => {
                 this.track.renamingId = id;
                 this.renderTrack(id);
-                this._focusName('.track-wrapper', 'track-id', id);
+                this._focusName(".track-wrapper", "track-id", id);
             });
             return;
         }
 
-        const batchHeader = e.target.closest('.batch-card-header');
+        const batchHeader = e.target.closest(".batch-card-header");
         if (batchHeader) {
-            const {batchId} = batchHeader.closest('.batch-card').dataset;
+            const {batchId} = batchHeader.closest(".batch-card").dataset;
             this.batch.renamingId = batchId;
             this.renderUniformPanel();
             requestAnimationFrame(() =>
-                this._focusName('.batch-card', 'batch-id', batchId)
+                this._focusName(".batch-card", "batch-id", batchId)
             );
         }
 
-        if (e.target.closest('.value-preview')) {
+        if (e.target.closest(".value-preview")) {
             this._renderPreview({debug: true});
         }
     }
@@ -706,7 +706,7 @@ export class Overlay {
         this.renderTimeline();
         this._showKeyframePopups();
         requestAnimationFrame(() => {
-            const input = this.contextBar.querySelector('.kf-current-val');
+            const input = this.contextBar.querySelector(".kf-current-val");
             input.focus();
             input.select();
         });
@@ -716,7 +716,7 @@ export class Overlay {
         this._removeKeyframePopups();
         for (const {trackId, kfId} of this._selectedKeys()) {
             const kf = this.engine.getTrack(trackId)?.keyframes.find(k => k.id === kfId);
-            const trackWidget = this._queryInTrack(trackId, '.track-widget');
+            const trackWidget = this._queryInTrack(trackId, ".track-widget");
             const dot = trackWidget?.querySelector(
                 `.keyframe-dot[data-kf-id="${kfId}"]`
             );
@@ -728,17 +728,17 @@ export class Overlay {
             const dotRect = dot.getBoundingClientRect();
             popup.style.top = `${widgetRect.height + 4}px`;
             popup.style.left = `${dotRect.left - widgetRect.left}px`;
-            popup.style.transform = 'translateX(-50%)';
-            popup.style.maxWidth = 'none';
-            popup.style.width = 'auto';
+            popup.style.transform = "translateX(-50%)";
+            popup.style.maxWidth = "none";
+            popup.style.width = "auto";
             trackWidget.appendChild(popup);
         }
     }
 
     _createKeyframePopup(trackId, kfId, kf) {
-        const ease = kf.ease || 'linear';
-        const popup = document.createElement('div');
-        popup.className = 'keyframe-popup';
+        const ease = kf.ease || "linear";
+        const popup = document.createElement("div");
+        popup.className = "keyframe-popup";
         popup.innerHTML = `
             <div class="popup-title">Keyframe</div>
             <div class="popup-row">
@@ -759,7 +759,7 @@ export class Overlay {
                 <span class="popup-label">Ease:</span>
                 <select class="field kf-ease-select-popup">
                     ${EASING_TYPES.map(t =>
-                        `<option value="${t}"${t === ease ? ' selected' : ''}>
+                        `<option value="${t}"${t === ease ? " selected" : ""}>
                             ${t}
                         </option>`
                     ).join('')}
@@ -769,19 +769,19 @@ export class Overlay {
                 ${CHAR.TRASH}️ Remove Keyframe
             </div>`;
 
-        popup.querySelector('.popup-remove')
-            .addEventListener('click', (e) => {
+        popup.querySelector(".popup-remove")
+            .addEventListener("click", (e) => {
                 e.stopPropagation();
                 this._removeKeyframe(trackId, kfId);
             });
-        popup.querySelector('.kf-ease-select-popup')
-            .addEventListener('change', (e) => {
+        popup.querySelector(".kf-ease-select-popup")
+            .addEventListener("change", (e) => {
                 e.stopPropagation();
                 kf.ease = e.target.value;
                 this.renderTrack(trackId);
             });
-        popup.querySelector('.kf-seek-btn')
-            .addEventListener('click', (e) => {
+        popup.querySelector(".kf-seek-btn")
+            .addEventListener("click", (e) => {
                 e.stopPropagation();
                 this._seek(kf.time);
                 this._removeKeyframePopups();
@@ -816,7 +816,7 @@ export class Overlay {
     }
 
     _removeKeyframePopups() {
-        for (const popup of this.ui.trackRows.querySelectorAll('.keyframe-popup')) {
+        for (const popup of this.ui.trackRows.querySelectorAll(".keyframe-popup")) {
             popup.remove();
         }
     }
@@ -837,7 +837,7 @@ export class Overlay {
         this.element
             .querySelector(
                 `${containerSelector}[data-${dataKey}="${CSS.escape(id)}"]`
-                + ' .name'
+                + " .name"
             )
             ?.focus();
     }
@@ -856,21 +856,21 @@ export class Overlay {
     }
 
     _isEditingName(el) {
-        return el.classList.contains('name')
+        return el.classList.contains("name")
             && Boolean(this.track.renamingId || this.batch.renamingId);
     }
 
     _onKeyDown(e) {
         const el = e.target;
         if (this._isEditingName(el)) {
-            if (e.code === 'Enter') {
+            if (e.code === "Enter") {
                 this._commitNameEdit(el);
-            } else if (e.code === 'Escape') {
+            } else if (e.code === "Escape") {
                 this._cancelNameEdit();
             }
             return;
         }
-        if (el.classList.contains('target-selector') && e.code === 'Escape') {
+        if (el.classList.contains("target-selector") && e.code === "Escape") {
             this._removeEmptyTarget(el);
         }
     }
@@ -886,7 +886,7 @@ export class Overlay {
             }
             return;
         }
-        if (el.classList.contains('target-selector')) {
+        if (el.classList.contains("target-selector")) {
             this._removeEmptyTarget(el);
         }
     }
@@ -931,7 +931,7 @@ export class Overlay {
     _removeEmptyTarget(input) {
         const track = this.engine.getTrack(input.dataset.trackId);
         // The trailing "add" row has no target object and is never removed.
-        const target = track?.targets[intAttr(input, 'targetIdx')];
+        const target = track?.targets[intAttr(input, "targetIdx")];
         if (target && !target.uniformName.trim()) {
             track.removeTarget(target.uniformName);
             this.renderTrack(track.id);
@@ -947,50 +947,50 @@ export class Overlay {
                 parseFloat(this.ui.timeStart.value),
                 parseFloat(this.ui.timeEnd.value)
             );
-        } else if (el.classList.contains('speed-input')) {
+        } else if (el.classList.contains("speed-input")) {
             this.engine.speed = parseFloat(el.value) || 1.0;
             this._scheduleSave();
-        } else if (el.classList.contains('target-enable')) {
+        } else if (el.classList.contains("target-enable")) {
             const {trackId} = el.dataset;
             const target = this.engine.getTrack(trackId)
-                ?.targets[intAttr(el, 'targetIdx')];
+                ?.targets[intAttr(el, "targetIdx")];
             if (target) {
                 target.enabled = el.checked;
                 this.renderTrack(trackId);
             }
-        } else if (el.closest('.batch-uniform-row')) {
+        } else if (el.closest(".batch-uniform-row")) {
             this._updateBatchUniformField(el);
-        } else if (el.classList.contains('uniform-checkbox')) {
+        } else if (el.classList.contains("uniform-checkbox")) {
             this._toggleUniformInBatch(el.dataset.uniformName, el.checked);
-        } else if (el.matches('.uniform-min, .uniform-max')) {
+        } else if (el.matches(".uniform-min, .uniform-max")) {
             this._setUniformOverwrite(
                 el.dataset.uniformName,
-                el.classList.contains('uniform-min') ? 'min' : 'max',
+                el.classList.contains("uniform-min") ? "min" : "max",
                 parseRangeInput(el.value)
             );
         } else if (el === this.ui.timeSlider || el === this.ui.timeSubSlider) {
-            sliderTooltip(el)?.classList.remove('dragging');
+            sliderTooltip(el)?.classList.remove("dragging");
         } else if (el === this.ui.audioFileInput && el.files?.length) {
             const file = el.files[0];
-            el.value = '';
+            el.value = "";
             void this._loadAudioFile(file);
-        } else if (el.classList.contains('sample-selector')) {
+        } else if (el.classList.contains("sample-selector")) {
             // Toggle dropdown open/close
-            el.classList.toggle('open');
-        } else if (el.classList.contains('sample-option')) {
+            el.classList.toggle("open");
+        } else if (el.classList.contains("sample-option")) {
             const value = Number(el.dataset.value);
             setWaveformSamples(value);
             // Update the displayed value
-            const selector = el.closest('.sample-selector');
+            const selector = el.closest(".sample-selector");
             if (selector) {
-                const valueEl = selector.querySelector('.sample-selector-value');
+                const valueEl = selector.querySelector(".sample-selector-value");
                 if (valueEl) valueEl.textContent = `${value}/px`;
                 // Update selected state
-                selector.querySelectorAll('.sample-option').forEach(opt =>
-                    opt.removeAttribute('data-selected')
+                selector.querySelectorAll(".sample-option").forEach(opt =>
+                    opt.removeAttribute("data-selected")
                 );
-                el.setAttribute('data-selected', 'true');
-                selector.classList.remove('open');
+                el.setAttribute("data-selected", "true");
+                selector.classList.remove("open");
             }
             this.renderTimeline();
         }
@@ -1029,8 +1029,8 @@ export class Overlay {
             this._seek(time);
             const tooltip = sliderTooltip(el);
             if (tooltip) {
-                tooltip.textContent = time.toFixed(2) + 's';
-                tooltip.classList.add('dragging');
+                tooltip.textContent = time.toFixed(2) + "s";
+                tooltip.classList.add("dragging");
             }
         } else if (el === this.ui.randomize.intensitySlider) {
             this.randomIntensity = parseFloat(el.value);
@@ -1038,14 +1038,14 @@ export class Overlay {
                 this.randomIntensity.toFixed(2);
             this._scheduleSave();
         } else if (el.matches(
-            '.uniform-min, .uniform-max,'
-            + ' .batch-uniform-row .min, .batch-uniform-row .max'
+            ".uniform-min, .uniform-max,"
+            + " .batch-uniform-row .min, .batch-uniform-row .max"
         )) {
             // Validate while typing; values are committed on change.
             el.classList.toggle(
-                'invalid', parseRangeInput(el.value) === undefined
+                "invalid", parseRangeInput(el.value) === undefined
             );
-        } else if (el.classList.contains('uniform-slider')) {
+        } else if (el.classList.contains("uniform-slider")) {
             const name = el.dataset.uniformName;
             const components = findAllUniformComponents(name, el);
             const value = components.length === 1 ? components[0] : components;
@@ -1054,14 +1054,14 @@ export class Overlay {
             if (tooltip) {
                 tooltip.textContent = formatNumber(value);
             }
-        } else if (el.classList.contains('target-selector')) {
+        } else if (el.classList.contains("target-selector")) {
             this._onTargetNameInput(el);
         }
     }
 
     _onTargetNameInput(input) {
         const {trackId} = input.dataset;
-        const targetIdx = intAttr(input, 'targetIdx');
+        const targetIdx = intAttr(input, "targetIdx");
         const track = this.engine.getTrack(trackId);
         if (!track) {
             return;
@@ -1113,24 +1113,24 @@ export class Overlay {
 
     _updateBatchUniformField(el) {
         const batch = this.ctx.getBatch(el.dataset.batchId);
-        const index = intAttr(el, 'index');
+        const index = intAttr(el, "index");
         if (!batch?.uniforms[index]) {
             return;
         }
 
-        if (el.classList.contains('name')) {
+        if (el.classList.contains("name")) {
             const name = el.value.trim();
             batch.updateUniform(index, {name});
             // Update the range placeholders in place to keep the focus.
             const range = this.ctx.getControlRange(name);
-            const row = el.closest('.batch-uniform-row');
-            row.querySelector('.min').placeholder = formatRange(range.min);
-            row.querySelector('.max').placeholder = formatRange(range.max);
+            const row = el.closest(".batch-uniform-row");
+            row.querySelector(".min").placeholder = formatRange(range.min);
+            row.querySelector(".max").placeholder = formatRange(range.max);
         } else {
-            const key = ['min', 'max', 'factor']
+            const key = ["min", "max", "factor"]
                 .find(k => el.classList.contains(k));
             const value = parseRangeInput(el.value);
-            el.classList.toggle('invalid', value === undefined);
+            el.classList.toggle("invalid", value === undefined);
             if (!key || value === undefined) {
                 return;
             }
@@ -1151,7 +1151,7 @@ export class Overlay {
         const {playBtn} = this.ui;
         const playing = this.engine.playing;
         playBtn.textContent = playing ? CHAR.PAUSE : CHAR.PLAY;
-        playBtn.title = playing ? 'Pause (Space)' : 'Play (Space)';
+        playBtn.title = playing ? "Pause (Space)" : "Play (Space)";
     }
 
     /** Adds a keyframe at `time` with the first target's minimum. */
@@ -1197,7 +1197,7 @@ export class Overlay {
         if (dot) {
             return dot.getBoundingClientRect();
         }
-        const strip = this.ui.trackRows.querySelector('.keyframe-strip');
+        const strip = this.ui.trackRows.querySelector(".keyframe-strip");
         if (!strip) {
             return null;
         }
@@ -1219,7 +1219,7 @@ export class Overlay {
     }
 
     _exportTimeline() {
-        downloadJson(this.engine.toJSON(), 'timeline.json');
+        downloadJson(this.engine.toJSON(), "timeline.json");
     }
 
     _importTimeline() {
@@ -1272,9 +1272,9 @@ export class Overlay {
         this.randomIntensity = 1;
         this.zoom = null;
         this.drag.position = null;
-        this.element.style.left = '';
-        this.element.style.top = '';
-        this.element.classList.remove('collapsed', 'selected');
+        this.element.style.left = "";
+        this.element.style.top = "";
+        this.element.classList.remove("collapsed", "selected");
 
         this.syncUI();
         this.renderTimeline();
@@ -1286,7 +1286,7 @@ export class Overlay {
         try {
             localStorage.removeItem(STORAGE_KEY.PLAYGROUND_OVERLAY);
         } catch (error) {
-            console.warn('Failed to clear the playground overlay state:',
+            console.warn("Failed to clear the playground overlay state:",
                 error);
         }
     }
@@ -1300,7 +1300,7 @@ export class Overlay {
                 STORAGE_KEY.PLAYGROUND_OVERLAY, collectStorageJson(this)
             );
         } catch (error) {
-            console.warn('Failed to store the playground overlay state:',
+            console.warn("Failed to store the playground overlay state:",
                 error);
         }
     }
@@ -1343,7 +1343,7 @@ export class Overlay {
         this.track.selectedId = stored.selectedTrackId ?? null;
         this.track.collapsedIds = new Set(stored.collapsedTracks ?? []);
         this.zoom = ifValidTimeZoom(stored.zoom);
-        this.element.classList.toggle('collapsed', Boolean(stored.collapsed));
+        this.element.classList.toggle("collapsed", Boolean(stored.collapsed));
 
         const {left, top} = stored.position ?? {};
         if (Number.isFinite(left) && Number.isFinite(top)) {
@@ -1354,7 +1354,7 @@ export class Overlay {
     _applyPosition(left, top) {
         const rect = this.element.getBoundingClientRect();
         const headerHeight =
-            this.element.querySelector('.panel-header').offsetHeight || 32;
+            this.element.querySelector(".panel-header").offsetHeight || 32;
         const maxLeft = Math.max(0, window.innerWidth - rect.width);
         const maxTop = Math.max(0, window.innerHeight - headerHeight);
         const position = {
@@ -1428,15 +1428,15 @@ export class Overlay {
     }
 
     _normalizeEasingLines() {
-        const strips = this.ui.trackRows.querySelectorAll('.keyframe-strip');
+        const strips = this.ui.trackRows.querySelectorAll(".keyframe-strip");
         strips.forEach(strip => {
-            const svg = strip.querySelector('.easing-line');
+            const svg = strip.querySelector(".easing-line");
             if (!svg) return;
             const w = strip.clientWidth;
             const h = strip.clientHeight;
             if (w > 0 && h > 0) {
                 svg.style.transform = `scale(${w / 100}, ${h / 100})`;
-                svg.style.transformOrigin = '0 0';
+                svg.style.transformOrigin = "0 0";
             }
         });
     }
@@ -1494,4 +1494,4 @@ export class Overlay {
 }
 
 const sliderTooltip = (slider) =>
-    slider.parentElement.querySelector('.slider-tooltip');
+    slider.parentElement.querySelector(".slider-tooltip");

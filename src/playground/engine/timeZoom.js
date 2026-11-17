@@ -1,4 +1,4 @@
-import {clamp} from '../../app/algorithms.js';
+import {clamp} from "../../app/algorithms.js";
 
 export const MIN_TIMELINE_SPAN = 60;
 export const MIN_TIME_STEP = 0.01;
@@ -13,6 +13,12 @@ export function timelineSpan(engine, factor = 1) {
             if (kf.time > maxTime) {
                 maxTime = kf.time;
             }
+        }
+    }
+    // Also consider audio track durations
+    for (const audio of engine.getAllAudioTracks()) {
+        if (audio.duration > maxTime) {
+            maxTime = audio.duration;
         }
     }
     return Math.max(maxTime, MIN_TIMELINE_SPAN) * factor;

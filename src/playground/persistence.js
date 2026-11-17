@@ -28,7 +28,7 @@ export function readStoredState() {
         const state = raw ? JSON.parse(raw) : null;
         return state?.version === OVERLAY_STATE_VERSION ? state : null;
     } catch (error) {
-        console.warn('Failed to read the playground overlay state:', error);
+        console.warn("Failed to read the playground overlay state:", error);
         return null;
     }
 }
@@ -36,9 +36,9 @@ export function readStoredState() {
 export function downloadJson(data, filename) {
     const json = JSON.stringify(data, null, 2);
     const url = URL.createObjectURL(
-        new Blob([json], {type: 'application/json'})
+        new Blob([json], {type: "application/json"})
     );
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = filename;
     link.click();
@@ -47,9 +47,9 @@ export function downloadJson(data, filename) {
 
 export function pickJsonFile() {
     return new Promise((resolve, reject) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
         input.onchange = () => {
             const [file] = input.files;
             if (!file) {

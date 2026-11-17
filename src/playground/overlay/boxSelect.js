@@ -3,13 +3,13 @@ import {keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 
 const MIN_VISIBLE_SIZE = 5;
 const RECT_STYLE = [
-    'position:absolute',
-    'border:1px dashed rgba(120,200,255,0.7)',
-    'background:rgba(120,200,255,0.1)',
-    'pointer-events:none',
-    'display:none',
-    'z-index:50',
-].join(';');
+    "position:absolute",
+    "border:1px dashed rgba(120,200,255,0.7)",
+    "background:rgba(120,200,255,0.1)",
+    "pointer-events:none",
+    "display:none",
+    "z-index:50",
+].join(";");
 
 
 
@@ -21,24 +21,24 @@ export class KeyframeBoxSelect {
         this.start = null;
         this.selected = new Set();
 
-        this.rect = document.createElement('div');
-        this.rect.className = 'shift-drag-rect';
+        this.rect = document.createElement("div");
+        this.rect.className = "shift-drag-rect";
         this.rect.style.cssText = RECT_STYLE;
         document.body.append(this.rect);
 
-        root.addEventListener('mousedown', (e) => this._begin(e));
-        window.addEventListener('mousemove', (e) => this._move(e));
-        window.addEventListener('mouseup', () => this._end());
+        root.addEventListener("mousedown", (e) => this._begin(e));
+        window.addEventListener("mousemove", (e) => this._move(e));
+        window.addEventListener("mouseup", () => this._end());
     }
 
     _begin(e) {
-        if (!e.shiftKey || !e.target.closest('.keyframe-strip')) {
+        if (!e.shiftKey || !e.target.closest(".keyframe-strip")) {
             return;
         }
         this.active = true;
         this.start = {x: e.clientX, y: e.clientY};
         this.selected.clear();
-        this.rect.style.display = 'none';
+        this.rect.style.display = "none";
     }
 
     _move(e) {
@@ -56,13 +56,13 @@ export class KeyframeBoxSelect {
             top: `${box.y}px`,
             width: `${box.w}px`,
             height: `${box.h}px`,
-            display: Math.max(box.w, box.h) > MIN_VISIBLE_SIZE ? '' : 'none',
+            display: Math.max(box.w, box.h) > MIN_VISIBLE_SIZE ? "" : "none",
         });
 
         this.selected.clear();
-        for (const dot of document.querySelectorAll('.keyframe-dot')) {
+        for (const dot of document.querySelectorAll(".keyframe-dot")) {
             const inside = this._contains(box, dot.getBoundingClientRect());
-            dot.classList.toggle('shift-selected', inside);
+            dot.classList.toggle("shift-selected", inside);
             if (inside) {
                 this.selected.add(keyframeKey(dot.dataset.trackId, dot.dataset.kfId));
             }
@@ -82,9 +82,9 @@ export class KeyframeBoxSelect {
         }
         this.active = false;
         this.start = null;
-        this.rect.style.display = 'none';
-        document.querySelectorAll('.keyframe-dot.shift-selected')
-            .forEach(dot => dot.classList.remove('shift-selected'));
+        this.rect.style.display = "none";
+        document.querySelectorAll(".keyframe-dot.shift-selected")
+            .forEach(dot => dot.classList.remove("shift-selected"));
 
         const [first] = this.selected;
         this.selected.clear();

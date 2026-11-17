@@ -7,9 +7,9 @@
 //   keyframe strip Ctrl+wheel = zoom (also pinch), Shift+wheel = pan
 //   Esc / button   back to the full timeline
 
-import {pointerFraction} from './dom/html.js';
-import {stripFraction} from './dom/tracks.js';
-import {clampZoom, panBy, timeAt, visibleRange, zoomAround, zoomFromAnchor,} from '../engine/timeZoom.js';
+import {pointerFraction} from "./dom/html.js";
+import {stripFraction} from "./dom/tracks.js";
+import {clampZoom, panBy, timeAt, visibleRange, zoomAround, zoomFromAnchor,} from "../engine/timeZoom.js";
 
 /** Pointer travel below which a ruler press counts as a click. */
 const CLICK_TOLERANCE_PX = 3;
@@ -42,29 +42,29 @@ export class TimeZoomControl {
         this.drag = null;
 
         const {timeRuler, timeRangeBar, trackRows} = ui;
-        timeRuler.addEventListener('pointerdown', (e) => this._begin(e));
-        timeRuler.addEventListener('pointermove', (e) => this._move(e));
-        timeRuler.addEventListener('pointerup', (e) => this._end(e));
-        timeRuler.addEventListener('pointercancel', () => {
+        timeRuler.addEventListener("pointerdown", (e) => this._begin(e));
+        timeRuler.addEventListener("pointermove", (e) => this._move(e));
+        timeRuler.addEventListener("pointerup", (e) => this._end(e));
+        timeRuler.addEventListener("pointercancel", () => {
             this.drag = null;
         });
-        timeRuler.addEventListener('dblclick', (e) => {
-            if (e.target.closest('.time-zoom-band')) {
+        timeRuler.addEventListener("dblclick", (e) => {
+            if (e.target.closest(".time-zoom-band")) {
                 this.reset();
             }
         });
-        ui.timeZoomReset.addEventListener('click', () => this.reset());
-        timeRangeBar.addEventListener('keydown', (e) => {
-            if (e.code === 'Escape' && this.timeline.zoom()) {
+        ui.timeZoomReset.addEventListener("click", () => this.reset());
+        timeRangeBar.addEventListener("keydown", (e) => {
+            if (e.code === "Escape" && this.timeline.zoom()) {
                 e.preventDefault();
                 this.reset();
             }
         });
 
         const active = {passive: false};
-        timeRangeBar.addEventListener('wheel', (e) => this._onBarWheel(e),
+        timeRangeBar.addEventListener("wheel", (e) => this._onBarWheel(e),
             active);
-        trackRows.addEventListener('wheel', (e) => this._onStripWheel(e),
+        trackRows.addEventListener("wheel", (e) => this._onStripWheel(e),
             active);
     }
 
@@ -99,17 +99,17 @@ export class TimeZoomControl {
         }
         const time = this._overviewTime(e.clientX);
         const zoom = this.timeline.zoom();
-        const handle = e.target.closest('.time-zoom-handle');
+        const handle = e.target.closest(".time-zoom-handle");
 
         if (zoom && handle) {
             // Resizing keeps the opposite edge where it is.
-            const isStart = handle.dataset.edge === 'start';
+            const isStart = handle.dataset.edge === "start";
             const anchor = isStart ? zoom.end : zoom.start;
-            this.drag = {mode: 'resize', anchor};
-        } else if (zoom && e.target.closest('.time-zoom-band')) {
-            this.drag = {mode: 'move', origin: time, view: this._view()};
+            this.drag = {mode: "resize", anchor};
+        } else if (zoom && e.target.closest(".time-zoom-band")) {
+            this.drag = {mode: "move", origin: time, view: this._view()};
         } else {
-            this.drag = {mode: 'select', anchor: time};
+            this.drag = {mode: "select", anchor: time};
         }
         Object.assign(this.drag, {startX: e.clientX, moved: false});
         this.ui.timeRuler.setPointerCapture(e.pointerId);
@@ -128,7 +128,7 @@ export class TimeZoomControl {
         }
         const time = this._overviewTime(e.clientX);
         const span = this.timeline.span();
-        this.timeline.setZoom(drag.mode === 'move'
+        this.timeline.setZoom(drag.mode === "move"
             ? panBy(drag.view, time - drag.origin, span)
             : zoomFromAnchor(drag.anchor, time, span));
     }
@@ -136,7 +136,7 @@ export class TimeZoomControl {
     _end(e) {
         const {drag} = this;
         this.drag = null;
-        if (drag?.mode === 'select' && !drag.moved) {
+        if (drag?.mode === "select" && !drag.moved) {
             this.timeline.seek(this._overviewTime(e.clientX));
         }
     }
@@ -144,22 +144,22 @@ export class TimeZoomControl {
     // ─── Wheel ──────────────────────────────────────────────────
 
     _onBarWheel(e) {
-        const inDetail = e.target.closest('.time-zoom-detail');
+        const inDetail = e.target.closest(".time-zoom-detail");
         if (inDetail) {
             const fraction =
                 pointerFraction(this.ui.timeSubTicks, e.clientX);
             this._wheel(e, timeAt(this._view(), fraction),
-                e.ctrlKey || e.metaKey ? 'zoom' : 'pan');
-        } else if (e.target.closest('.time-ruler, .time-slider')) {
+                e.ctrlKey || e.metaKey ? "zoom" : "pan");
+        } else if (e.target.closest(".time-ruler, .time-slider")) {
             this._wheel(e, this._overviewTime(e.clientX),
-                e.shiftKey ? 'pan' : 'zoom');
+                e.shiftKey ? "pan" : "zoom");
         }
     }
 
     _onStripWheel(e) {
-        const strip = e.target.closest('.keyframe-strip');
-        const mode = (e.ctrlKey || e.metaKey) ? 'zoom'
-            : e.shiftKey ? 'pan' : null;
+        const strip = e.target.closest(".keyframe-strip");
+        const mode = (e.ctrlKey || e.metaKey) ? "zoom"
+            : e.shiftKey ? "pan" : null;
         if (strip && mode) {
             const fraction = stripFraction(strip, e.clientX);
             this._wheel(e, timeAt(this._view(), fraction), mode);
@@ -178,7 +178,7 @@ export class TimeZoomControl {
 
         const factor = Math.exp(pixels / WHEEL_ZOOM_PX);
         const shift = pixels / WHEEL_PAN_PX * (view.end - view.start);
-        this.timeline.setZoom(mode === 'zoom'
+        this.timeline.setZoom(mode === "zoom"
             ? zoomAround(view, time, factor, span)
             : panBy(view, shift, span));
     }

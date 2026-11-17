@@ -1,46 +1,46 @@
-import {ACTION} from '../../actions.js';
-import {CHAR} from '../index.js';
-import {actionButton} from './html.js';
-import {contextBarTemplate} from './contextBar.js';
-import {timelineTemplate} from './timeline.js';
-import {uniformPanelTemplate} from './uniformList.js';
-import {randomizerTemplate} from './randomizer.js';
+import {ACTION} from "../../actions.js";
+import {CHAR} from "../index.js";
+import {actionButton} from "./html.js";
+import {contextBarTemplate} from "./contextBar.js";
+import {timelineTemplate} from "./timeline.js";
+import {uniformPanelTemplate} from "./uniformList.js";
+import {randomizerTemplate} from "./randomizer.js";
 
 export const DATALIST = {
-    UNIFORMS: 'playground-uniform-names',
+    UNIFORMS: "playground-uniform-names",
 };
 
 const UI_SELECTORS = {
-    playBtn:               '.play-btn',
-    timeRangeBar:          '.time-range-bar',
-    timeSlider:            '.time-slider',
-    timeStart:             '.time-start',
-    timeEnd:               '.time-end',
-    timeZoomReset:         '.time-zoom-reset',
-    timeRuler:             '.time-ruler',
-    timeRulerTicks:        '.time-ruler .time-ticks',
-    timeZoomBand:          '.time-zoom-band',
-    timeZoomDetail:        '.time-zoom-detail',
-    timeZoomLens:          '.time-zoom-lens',
-    timeSubSlider:         '.time-sub-slider',
-    timeSubTicks:          '.time-sub-ticks',
-    speedInput:            '.speed-input',
-    audioFileInput:        '#audio-file-input',
-    timelineEditor:        '.timeline-editor',
-    trackRows:             '.track-rows',
-    preview:               '.value-preview',
-    timelineTooltip:       '.timeline-tooltip',
-    batchList:             '.batch-list',
+    playBtn:               ".play-btn",
+    timeRangeBar:          ".time-range-bar",
+    timeSlider:            ".time-slider",
+    timeStart:             ".time-start",
+    timeEnd:               ".time-end",
+    timeZoomReset:         ".time-zoom-reset",
+    timeRuler:             ".time-ruler",
+    timeRulerTicks:        ".time-ruler .time-ticks",
+    timeZoomBand:          ".time-zoom-band",
+    timeZoomDetail:        ".time-zoom-detail",
+    timeZoomLens:          ".time-zoom-lens",
+    timeSubSlider:         ".time-sub-slider",
+    timeSubTicks:          ".time-sub-ticks",
+    speedInput:            ".speed-input",
+    audioFileInput:        "#audio-file-input",
+    timelineEditor:        ".timeline-editor",
+    trackRows:             ".track-rows",
+    preview:               ".value-preview",
+    timelineTooltip:       ".timeline-tooltip",
+    batchList:             ".batch-list",
     uniformNames:          `#${DATALIST.UNIFORMS}`,
-    uniformListBody:       '.uniform-list-body',
+    uniformListBody:       ".uniform-list-body",
     randomize: {
-        targetSelector:    '.target-selector > .selector-display',
-        targetDropdown:    '.target-selector > .selector-dropdown',
-        button:            '.randomize-btn',
-        intensitySlider:   '.intensity-slider',
-        intensityValue:    '.intensity-value',
+        targetSelector:    ".target-selector > .selector-display",
+        targetDropdown:    ".target-selector > .selector-dropdown",
+        button:            ".randomize-btn",
+        intensitySlider:   ".intensity-slider",
+        intensityValue:    ".intensity-value",
     },
-    contextBar:            '.context-action-bar'
+    contextBar:            ".context-action-bar"
 };
 
 function headerTemplate() {
@@ -100,7 +100,7 @@ function queryUI(root, selectors) {
     return Object.fromEntries(
         Object.entries(selectors).map(([key, selector]) => [
             key,
-            typeof selector === 'string'
+            typeof selector === "string"
                 ? root.querySelector(selector)
                 : queryUI(root, selector),
         ])
@@ -108,7 +108,7 @@ function queryUI(root, selectors) {
 }
 
 export function createPlaygroundOverlay() {
-    const overlay = document.createElement('div');
+    const overlay = document.createElement("div");
     overlay.id = "pg";
     overlay.innerHTML = [
         headerTemplate(),
@@ -116,7 +116,7 @@ export function createPlaygroundOverlay() {
         uniformPanelTemplate(),
         randomizerTemplate(),
         contextBarTemplate(),
-    ].join('');
+    ].join("");
 
     const ui = queryUI(overlay, UI_SELECTORS);
 

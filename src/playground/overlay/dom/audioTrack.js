@@ -1,4 +1,4 @@
-import {isInView} from '../../engine/timeZoom.js';
+import {isInView} from "../../engine/timeZoom.js";
 
 let _samplesPerPixel = 16;
 
@@ -13,7 +13,7 @@ function sampleSelectorHTML(current, tooltipText) {
         `<div class="sample-option"
               data-value="${v}"
               ${v === current ? 'data-selected="true"' : ''}>${v}</div>`
-    ).join('');
+    ).join("");
     return `
         <div class="sample-selector"
              tabindex="0"
@@ -38,7 +38,7 @@ function controlsColHTML(tooltipText) {
 }
 
 function rowHTML(track, content, tooltipText, empty = false) {
-    const duration = track.duration > 0 ? ` (${track.duration.toFixed(1)}s)` : '';
+    const duration = track.duration > 0 ? ` (${track.duration.toFixed(1)}s)` : "";
     return `
         <div class="audio-track-row${empty ? ' audio-empty' : ''}"
              data-track-id="${track.id}">
@@ -85,7 +85,7 @@ function waveformPath(data, start, end, duration) {
         Math.min(data.length, Math.ceil((end / duration) * data.length));
     const visible = last - first;
     if (visible <= 0) {
-        return {path: '', columns: 1};
+        return {path: "", columns: 1};
     }
 
     // More columns than screen pixels only cost parse and raster time.
@@ -126,9 +126,9 @@ function waveformPath(data, start, end, duration) {
     for (let i = columns - 1; i >= 0; i--) {
         parts.push(`L${i} ${bottoms[i]}`);
     }
-    parts.push('Z');
+    parts.push("Z");
 
-    const result = {key, path: parts.join(''), columns};
+    const result = {key, path: parts.join(""), columns};
     _pathCache.set(data, result);
     return result;
 }
@@ -221,13 +221,13 @@ export function renderAudioWaveform(wave, currentTime = 0) {
     let tooltipText = basicResolutionInfo();
 
     if (wave.loading) {
-        return emptyRow(track, 'Decoding audio…', tooltipText);
+        return emptyRow(track, "Decoding audio…", tooltipText);
     }
     if (!data) {
-        return emptyRow(track, 'No audio data', tooltipText);
+        return emptyRow(track, "No audio data", tooltipText);
     }
     if (!wave.visible) {
-        return '';
+        return "";
     }
     const {audioStart, audioEnd, path, width} = wave;
 
@@ -242,7 +242,7 @@ export function renderAudioWaveform(wave, currentTime = 0) {
     const playhead = showPlayhead ? `
         <div class="playhead"
              style="left: ${playheadPercent}%"></div>
-    ` : '';
+    ` : "";
 
     const content = `
         <div class="audio-waveform-container">
@@ -296,17 +296,17 @@ export function renderAudioWaveforms(ui, engine, view, span) {
 
     const className = "audio-waveform-rows";
     const existing = editor.querySelector(`.${className}`);
-    const container = document.createElement('div');
+    const container = document.createElement("div");
     container.className = className;
-    container.innerHTML = rows.join('');
+    container.innerHTML = rows.join("");
     if (existing) {
         existing.replaceWith(container);
     } else {
         ui.trackRows.after(container);
     }
 
-    container.addEventListener('click', (e) => {
-        const widget = e.target.closest('.audio-widget');
+    container.addEventListener("click", (e) => {
+        const widget = e.target.closest(".audio-widget");
         if (!widget) return;
         const rect = widget.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -323,12 +323,12 @@ export function renderAudioWaveforms(ui, engine, view, span) {
      * @return {boolean} whether this event is hereby consumed
      */
     ui.onAudioTooltip = (e) => {
-        const widget = e.target.closest('.audio-widget');
+        const widget = e.target.closest(".audio-widget");
         if (!widget) {
-            tooltip?.classList.remove('visible');
+            tooltip?.classList.remove("visible");
             return false;
         }
-        const svg = widget.querySelector('.audio-waveform');
+        const svg = widget.querySelector(".audio-waveform");
         if (!svg) {
             return false;
         }
@@ -359,11 +359,11 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         const overlayRect = overlayEl.getBoundingClientRect();
         tooltip.style.left = `${e.clientX - overlayRect.left + 12}px`;
         tooltip.style.top = `${e.clientY - overlayRect.top - 28}px`;
-        tooltip.classList.add('visible');
+        tooltip.classList.add("visible");
         return true;
     };
 
-    container.addEventListener('mouseleave', () => {
-        tooltip?.classList.remove('visible');
+    container.addEventListener("mouseleave", () => {
+        tooltip?.classList.remove("visible");
     });
 }

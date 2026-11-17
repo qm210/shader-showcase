@@ -10,7 +10,7 @@ function uniformTypes(gl, program) {
         for (let i = 0; i < count; i++) {
             const info = gl.getActiveUniform(program, i);
             if (info) {
-                types.set(info.name.replace(/\[0]$/, ''), info.type);
+                types.set(info.name.replace(/\[0]$/, ""), info.type);
             }
         }
         typeCache.set(program, types);

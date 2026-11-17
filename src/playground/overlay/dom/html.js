@@ -3,34 +3,34 @@ const toKebab = (key) =>
 
 export const esc = (value) =>
     String(value ?? "")
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll(""", "&quot;")
+        .replaceAll("'", "&#39;");
 
 export const cls = (...names) =>
-    names.filter(Boolean).join(' ');
+    names.filter(Boolean).join(" ");
 
 /** data-* attributes from camelCase keys; nullish values are skipped. */
 export function dataAttrs(data = {}) {
     return Object.entries(data)
         .filter(([, value]) => value !== null && value !== undefined)
         .map(([key, value]) => `data-${toKebab(key)}="${esc(value)}"`)
-        .join(' ');
+        .join(" ");
 }
 
 /** A button that triggers an ACTION via the overlay's click delegation. */
 export function actionButton({
     action, label,
-    className = 'btn',
-    title = '',
+    className = "btn",
+    title = "",
     disabled = false,
     data = {},
     style = "",
 }) {
-    const titleAttr = title ? `title="${esc(title)}"` : '';
-    const styleAttr = style ? `style="${style}"` : '';
+    const titleAttr = title ? `title="${esc(title)}"` : "";
+    const styleAttr = style ? `style="${style}"` : "";
     return `
         <button
             type="button"
@@ -49,7 +49,7 @@ export function actionButton({
  * Name column of a track or batch: an input while editing, else a label.
  * `extra` is appended after the input (e.g. a cancel button).
  */
-export function editableName({isEditing, name, data, labelClass, extra = ''}) {
+export function editableName({isEditing, name, data, labelClass, extra = ""}) {
     if (isEditing) {
         return `
             <input class="field name"
@@ -67,7 +67,7 @@ export function editableName({isEditing, name, data, labelClass, extra = ''}) {
 
 /** Hides via inline display:none, which beats any CSS display rule. */
 export function setShown(el, shown) {
-    el.style.display = shown ? '' : 'none';
+    el.style.display = shown ? "" : "none";
 }
 
 /** Horizontal pointer position as a fraction [0, 1] of the element. */
@@ -81,7 +81,7 @@ export function pointerFraction(el, clientX, inset = 0) {
 
 export function isTypingTarget(target) {
     return Boolean(
-        target?.closest?.('input, select, textarea, button, [contenteditable="true"]')
+        target?.closest?.("input, select, textarea, button, [contenteditable="true"]")
     );
 }
 

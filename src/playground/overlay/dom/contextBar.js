@@ -1,7 +1,7 @@
-import {CHAR} from '../index.js';
-import {formatValue} from '../format.js';
-import {setShown} from './html.js';
-import {EASING_TYPES} from '../../engine/keyframes.js';
+import {CHAR} from "../index.js";
+import {formatValue} from "../format.js";
+import {setShown} from "./html.js";
+import {EASING_TYPES} from "../../engine/keyframes.js";
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 8;
@@ -44,7 +44,7 @@ export function contextBarTemplate() {
                 <label>Ease:</label>
                 <select class="field kf-ease-select">
                     ${EASING_TYPES.map(t =>
-                        `<option value="${t}">${t === 'smoothstep' ? 'smooth' : t}</option>`
+                        `<option value="${t}">${t === "smoothstep" ? "smooth" : t}</option>`
                     ).join('')}
                 </select>
             </div>
@@ -58,8 +58,8 @@ export function contextBarTemplate() {
 
 /** Create the context action bar element (initially hidden). */
 export function createContextActionBar() {
-    const bar = document.createElement('div');
-    bar.className = 'context-action-bar';
+    const bar = document.createElement("div");
+    bar.className = "context-action-bar";
     setShown(bar, false);
     bar.innerHTML = `
         <div class="kf-info">
@@ -88,7 +88,7 @@ export function createContextActionBar() {
             <label>Ease:</label>
             <select class="field kf-ease-select">
                 ${EASING_TYPES.map(t =>
-                    `<option value="${t}">${t === 'smoothstep' ? 'smooth' : t}</option>`
+                    `<option value="${t}">${t === "smoothstep" ? "smooth" : t}</option>`
                 ).join('')}
             </select>
         </div>
@@ -117,13 +117,13 @@ export function renderContextActionBar(bar, kf, track, surrounding) {
     if (!kf) {
         return;
     }
-    bar.querySelector('.kf-time-value').textContent = `${kf.time.toFixed(1)}s`;
-    bar.querySelector('.kf-current-val').value = formatValue(kf.value);
-    bar.querySelector('.kf-ease-select').value =
-        kf.ease || 'linear';
-    showNeighbour(bar.querySelector('.kf-prev-val'), surrounding?.prev, kf);
-    showNeighbour(bar.querySelector('.kf-next-val'), surrounding?.next, kf);
-    bar.querySelector('.kf-undo-btn').disabled = !track?._undoStack?.length;
+    bar.querySelector(".kf-time-value").textContent = `${kf.time.toFixed(1)}s`;
+    bar.querySelector(".kf-current-val").value = formatValue(kf.value);
+    bar.querySelector(".kf-ease-select").value =
+        kf.ease || "linear";
+    showNeighbour(bar.querySelector(".kf-prev-val"), surrounding?.prev, kf);
+    showNeighbour(bar.querySelector(".kf-next-val"), surrounding?.next, kf);
+    bar.querySelector(".kf-undo-btn").disabled = !track?._undoStack?.length;
 }
 
 /**

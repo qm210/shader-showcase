@@ -8,7 +8,7 @@ export class AudioTrack {
      * @param {string} id - Unique track ID
      * @param {string} name - Display name
      */
-    constructor(id, name = 'Audio') {
+    constructor(id, name = "Audio") {
         this.id = id;
         this.name = name;
         this.audioBuffer = null;
@@ -25,7 +25,7 @@ export class AudioTrack {
      */
     static async load(file, audioContext) {
         const id = `audio:${Date.now()}`;
-        const track = new AudioTrack(id, file.name.replace(/\.[^.]+$/, ''));
+        const track = new AudioTrack(id, file.name.replace(/\.[^.]+$/, ""));
         track.sourceFile = file;
         track.loading = true;
 

@@ -1,8 +1,8 @@
-import {ACTION} from '../../actions.js';
-import {percentOfSpan} from '../../engine/math.js';
-import {CHAR} from '../index.js';
-import {formatValue} from '../format.js';
-import {actionButton, esc, setShown} from './html.js';
+import {ACTION} from "../../actions.js";
+import {percentOfSpan} from "../../engine/math.js";
+import {CHAR} from "../index.js";
+import {formatValue} from "../format.js";
+import {actionButton, esc, setShown} from "./html.js";
 import {fullView, isInView, MIN_TIME_STEP, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
 
 function timeRangeField(label, className, min, value) {
@@ -114,7 +114,7 @@ function tickMarks(view) {
               style="left:${percent((time - view.start) / width)}">
             <span class="time-tick-label">${label}</span>
         </span>
-    `).join('');
+    `).join("");
 }
 
 export function renderTimeZoom(ui, span, zoom) {
@@ -131,9 +131,9 @@ export function renderTimeZoom(ui, span, zoom) {
     ui.timeZoomReset.disabled = !isZoomed;
 
     // Lets the CSS highlight the window on the main slider's track.
-    ui.timeRangeBar.style.setProperty('--zoom-start', left);
-    ui.timeRangeBar.style.setProperty('--zoom-end', right);
-    ui.timeRangeBar.classList.toggle('zoomed', isZoomed);
+    ui.timeRangeBar.style.setProperty("--zoom-start", left);
+    ui.timeRangeBar.style.setProperty("--zoom-end", right);
+    ui.timeRangeBar.classList.toggle("zoomed", isZoomed);
 
     setShown(ui.timeZoomBand, isZoomed);
     setShown(ui.timeZoomDetail, isZoomed);
@@ -145,20 +145,20 @@ export function renderTimeZoom(ui, span, zoom) {
         `polygon(${percent(left)} 0, ${percent(right)} 0, 100% 100%, 0 100%)`;
 
     ui.timeRulerTicks.innerHTML = tickMarks({start: 0, end: span});
-    ui.timeSubTicks.innerHTML = isZoomed ? tickMarks(view) : '';
+    ui.timeSubTicks.innerHTML = isZoomed ? tickMarks(view) : "";
 }
 
 export function renderPlayback(ui, engine, view = fullView(engine)) {
     const time = engine.currentTime;
     const inView = isInView(view, time);
     ui.timeSlider.value = time;
-    ui.timeSlider.classList.toggle('playing', engine.playing);
+    ui.timeSlider.classList.toggle("playing", engine.playing);
     ui.timeSubSlider.value = time;
-    ui.timeSubSlider.classList.toggle('out-of-view', !inView);
+    ui.timeSubSlider.classList.toggle("out-of-view", !inView);
 
     const percentage = percentOfSpan(time - view.start, view.end - view.start);
     const editor = ui.trackRows.parentElement;
-    const playheadElements = editor.querySelectorAll('.playhead');
+    const playheadElements = editor.querySelectorAll(".playhead");
     for (const playhead of playheadElements) {
         playhead.style.left = percentage;
         setShown(playhead, inView);
@@ -181,7 +181,7 @@ export function renderPreview(ui, engine, {debug = false} = {}) {
             </div>`
         );
     ui.preview.innerHTML = lines.length
-        ? lines.join('')
-        : '<div class="val-empty">No active tracks</div>';
+        ? lines.join("")
+        : "<div class="val-empty">No active tracks</div>";
 }
 

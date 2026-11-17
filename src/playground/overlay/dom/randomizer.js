@@ -1,5 +1,5 @@
-import {ACTION} from '../../actions.js';
-import {actionButton, cls, dataAttrs, esc} from './html.js';
+import {ACTION} from "../../actions.js";
+import {actionButton, cls, dataAttrs, esc} from "./html.js";
 import {CHAR} from "../index.js";
 import {targetSelectorTemplate} from "./targetSelector.js";
 import {TARGET_PREFIX, targetId} from "../../engine/targets.js";
@@ -46,12 +46,12 @@ function randomizerTargets(provider) {
 }
 
 function selectorItem(target, selectedId) {
-    const icon = target.type === 'batch'
+    const icon = target.type === "batch"
         ? CHAR.BULLET_BATCH
         : CHAR.BULLET_UNIFORM;
     const countSpan = target.count !== undefined
         ? `<span class="selector-count">[batch of ${target.count}]</span>`
-        : '';
+        : "";
     return `
         <div class="${cls('selector-item', target.id === selectedId
                           && 'selected')}"
@@ -65,20 +65,20 @@ function selectorItem(target, selectedId) {
 
 function renderSelectorDisplay(display, target) {
     if (target) {
-        const icon = target.type === 'batch'
+        const icon = target.type === "batch"
             ? CHAR.BULLET_BATCH
             : CHAR.BULLET_UNIFORM;
         const countSpan = target.count !== undefined
             ? `<span class="selector-count">[batch of ${target.count}]</span>`
-            : '';
+            : "";
         display.innerHTML = `
             <span class="selector-icon">${icon}</span>
             <span class="selector-name">${esc(target.name)}</span>
             ${countSpan}`;
         display.title = `${target.type}: ${target.name}`;
     } else {
-        display.textContent = 'No target';
-        display.title = 'Click to select a target';
+        display.textContent = "No target";
+        display.title = "Click to select a target";
     }
 }
 
@@ -91,7 +91,7 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
     const {batches} = provider;
     if (!provider.getBatch(selectedBatchId)) {
         selectedBatchId =
-            batches.auto.find(b => b.id === 'auto:All Uniforms')?.id
+            batches.auto.find(b => b.id === "auto:All Uniforms")?.id
             ?? batches.custom[0]?.id
             ?? batches.auto[0]?.id
             ?? null;
@@ -100,7 +100,7 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
     const targets = randomizerTargets(provider);
     ui.randomize.targetDropdown.innerHTML = targets
         .map(target => selectorItem(target, selectedBatchId))
-        .join('');
+        .join("");
     renderSelectorDisplay(
         ui.randomize.targetSelector,
         targets.find(t => t.id === selectedBatchId)
@@ -108,7 +108,7 @@ export function renderRandomizerPanel(ui, provider, selectedBatchId) {
     ui.randomize.button.disabled = !selectedBatchId;
     ui.uniformNames.innerHTML = provider.getKnownUniformNames()
         .map(name => `<option value="${esc(name)}"></option>`)
-        .join('');
+        .join("");
 
     return {selectedBatchId};
 }

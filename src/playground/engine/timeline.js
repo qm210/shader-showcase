@@ -17,7 +17,7 @@ export class TimelineTrack {
     }
 
     static createId() {
-        return 'track_' + Math.random().toString(36).slice(2, 11);
+        return "track_" + Math.random().toString(36).slice(2, 11);
     }
 
     updateDuration() {
@@ -56,7 +56,7 @@ export class TimelineTrack {
         };
     }
 
-    addKeyframe(time, value, ease = 'linear') {
+    addKeyframe(time, value, ease = "linear") {
         // Clamp value to target ranges if possible
         const clampedValue = Array.isArray(value)
             ? value.map((v, i) => {
@@ -84,7 +84,7 @@ export class TimelineTrack {
             this.keyframes.push(kf);
         }
 
-        this._pushUndo({ type: 'add', keyframes: [kf] });
+        this._pushUndo({ type: "add", keyframes: [kf] });
         this.updateDuration();
         return kf;
     }
@@ -100,7 +100,7 @@ export class TimelineTrack {
             return true;
         });
         if (removed.length) {
-            this._pushUndo({ type: 'remove', keyframes: removed });
+            this._pushUndo({ type: "remove", keyframes: removed });
         }
         this.updateDuration();
     }
@@ -109,14 +109,14 @@ export class TimelineTrack {
     undo() {
         const entry = this._undoStack.pop();
         if (!entry) return false;
-        if (entry.type === 'add') {
+        if (entry.type === "add") {
             // Remove the added keyframe(s)
             for (const kf of entry.keyframes) {
                 this.keyframes = this.keyframes.filter(
                     k => Math.abs(k.time - kf.time) > MIN_TIME_STEP
                 );
             }
-        } else if (entry.type === 'remove') {
+        } else if (entry.type === "remove") {
             // Re-insert the removed keyframe(s)
             for (const kf of entry.keyframes) {
                 let inserted = false;
@@ -129,7 +129,7 @@ export class TimelineTrack {
                 }
                 if (!inserted) this.keyframes.push(kf);
             }
-        } else if (entry.type === 'edit') {
+        } else if (entry.type === "edit") {
             // Restore previous keyframe state
             for (const { index, prev } of entry.keyframes) {
                 if (this.keyframes[index]) {
