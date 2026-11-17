@@ -13,7 +13,7 @@ import {findAllUniformComponents, renderUniformList} from "./dom/uniformList.js"
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
 import {positionContextBar, renderContextActionBar} from "./dom/contextBar.js";
-import {renderAudioWaveforms, setWaveformSamples} from "./dom/audioTrack.js";
+import {renderAudioWaveforms} from "./dom/audioTrack.js";
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
@@ -521,12 +521,12 @@ export class Overlay {
             return;
         }
 
-        // Close sample selector dropdown when clicking outside
-        const selector = e.target.closest(".sample-selector");
-        if (!selector) {
-            document.querySelectorAll(".sample-selector.open").forEach(el =>
-                el.classList.remove("open")
-            );
+        if (this.ui.onToggleSampleSelect?.(e)) {
+            return;
+        }
+        if (this.ui.onSampleSelectOption?.(e)) {
+            this.renderTimeline();
+            return;
         }
 
         const actionData = e.target.closest("[data-action]")?.dataset;
@@ -974,25 +974,6 @@ export class Overlay {
             const file = el.files[0];
             el.value = "";
             void this._loadAudioFile(file);
-        } else if (el.classList.contains("sample-selector")) {
-            // Toggle dropdown open/close
-            el.classList.toggle("open");
-        } else if (el.classList.contains("sample-option")) {
-            const value = Number(el.dataset.value);
-            setWaveformSamples(value);
-            // Update the displayed value
-            const selector = el.closest(".sample-selector");
-            if (selector) {
-                const valueEl = selector.querySelector(".sample-selector-value");
-                if (valueEl) valueEl.textContent = `${value}/px`;
-                // Update selected state
-                selector.querySelectorAll(".sample-option").forEach(opt =>
-                    opt.removeAttribute("data-selected")
-                );
-                el.setAttribute("data-selected", "true");
-                selector.classList.remove("open");
-            }
-            this.renderTimeline();
         }
     }
 
@@ -1029,7 +1010,7 @@ export class Overlay {
             this._seek(time);
             const tooltip = sliderTooltip(el);
             if (tooltip) {
-                tooltip.textContent = time.toFixed(2) + "s";
+                tooltip.textContent = time.toFixed(1) + "\u2009s";
                 tooltip.classList.add("dragging");
             }
         } else if (el === this.ui.randomize.intensitySlider) {

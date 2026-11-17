@@ -22,8 +22,6 @@ export const CHAR = {
     THIN_SPACE: "\u2009",          // [thin space between units]
     ELLIPSIS: "\u2026",            // …
 
-    PLAY: "\u25B6",                // ▶
-    PAUSE: "\u23F8",               // ⏸
     CHECK: "\u2713",               // ✓
     X_MARK: "\u2715",              // ✕
     TRASH: "\uD83D\uDDD1",         // 🗑
@@ -38,6 +36,13 @@ export const CHAR = {
     CLEANUP: "\u{1F9F9}",          // 🧹
     UNDO: "\u8617",                // ↩
     REDO: "\u21AA",                // ↪
+
+    PLAY: "\u25B6",                // ▶
+    PAUSE: "\u23F8",               // ⏸
+    STOP: "\u23f9",                // ⏹
+    REWIND: "\u23EE",              // ⏮
+    NOTES: "\u266b",               // ♫
+    LOOP: "\u21BA",                // ↺
 };
 
 export const DELAY_MS = {

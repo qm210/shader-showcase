@@ -8,6 +8,8 @@
 
 #pg .audio-name-col {
     grid-column: span 2;
+    min-width: 0;
+    contain: inline-size;
     padding: 0.5em 0.65em;
     display: flex;
     flex-direction: column;
@@ -18,15 +20,17 @@
 #pg .audio-name-col .audio-label {
     color: #9bf;
     font-size: 0.82em;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
     min-width: 0;
+    max-width: 100%;
 }
 
 #pg .audio-name-col .audio-duration {
     color: rgba(200, 220, 255, 0.5);
     font-size: 0.75em;
-    font-family: var(--overlay-mono), monospace;
+    flex-shrink: 0;
     white-space: nowrap;
 }
 
@@ -88,7 +92,7 @@
 }
 
 #pg .audio-controls-col .sample-option[data-selected="true"] {
-    color: #9f9;
+    color: #bb9;
     font-weight: 600;
 }
 

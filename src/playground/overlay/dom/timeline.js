@@ -125,11 +125,10 @@ export function renderTimeZoom(ui, span, zoom) {
     ui.timeSlider.max = span;
     ui.timeSubSlider.min = view.start;
     ui.timeSubSlider.max = view.end;
-    ui.timeStart.value = Number(view.start.toFixed(2));
-    ui.timeEnd.value = Number(view.end.toFixed(2));
+    ui.timeStart.value = Number(view.start.toFixed(1));
+    ui.timeEnd.value = Number(view.end.toFixed(1));
     ui.timeZoomReset.disabled = !isZoomed;
 
-    // Lets the CSS highlight the window on the main slider's track.
     ui.timeRangeBar.style.setProperty("--zoom-start", left);
     ui.timeRangeBar.style.setProperty("--zoom-end", right);
     ui.timeRangeBar.classList.toggle("zoomed", isZoomed);

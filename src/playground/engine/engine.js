@@ -12,6 +12,7 @@ export class PlaygroundEngine {
         this.tracks = new Map();
         this.audioTracks = new Map();
         this._audioContext = null;
+        this.onlyOneAudioTrack = true;
         this.currentTime = 0;
         this.playing = false;
         this.speed = 1.0;
@@ -66,6 +67,9 @@ export class PlaygroundEngine {
      */
     async loadAudioTrack(file) {
         const track = await AudioTrack.load(file, this._getAudioContext());
+        if (this.onlyOneAudioTrack) {
+            this.audioTracks.clear();
+        }
         this.audioTracks.set(track.id, track);
         return track;
     }

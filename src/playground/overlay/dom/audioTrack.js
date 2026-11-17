@@ -1,4 +1,5 @@
 import {isInView} from "../../engine/timeZoom.js";
+import {CHAR} from "../../../app/constants.js";
 
 let _samplesPerPixel = 16;
 
@@ -38,12 +39,16 @@ function controlsColHTML(tooltipText) {
 }
 
 function rowHTML(track, content, tooltipText, empty = false) {
-    const duration = track.duration > 0 ? ` (${track.duration.toFixed(1)}s)` : "";
+    const duration = track.duration > 0
+        ? `(${track.duration.toFixed(1)}\u2009s)` : "";
     return `
         <div class="audio-track-row${empty ? ' audio-empty' : ''}"
              data-track-id="${track.id}">
             <div class="audio-name-col">
-                <span class="audio-label">🎵 ${track.name}</span>
+                <span class="audio-label"
+                      title="Audio Track: ${track.name}">
+                    ${CHAR.NOTES} ${track.name}
+                </span>
                 <span class="audio-duration">${duration}</span>
             </div>
             <div class="audio-widget">
@@ -378,4 +383,39 @@ export function renderAudioWaveforms(ui, engine, view, span) {
     container.addEventListener("mouseleave", () => {
         tooltip?.classList.remove("visible");
     });
+
+    ui.onToggleSampleSelect = (e) => {
+        const selector = e.target.closest(".sample-selector");
+        if (!selector) {
+            document.querySelectorAll(".sample-selector.open")
+                .forEach(el =>
+                    el.classList.remove("open")
+                );
+            return false;
+        } else {
+            selector.classList.toggle("open");
+            return true;
+        }
+    };
+
+    ui.onSampleSelectOption = (e) => {
+        const el = e.target;
+        if (!el.classList.contains("sample-option")) {
+            return false;
+        }
+        const value = Number(el.dataset.value);
+        setWaveformSamples(value);
+        const selector = el.closest(".sample-selector");
+        if (selector) {
+            const valueEl = selector.querySelector(".sample-selector-value");
+            if (valueEl) valueEl.textContent = `${value}/px`;
+            // Update selected state
+            selector.querySelectorAll(".sample-option").forEach(opt =>
+                opt.removeAttribute("data-selected")
+            );
+            el.setAttribute("data-selected", "true");
+            selector.classList.remove("open");
+        }
+        return true;
+    };
 }

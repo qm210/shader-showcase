@@ -1,5 +1,6 @@
 import {binarySearchInsert, clamp} from "../../algorithms.js";
 import {createDiv} from "../../dom/dom.js";
+import {CHAR} from "../../constants.js";
 
 export function createTimeSeeker(parent, state, bookmarkElement) {
     parent.innerHTML =
@@ -50,17 +51,17 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
             }),
             rewind: svgChild(svg, "text", {
                 class: "clickable icon",
-                textContent: "\u23ee",
+                textContent: CHAR.REWIND,
                 title: "Rewind (Press again to return to this point, ONCE)",
             }),
             loop: svgChild(svg, "text", {
                 class: "clickable icon",
-                textContent: "\u21ba",
+                textContent: CHAR.LOOP,
                 title: "Loop? (Right Click this for Range Input)"
             }),
             audio: svgChild(svg, "text", {
                 class: "clickable icon",
-                textContent: "\u266b",
+                textContent: CHAR.NOTES,
                 title: "Play Track?"
             }),
         },
@@ -190,7 +191,7 @@ export function createTimeSeeker(parent, state, bookmarkElement) {
             obj.remember.toUpdate = true;
             return;
         }
-        applyStateDependantStyling(obj, state);
+        applyStylesByState(obj, state);
         if (!state.play.running) {
             if (obj.remember.timestamp === state.play.previousTimestamp) {
                 return;
@@ -373,14 +374,14 @@ function svgChild(svg, tag, attributes = {}) {
     return child;
 }
 
-function applyStateDependantStyling(el, state) {
+function applyStylesByState(el, state) {
     if (state.play.running) {
         el.handle.setAttribute("stroke", "black");
-        el.icons.toggle.textContent = "\u23f9";
+        el.icons.toggle.textContent = CHAR.STOP;
         el.icons.toggle.setAttribute("color", "red");
     } else {
         el.handle.setAttribute("stroke", "darkorange");
-        el.icons.toggle.textContent = "\u25b6";
+        el.icons.toggle.textContent = CHAR.PLAY;
         el.icons.toggle.setAttribute("color", "black");
     }
 
