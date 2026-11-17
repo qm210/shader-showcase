@@ -55,7 +55,6 @@
 
 #pg .field {
     min-width: 0;
-    padding: 0.25em 0.45em;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: var(--overlay-field);
@@ -65,7 +64,7 @@
 }
 
 #pg .field.num {
-    width: 4.25em;
+    width: 4em;
     text-align: center;
 }
 

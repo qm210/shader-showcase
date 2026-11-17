@@ -6,7 +6,7 @@ export const esc = (value) =>
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
-        .replaceAll(""", "&quot;")
+        .replaceAll("\"", "&quot;")
         .replaceAll("'", "&#39;");
 
 export const cls = (...names) =>
@@ -65,12 +65,10 @@ export function editableName({isEditing, name, data, labelClass, extra = ""}) {
         </span>`;
 }
 
-/** Hides via inline display:none, which beats any CSS display rule. */
 export function setShown(el, shown) {
     el.style.display = shown ? "" : "none";
 }
 
-/** Horizontal pointer position as a fraction [0, 1] of the element. */
 export function pointerFraction(el, clientX, inset = 0) {
     const rect = el.getBoundingClientRect();
     const width = rect.width - 2 * inset;
@@ -81,7 +79,9 @@ export function pointerFraction(el, clientX, inset = 0) {
 
 export function isTypingTarget(target) {
     return Boolean(
-        target?.closest?.("input, select, textarea, button, [contenteditable="true"]")
+        target?.closest?.(
+            "input, select, textarea, button, [contenteditable='true']"
+        )
     );
 }
 

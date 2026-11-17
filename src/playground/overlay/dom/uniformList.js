@@ -92,7 +92,7 @@ function uniformRows(provider, entry, isChecked) {
         const data = dataAttrs({uniformName: entry.name, component: i});
         const checkInputId = `check-${entry.name}`;
         const checkCell = isComponent
-            ? "<span class="component-placeholder"></span>"
+            ? `<span class="component-placeholder"></span>`
             : `<input type="checkbox"
                       class="uniform-checkbox"
                       id="${checkInputId}"
@@ -193,7 +193,7 @@ export function renderUniformList(ui, provider, uiBatch) {
     const groups = groupByBatch(provider.batches.auto);
     if (!groups.size) {
         uniformListBody.innerHTML =
-            "<div class="uniform-empty">No uniforms known yet</div>";
+            '<div class="uniform-empty">No uniforms known yet</div>';
         return;
     }
 

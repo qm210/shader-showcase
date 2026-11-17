@@ -3,17 +3,27 @@ import {lerp, smoothstep} from "./math.js";
 export const EASING_TYPES = ["linear", "smoothstep", "step"];
 
 export function interpolateKeyframes(from, to, t, ease) {
-    if (ease === "step") {
-        // "step" means to hold until next keyframe
+    switch (ease) {
+        case "step":
+            t = 0;
+            break;
+        case "smoothstep":
+            t = smoothstep(0, 1, t);
+            break;
+        case "linear":
+            break;
+        default:
+            console.warn("Invalid Easing Type:", ease);
+            break;
+    }
+    if (t <= 0) {
         return from.value;
     }
 
-    const easedT = ease === "smoothstep" ? smoothstep(0, 1, t) : t;
-
     if (Array.isArray(from.value)) {
-        return from.value.map((v, i) => lerp(v, to.value[i], easedT));
+        return from.value.map((v, i) => lerp(v, to.value[i], t));
     }
-    return lerp(from.value, to.value, easedT);
+    return lerp(from.value, to.value, t);
 }
 
 export function findSurroundingKeyframes(keyframes, time) {

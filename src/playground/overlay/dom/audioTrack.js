@@ -76,6 +76,24 @@ function withResolutionApplied(totalSamples) {
 const MAX_COLUMNS = 2048;
 const WAVE_HEIGHT = 200;
 
+/**
+ * @param {MouseEvent} e
+ * @returns {{ratio: number, svg: SVGElement}|null}
+ */
+function getAudioWidthRatio(e) {
+    const widget = e.target.closest(".audio-widget");
+    const svg = widget?.querySelector(".audio-waveform");
+    if (!svg) {
+        return null;
+    }
+    const svgRect = svg.getBoundingClientRect();
+    const ratio = (e.clientX - svgRect.left) / svgRect.width;
+    if (ratio < 0 || ratio > 1) {
+        return null;
+    }
+    return { ratio, svg };
+}
+
 /** Last computed path per waveform buffer, reused while the view is unchanged. */
 const _pathCache = new WeakMap();
 
@@ -289,7 +307,6 @@ export function renderAudioWaveforms(ui, engine, view, span) {
         .map(wave => renderAudioWaveform(wave, engine.currentTime))
         .filter(Boolean);
 
-    // DEBUG.log("[AUDIO]", {audioTracks, audioData, editor, rows});
     if (!editor || rows.length === 0) {
         return;
     }
@@ -306,12 +323,12 @@ export function renderAudioWaveforms(ui, engine, view, span) {
     }
 
     container.addEventListener("click", (e) => {
-        const widget = e.target.closest(".audio-widget");
-        if (!widget) return;
-        const rect = widget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const percentage = x / rect.width;
-        const time = view.start + percentage * (view.end - view.start);
+        const result = getAudioWidthRatio(e);
+        if (!result) {
+            return;
+        }
+        const { ratio } = result;
+        const time = view.start + ratio * (view.end - view.start);
         ui.onSeek?.(time);
     });
 
@@ -323,15 +340,13 @@ export function renderAudioWaveforms(ui, engine, view, span) {
      * @return {boolean} whether this event is hereby consumed
      */
     ui.onAudioTooltip = (e) => {
-        const widget = e.target.closest(".audio-widget");
-        if (!widget) {
+        const result = getAudioWidthRatio(e);
+        if (!result) {
             tooltip?.classList.remove("visible");
             return false;
         }
-        const svg = widget.querySelector(".audio-waveform");
-        if (!svg) {
-            return false;
-        }
+        const { ratio, svg } = result;
+        const clampedPercentage = Math.max(0, Math.min(1, ratio));
         const audioTrackId = svg.dataset.audioId;
         const analyzed = audioData.find(it => it.track.id === audioTrackId);
         const bins = analyzed?.bins;
@@ -339,15 +354,12 @@ export function renderAudioWaveforms(ui, engine, view, span) {
             return false;
         }
 
-        const widgetRect = widget.getBoundingClientRect();
-        const x = e.clientX - widgetRect.left;
-        const percentage = Math.max(0, Math.min(1, x / widgetRect.width));
-        const binIndex = Math.floor(percentage * 100);
+        const binIndex = Math.floor(clampedPercentage * 100);
         const binStart = binIndex * 2;
         const binEnd = Math.min(binStart + 1, bins.length - 1);
         const minVal = parseFloat(bins[binStart]);
         const maxVal = parseFloat(bins[binEnd]);
-        const time = view.start + percentage * (view.end - view.start);
+        const time = view.start + clampedPercentage * (view.end - view.start);
 
         tooltip.textContent = [
             `t = ${time.toFixed(2).padStart(6)} s`,

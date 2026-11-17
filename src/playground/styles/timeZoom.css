@@ -24,8 +24,6 @@
     margin-left: auto;
 }
 
-/* ─── Ruler ─────────────────────────────────────────────────── */
-
 #pg .time-ruler {
     position: relative;
     height: 18px;
@@ -62,27 +60,6 @@
     white-space: nowrap;
     opacity: 0.6;
 }
-
-#pg .time-ruler-hint {
-    position: absolute;
-    top: 0;
-    right: .5em;
-    font-size: 0.8em;
-    color: var(--overlay-pink);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-}
-
-#pg .time-ruler:hover .time-ruler-hint {
-    opacity: 0.5;
-}
-
-#pg .time-range-bar.zoomed .time-ruler-hint {
-    display: none;
-}
-
-/* ─── Selection band ───────────────────────────────────────── */
 
 #pg .time-zoom-band {
     position: absolute;
@@ -127,48 +104,6 @@
     background: var(--time-accent);
 }
 
-/*!* ─── Sliders ──────────────────────────────────────────────── *!*/
-
-/*#pg .time-range-bar input[type="range"] {*/
-/*    -webkit-appearance: none;*/
-/*    appearance: none;*/
-/*    display: block;*/
-/*    width: 100%;*/
-/*    height: 16px;*/
-/*    margin: 0;*/
-/*    background: transparent;*/
-/*}*/
-
-/*#pg .time-range-bar input[type="range"]::-webkit-slider-runnable-track {*/
-/*    height: 4px;*/
-/*    border-radius: 2px;*/
-/*    background: var(--time-track);*/
-/*}*/
-
-/*#pg .time-range-bar input[type="range"]::-moz-range-track {*/
-/*    height: 4px;*/
-/*    border-radius: 2px;*/
-/*    background: var(--time-track);*/
-/*}*/
-
-/*#pg .time-range-bar input[type="range"]::-webkit-slider-thumb {*/
-/*    -webkit-appearance: none;*/
-/*    width: var(--time-thumb);*/
-/*    height: var(--time-thumb);*/
-/*    margin-top: calc(2px - var(--time-thumb) / 2);*/
-/*    border: none;*/
-/*    border-radius: 50%;*/
-/*    background: #fff;*/
-/*}*/
-
-/*#pg .time-range-bar input[type="range"]::-moz-range-thumb {*/
-/*    width: var(--time-thumb);*/
-/*    height: var(--time-thumb);*/
-/*    border: none;*/
-/*    border-radius: 50%;*/
-/*    background: #fff;*/
-/*}*/
-
 #pg input.time-slider {
     --zoom-from: calc(var(--time-thumb) / 2
                 + (100% - var(--time-thumb)) * var(--zoom-start));
@@ -191,8 +126,6 @@
         var(--time-track) var(--zoom-to));
 }
 
-/* ─── Lens and detail slider ───────────────────────────────── */
-
 #pg .time-zoom-lens {
     height: 12px;
     margin: 0 calc(var(--time-thumb) / 2);
@@ -208,7 +141,6 @@
     background: var(--time-accent);
 }
 
-/* The playhead is outside the zoomed window. */
 #pg .time-range-bar input.time-sub-slider.out-of-view::-webkit-slider-thumb {
     opacity: 0.25;
 }

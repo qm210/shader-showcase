@@ -1143,7 +1143,9 @@ export class Overlay {
 
     togglePlaying() {
         this.engine.playing = !this.engine.playing;
+        console.log("engine playing?", this.engine.playing);
         this.ctx._playbackSync?.onOverlayPlayToggled(this.engine.playing);
+        console.log("-> engine playing?", this.engine.playing);
         this._syncPlayButton();
     }
 
@@ -1151,18 +1153,9 @@ export class Overlay {
         const {playBtn} = this.ui;
         const playing = this.engine.playing;
         playBtn.textContent = playing ? CHAR.PAUSE : CHAR.PLAY;
-        playBtn.title = playing ? "Pause (Space)" : "Play (Space)";
+        playBtn.title = playing ? "Pause" : "Play";
     }
 
-    /** Adds a keyframe at `time` with the first target's minimum. */
-    _promptKeyframe(track, time) {
-        const firstTarget = track.targets[0];
-        const defaultVal = firstTarget?.enabled ? firstTarget.minValue : 0;
-        track.addKeyframe(time, defaultVal);
-        this.renderTrack(track.id);
-    }
-
-    /** Undo on the selected keyframe's track. */
     _doUndo() {
         const first = this._firstSelectedKey();
         if (this.engine.getTrack(first?.trackId)?.undo()) {
@@ -1170,7 +1163,6 @@ export class Overlay {
         }
     }
 
-    /** Fills and places the context action bar for the selection. */
     _positionContextBar() {
         const selection = this._selection();
         renderContextActionBar(

@@ -1,6 +1,7 @@
 import {createKeyframeId, findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
 import {FALLBACK_RANGE} from "./valueRanges.js";
+import {clamp} from "../../app/algorithms.js";
 
 const MAX_UNDO_STEPS = 50;
 
@@ -151,19 +152,24 @@ export class TimelineTrack {
     /** Get interpolated value for a specific target uniform at current time */
     getTargetValue(uniformName, currentTime) {
         const target = this.targets.find(t => t.uniformName === uniformName);
-        if (!target || !target.enabled || this.keyframes.length === 0) return null;
+        if (!target || !target.enabled || this.keyframes.length === 0) {
+            return null;
+        }
 
         const surrounding = findSurroundingKeyframes(this.keyframes, currentTime);
-        if (!surrounding) return target.minValue;
+        if (!surrounding) {
+            return target.minValue;
+        }
 
         const rawValue = interpolateKeyframes(surrounding.prev, surrounding.next, surrounding.t,
             surrounding.prev.ease);
 
-        // Clamp to target range
         if (Array.isArray(rawValue)) {
-            return rawValue.map((v, i) => Math.max(target.minValue, Math.min(target.maxValue, v)));
+            return rawValue.map(v =>
+                clamp(v, target.minValue, target.maxValue)
+            );
         }
-        return Math.max(target.minValue, Math.min(target.maxValue, rawValue));
+        return clamp(rawValue, target.minValue, target.maxValue);
     }
 
     getAllValues(currentTime) {

@@ -71,7 +71,6 @@ export function timelineTemplate() {
                 <div class="time-ruler"
                      title="Drag to zoom into a time range, wheel to zoom">
                     <div class="time-ticks"></div>
-                    <span class="time-ruler-hint">drag to zoom</span>
                     <div class="time-zoom-band"
                          title="Drag to move, double-click for full view">
                         <div class="time-zoom-handle"
@@ -182,6 +181,6 @@ export function renderPreview(ui, engine, {debug = false} = {}) {
         );
     ui.preview.innerHTML = lines.length
         ? lines.join("")
-        : "<div class="val-empty">No active tracks</div>";
+        : '<div class="val-empty">No active tracks</div>';
 }
 
