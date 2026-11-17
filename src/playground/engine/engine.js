@@ -1,4 +1,4 @@
-import {TimelineTrack} from "./timeline.js";
+import {TimeLane} from "./timeline.js";
 import {AudioTrack} from "./audioTrack.js";
 
 const LATEST_SNAPSHOT_KEY = "_LATEST_";
@@ -9,7 +9,7 @@ export class PlaygroundEngine {
         this._mainElements = mainElements;
         this.snapshots = new Map();
         this.loadCurrentSnapshot();
-        this.tracks = new Map();
+        this.lanes = new Map();
         this.audioTracks = new Map();
         this._audioContext = null;
         this.onlyOneAudioTrack = true;
@@ -22,7 +22,7 @@ export class PlaygroundEngine {
     }
 
     reset() {
-        this.tracks.clear();
+        this.lanes.clear();
         this.audioTracks.clear();
         this.currentTime = 0;
         this.playing = false;
@@ -42,36 +42,36 @@ export class PlaygroundEngine {
         return this._audioContext;
     }
 
-    addTrack(name) {
-        const track = new TimelineTrack(name);
-        this.tracks.set(track.id, track);
-        return track;
+    addLane(name) {
+        const lane = new TimeLane(name);
+        this.lanes.set(lane.id, lane);
+        return lane;
     }
 
-    removeTrack(id) {
-        this.tracks.delete(id);
+    removeLane(id) {
+        this.lanes.delete(id);
     }
 
-    getTrack(id) {
-        return this.tracks.get(id);
+    getLane(id) {
+        return this.lanes.get(id);
     }
 
-    getAllTracks() {
-        return Array.from(this.tracks.values());
+    getAllLanes() {
+        return Array.from(this.lanes.values());
     }
 
     /**
-     * Load an audio file and add it as an audio track.
+     * Load an audio file and add it as an audio lane.
      * @param {File} file
      * @returns {Promise<AudioTrack>}
      */
     async loadAudioTrack(file) {
-        const track = await AudioTrack.load(file, this._getAudioContext());
+        const lane = await AudioTrack.load(file, this._getAudioContext());
         if (this.onlyOneAudioTrack) {
             this.audioTracks.clear();
         }
-        this.audioTracks.set(track.id, track);
-        return track;
+        this.audioTracks.set(lane.id, lane);
+        return lane;
     }
 
     removeAudioTrack(id) {
@@ -91,9 +91,9 @@ export class PlaygroundEngine {
         this.currentTime += dt * this.speed;
 
         // Auto-loop tracks that exceed their duration
-        for (const track of this.tracks.values()) {
-            if (track.loop && track.duration > 0 && this.currentTime > track.duration) {
-                this.currentTime -= track.duration;
+        for (const lane of this.lanes.values()) {
+            if (lane.loop && lane.duration > 0 && this.currentTime > lane.duration) {
+                this.currentTime -= lane.duration;
             }
         }
 
@@ -102,8 +102,8 @@ export class PlaygroundEngine {
 
     getAllTimelineValues() {
         const result = {};
-        for (const track of this.tracks.values()) {
-            const vals = track.getAllValues(this.currentTime);
+        for (const lane of this.lanes.values()) {
+            const vals = lane.getAllValues(this.currentTime);
             Object.assign(result, vals);
         }
         return result;
@@ -184,8 +184,8 @@ export class PlaygroundEngine {
     getCurrentUniformDetails() {
         const tracksByName = new Map();
 
-        for (const track of this.tracks.values()) {
-            for (const target of track.targets) {
+        for (const lane of this.lanes.values()) {
+            for (const target of lane.targets) {
                 if (!target.enabled) {
                     continue;
                 }
@@ -193,7 +193,7 @@ export class PlaygroundEngine {
                 if (!tracksByName.has(name)) {
                     tracksByName.set(name, []);
                 }
-                tracksByName.get(name).push(track);
+                tracksByName.get(name).push(lane);
             }
         }
 
@@ -214,8 +214,8 @@ export class PlaygroundEngine {
 
     timelineToJSON() {
         const tracks = [];
-        for (const track of this.tracks.values()) {
-            tracks.push(track.toJSON());
+        for (const lane of this.lanes.values()) {
+            tracks.push(lane.toJSON());
         }
         return {
             currentTime: this.currentTime,
@@ -232,9 +232,9 @@ export class PlaygroundEngine {
         this.playing = Boolean(json?.playing);
         this.speed = Number(json?.speed) || 1.0;
         this.baseTime = Number(json?.baseTime) || 0;
-        for (const trackJson of json?.tracks ?? []) {
-            const track = TimelineTrack.fromJSON(trackJson);
-            this.tracks.set(track.id, track);
+        for (const laneJson of json?.tracks ?? []) {
+            const lane = TimeLane.fromJSON(laneJson);
+            this.lanes.set(lane.id, lane);
         }
         return this;
     }

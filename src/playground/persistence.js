@@ -7,14 +7,14 @@ export function collectStorageJson(overlay) {
         version: OVERLAY_STATE_VERSION,
         position: overlay.position,
         collapsed: overlay.element.classList.contains("collapsed"),
-        collapsedTracks: [...overlay.track.collapsedIds]
-            .filter(overlay.engine.getTrack),
+        collapsedTracks: [...overlay.lane.collapsedIds]
+            .filter(overlay.engine.getLane),
         timeline: {
             ...overlay.engine.timelineToJSON(),
             playing: false
         },
         overrides: overlay.engine.getOverrides(),
-        selectedTrackId: overlay.track.selectedId,
+        selectedTrackId: overlay.lane.selectedId,
         selectedBatchId: overlay.batch.selectedId,
         customBatches: overlay.ctx.batches.custom.map(b => b.toJSON()),
         randomIntensity: overlay.randomIntensity,

@@ -5,9 +5,9 @@ import {clamp} from "../../app/algorithms.js";
 
 const MAX_UNDO_STEPS = 50;
 
-export class TimelineTrack {
+export class TimeLane {
     constructor(name) {
-        this.id = TimelineTrack.createId();
+        this.id = TimeLane.createId();
         this.name = name;
         this.targets = [];
         this.keyframes = [];
@@ -18,7 +18,7 @@ export class TimelineTrack {
     }
 
     static createId() {
-        return "track_" + Math.random().toString(36).slice(2, 11);
+        return "lane_" + Math.random().toString(36).slice(2, 11);
     }
 
     updateDuration() {
@@ -106,7 +106,7 @@ export class TimelineTrack {
         this.updateDuration();
     }
 
-    /** Undo the last action on this track. Returns true if something was undone. */
+    /** Undo the last action on this lane. Returns true if something was undone. */
     undo() {
         const entry = this._undoStack.pop();
         if (!entry) return false;
@@ -193,16 +193,16 @@ export class TimelineTrack {
     }
 
     static fromJSON(json) {
-        const track = new TimelineTrack(json.name);
-        track.id = json.id ?? track.id;
-        track.loop = json.loop || false;
-        track.targets = json.targets || [];
-        track.keyframes = json.keyframes || [];
-        for (const kf of track.keyframes) {
+        const lane = new TimeLane(json.name);
+        lane.id = json.id ?? lane.id;
+        lane.loop = json.loop || false;
+        lane.targets = json.targets || [];
+        lane.keyframes = json.keyframes || [];
+        for (const kf of lane.keyframes) {
             kf.id ??= createKeyframeId();
         }
-        track.updateDuration();
-        return track;
+        lane.updateDuration();
+        return lane;
     }
 }
 

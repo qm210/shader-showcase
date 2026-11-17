@@ -19,18 +19,18 @@ function timeRangeField(label, className, min, value) {
 export function timelineTemplate() {
     return `
         <div class="timeline-editor">
-            <div class="tracks-actions">
+            <div class="lanes-actions">
                 ${actionButton({
-                    action: ACTION.REMOVE_ALL_TRACKS,
+                    action: ACTION.REMOVE_ALL_LANES,
                     label: `${CHAR.TRASH} Clear All`,
                     className: 'btn danger',
-                    title: 'Delete all tracks! Irreversible!',
+                    title: 'Delete all lanes! Irreversible!',
                     disabled: true
                 })}             
                 ${actionButton({
-                    action: ACTION.ADD_TRACK,
-                    label: '+ Track',
-                    title: 'Create a new track',
+                    action: ACTION.ADD_LANE,
+                    label: '+ Lane',
+                    title: 'Create a new lane',
                 })}
                 <input type="file"
                        id="audio-file-input"
@@ -98,7 +98,7 @@ export function timelineTemplate() {
                 </div>
             </div>
             <div></div>
-            <div class="track-rows"></div>
+            <div class="lane-rows"></div>
             <div class="value-preview"></div>
             <div class="timeline-tooltip"></div>
         </div>`;
@@ -155,7 +155,7 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
     ui.timeSubSlider.classList.toggle("out-of-view", !inView);
 
     const percentage = percentOfSpan(time - view.start, view.end - view.start);
-    const editor = ui.trackRows.parentElement;
+    const editor = ui.laneRows.parentElement;
     const playheadElements = editor.querySelectorAll(".playhead");
     for (const playhead of playheadElements) {
         playhead.style.left = percentage;
@@ -178,8 +178,6 @@ export function renderPreview(ui, engine, {debug = false} = {}) {
                 <span class="val-num">${formatValue(it.value)}</span>
             </div>`
         );
-    ui.preview.innerHTML = lines.length
-        ? lines.join("")
-        : '<div class="val-empty">No active tracks</div>';
+    ui.preview.innerHTML = lines.join("");
 }
 

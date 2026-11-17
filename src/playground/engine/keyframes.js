@@ -75,14 +75,14 @@ export function createKeyframeId() {
     return `kf_${++_keyframeIdCounter}${Date.now().toString(36)}`;
 }
 
-export function keyframeKey(trackId, kfId) {
-    return `${trackId}:${kfId}`;
+export function keyframeKey(laneId, kfId) {
+    return `${laneId}:${kfId}`;
 }
 
 export function parseKeyframeKey(key) {
     const sep = key.lastIndexOf(":");
     return {
-        trackId: key.slice(0, sep),
+        laneId: key.slice(0, sep),
         kfId: key.slice(sep + 1),
     };
 }

@@ -109,7 +109,7 @@ function showNeighbour(el, neighbour, kf) {
 }
 
 /** Fill the bar with keyframe info; hides it when kf is missing. */
-export function renderContextActionBar(bar, kf, track, surrounding) {
+export function renderContextActionBar(bar, kf, lane, surrounding) {
     if (!bar) {
         return;
     }
@@ -123,7 +123,7 @@ export function renderContextActionBar(bar, kf, track, surrounding) {
         kf.ease || "linear";
     showNeighbour(bar.querySelector(".kf-prev-val"), surrounding?.prev, kf);
     showNeighbour(bar.querySelector(".kf-next-val"), surrounding?.next, kf);
-    bar.querySelector(".kf-undo-btn").disabled = !track?._undoStack?.length;
+    bar.querySelector(".kf-undo-btn").disabled = !lane?._undoStack?.length;
 }
 
 /**

@@ -27,7 +27,7 @@ const UI_SELECTORS = {
     speedInput:            ".speed-input",
     audioFileInput:        "#audio-file-input",
     timelineEditor:        ".timeline-editor",
-    trackRows:             ".track-rows",
+    laneRows:              ".lane-rows",
     preview:               ".value-preview",
     timelineTooltip:       ".timeline-tooltip",
     batchList:             ".batch-list",

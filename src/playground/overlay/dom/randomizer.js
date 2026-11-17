@@ -16,7 +16,10 @@ export function randomizerTemplate() {
                 <span class="intensity-label">amount:</span>
                 <input type="range"
                        class="intensity-slider"
-                       min="0" max="1" step="0.01" value="1">
+                       min="0"
+                       max="1"
+                       step="0.01"
+                       value="1">
                 <span class="intensity-value">1.00</span>
                 ${targetSelectorTemplate({
                     label: 'Target:',

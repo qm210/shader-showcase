@@ -46,7 +46,7 @@ export function actionButton({
 }
 
 /**
- * Name column of a track or batch: an input while editing, else a label.
+ * Name column of a lane or batch: an input while editing, else a label.
  * `extra` is appended after the input (e.g. a cancel button).
  */
 export function editableName({isEditing, name, data, labelClass, extra = ""}) {

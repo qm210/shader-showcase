@@ -17,11 +17,14 @@ export function isFiniteArray(value) {
     );
 }
 
-export function calcTrackValueRange(track, context) {
+export function calcLaneValueRange(lane, context) {
     let [min, max] = [0, 1];
-    for (const target of track.targets) {
+    for (const target of lane.targets) {
         if (target.enabled && target.uniformName) {
             const range = context.getControlRange(target.uniformName);
+            if (Array.isArray(range.min) || Array.isArray(range.max)) {
+                console.warn("IS ARRAY", range);
+            }
             const tMin = Array.isArray(range.min)
                 ? FALLBACK_RANGE.min : range.min;
             const tMax = Array.isArray(range.max)

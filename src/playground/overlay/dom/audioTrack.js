@@ -156,7 +156,7 @@ function waveformPath(data, start, end, duration) {
     return result;
 }
 
-export function analyzeAudioWaveform(track, view, span) {
+export function analyzeAudioWaveform(track, view) {
     if (track.loading) {
         return {track, loading: true};
     }
@@ -264,7 +264,8 @@ export function renderAudioWaveform(wave, currentTime = 0) {
 
     const playhead = showPlayhead ? `
         <div class="playhead"
-             style="left: ${playheadPercent}%"></div>
+             style="left: ${playheadPercent}%"
+        ></div>
     ` : "";
 
     const content = `
@@ -302,29 +303,26 @@ export function renderAudioWaveform(wave, currentTime = 0) {
  * @param {object} ui
  * @param {PlaygroundEngine} engine
  * @param {object} view - {start, end}
- * @param {number} span - Total timeline span
  */
-export function renderAudioWaveforms(ui, engine, view, span) {
-    const editor = ui.trackRows.parentElement;
-    const audioTracks = engine.getAllAudioTracks();
-    const audioData = audioTracks.map(t => analyzeAudioWaveform(t, view, span));
+export function renderAudioWaveforms(ui, engine, view) {
+    const audioData = engine.getAllAudioTracks()
+        .map(t => analyzeAudioWaveform(t, view));
     const rows = audioData
         .map(wave => renderAudioWaveform(wave, engine.currentTime))
         .filter(Boolean);
-
-    if (!editor || rows.length === 0) {
+    if (rows.length === 0) {
         return;
     }
 
     const className = "audio-waveform-rows";
-    const existing = editor.querySelector(`.${className}`);
+    const existing = ui.timelineEditor.querySelector(`.${className}`);
     const container = document.createElement("div");
     container.className = className;
     container.innerHTML = rows.join("");
     if (existing) {
         existing.replaceWith(container);
     } else {
-        ui.trackRows.after(container);
+        ui.laneRows.after(container);
     }
 
     container.addEventListener("click", (e) => {

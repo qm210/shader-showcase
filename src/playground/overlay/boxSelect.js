@@ -14,7 +14,7 @@ const RECT_STYLE = [
 
 
 export class KeyframeBoxSelect {
-    /** onSelect({trackId, kfId}) receives the first dot in the box. */
+    /** onSelect({laneId, kfId}) receives the first dot in the box. */
     constructor(root, onSelect) {
         this.onSelect = onSelect;
         this.active = false;
@@ -64,7 +64,7 @@ export class KeyframeBoxSelect {
             const inside = this._contains(box, dot.getBoundingClientRect());
             dot.classList.toggle("shift-selected", inside);
             if (inside) {
-                this.selected.add(keyframeKey(dot.dataset.trackId, dot.dataset.kfId));
+                this.selected.add(keyframeKey(dot.dataset.laneId, dot.dataset.kfId));
             }
         }
     }

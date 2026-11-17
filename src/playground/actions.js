@@ -1,15 +1,15 @@
 import {DEBUG} from "./overlay/index.js";
-import {calcTrackValueRange} from "./engine/valueRanges.js";
+import {calcLaneValueRange} from "./engine/valueRanges.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: "hide-overlay",
     PLAY: "play",
-    ADD_TRACK: "add-track",
-    REMOVE_ALL_TRACKS: "remove-all-tracks",
+    ADD_LANE: "add-lane",
+    REMOVE_ALL_LANES: "remove-all-lanes",
+    DELETE_LANE: "delete-lane",
     EXPORT: "export",
     IMPORT: "import",
     RESET: "reset",
-    DELETE_TRACK: "delete-track",
     ADD_TARGET: "add-target",
     REMOVE_TARGET: "remove-target",
     ADD_KEYFRAME: "add-keyframe",
@@ -19,11 +19,11 @@ export const ACTION = Object.freeze({
     ADD_UNIFORM: "add-uniform",
     REMOVE_UNIFORM: "remove-uniform",
     RANDOMIZE: "randomize",
-    CANCEL_TRACK_NAME: "cancel-track-name",
-    CLEAR_TRACK: "clear-track",
-    RESCALE_TRACK: "rescale-track",
-    COPY_TRACK: "copy-track",
-    PASTE_TRACK: "paste-track",
+    CANCEL_LANE_NAME: "cancel-lane-name",
+    CLEAR_LANE: "clear-lane",
+    RESCALE_LANE: "rescale-lane",
+    COPY_LANE: "copy-lane",
+    PASTE_LANE: "paste-lane",
     LOAD_SNAPSHOT: "load-snapshot",
     CLEAR_OVERRIDES: "clear-overrides",
     LOAD_AUDIO: "load-audio",
@@ -41,13 +41,13 @@ export function runAction(overlay, data) {
             overlay.togglePlaying();
             break;
 
-        case ACTION.ADD_TRACK: {
-            const count = overlay.engine.getAllTracks().length + 1;
+        case ACTION.ADD_LANE: {
+            const count = overlay.engine.getAllLanes().length + 1;
             const name = `Track ${count}`;
-            overlay.engine.addTrack(name);
-            const tracks = overlay.engine.getAllTracks();
+            overlay.engine.addLane(name);
+            const tracks = overlay.engine.getAllLanes();
             if (tracks.length === 1) {
-                overlay.track.selectedId = tracks[0].id;
+                overlay.lane.selectedId = tracks[0].id;
             }
             overlay.renderTimeline();
             break;
@@ -67,24 +67,24 @@ export function runAction(overlay, data) {
             }
             break;
 
-        case ACTION.DELETE_TRACK:
-            if (confirm("Delete this track?")) {
-                overlay.engine.removeTrack(data.trackId);
-                overlay.collapsedTrackIds.delete(data.trackId);
+        case ACTION.DELETE_LANE:
+            if (confirm("Delete this lane?")) {
+                overlay.engine.removeLane(data.laneId);
+                overlay.collapsedTrackIds.delete(data.laneId);
                 overlay.selectedKeyframe = null;
-                const tracks = overlay.engine.getAllTracks();
+                const tracks = overlay.engine.getAllLanes();
                 if (tracks.length === 1) {
-                    overlay.track.selectedId = tracks[0].id;
+                    overlay.lane.selectedId = tracks[0].id;
                 }
                 overlay.renderTimeline();
             }
             break;
 
         case ACTION.ADD_TARGET: {
-            const track = overlay.engine.getTrack(data.trackId);
-            if (track) {
+            const lane = overlay.engine.getLane(data.laneId);
+            if (lane) {
                 // Add an empty target that the user can fill in
-                track.addTarget("");
+                lane.addTarget("");
                 overlay.renderTimeline();
                 // Focus the new selector (last one added)
                 const selectors = overlay.ui.trackList.querySelectorAll(".target-selector");
@@ -98,18 +98,18 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.REMOVE_TARGET: {
-            const track = overlay.engine.getTrack(data.trackId);
-            const target = track?.targets[parseInt(data.targetIdx, 10)];
+            const lane = overlay.engine.getLane(data.laneId);
+            const target = lane?.targets[parseInt(data.targetIdx, 10)];
             if (target) {
-                track.removeTarget(target.uniformName);
+                lane.removeTarget(target.uniformName);
                 overlay.renderTimeline();
             }
             break;
         }
 
         case ACTION.ADD_KEYFRAME: {
-            const track = overlay.engine.getTrack(data.trackId);
-            if (!track) {
+            const lane = overlay.engine.getLane(data.laneId);
+            if (!lane) {
                 return;
             }
             // Use prompt for X (time) and Y (value) coordinates per user override.
@@ -122,7 +122,7 @@ export function runAction(overlay, data) {
             if (isNaN(time)) {
                 return;
             }
-            const [minVal, maxVal] = calcTrackValueRange(track, overlay.ctx);
+            const [minVal, maxVal] = calcLaneValueRange(lane, overlay.ctx);
             const midVal = ((minVal + maxVal) / 2).toFixed(3);
             const defaultVal = overlay.ctx.getControlValue() ?? midVal;
             const valStr = prompt("Keyframe value:", defaultVal);
@@ -133,7 +133,7 @@ export function runAction(overlay, data) {
             if (isNaN(value)) {
                 return;
             }
-            overlay._addKeyframe(track, time, value);
+            overlay._addKeyframe(lane, time, value);
             break;
         }
 
@@ -206,27 +206,27 @@ export function runAction(overlay, data) {
             }
             break;
 
-        case ACTION.CANCEL_TRACK_NAME:
+        case ACTION.CANCEL_LANE_NAME:
             overlay._editingTrackId = null;
             overlay.renderTimeline();
             break;
 
-        case ACTION.CLEAR_TRACK: {
-            const track = overlay.engine.getTrack(data.trackId);
-            if (track && confirm("Clear all keyframes from this track?")) {
-                track.keyframes = [];
-                track.updateDuration();
+        case ACTION.CLEAR_LANE: {
+            const lane = overlay.engine.getLane(data.laneId);
+            if (lane && confirm("Clear all keyframes from this lane?")) {
+                lane.keyframes = [];
+                lane.updateDuration();
                 overlay.selectedKeyframe = null;
                 overlay.renderTimeline();
             }
             break;
         }
 
-        case ACTION.RESCALE_TRACK: {
-            const track = overlay.engine.getTrack(data.trackId);
-            if (!track || !track.keyframes.length) return;
-            const oldStart = track.keyframes[0].time;
-            const oldEnd = track.keyframes[track.keyframes.length - 1].time;
+        case ACTION.RESCALE_LANE: {
+            const lane = overlay.engine.getLane(data.laneId);
+            if (!lane || !lane.keyframes.length) return;
+            const oldStart = lane.keyframes[0].time;
+            const oldEnd = lane.keyframes[lane.keyframes.length - 1].time;
             const range = oldEnd - oldStart;
             if (range <= 0) return;
 
@@ -240,29 +240,29 @@ export function runAction(overlay, data) {
             if (isNaN(s) || isNaN(e) || e <= s) return;
 
             const factor = (e - s) / range;
-            for (const kf of track.keyframes) {
+            for (const kf of lane.keyframes) {
                 kf.time = s + (kf.time - oldStart) * factor;
             }
-            track.updateDuration();
+            lane.updateDuration();
             overlay.renderTimeline();
             break;
         }
 
-        case ACTION.COPY_TRACK: {
-            const track = overlay.engine.getTrack(data.trackId);
-            if (track && track.keyframes.length) {
-                overlay.clipboard.track = JSON.parse(JSON.stringify(track.keyframes));
-                alert("Keyframes copied! Use the paste button on another track.");
+        case ACTION.COPY_LANE: {
+            const lane = overlay.engine.getLane(data.laneId);
+            if (lane && lane.keyframes.length) {
+                overlay.clipboard.lane = JSON.parse(JSON.stringify(lane.keyframes));
+                alert("Keyframes copied! Use the paste button on another lane.");
             }
             break;
         }
 
-        case ACTION.PASTE_TRACK: {
-            if (!overlay.clipboard.track || !overlay.clipboard.track.length) return;
-            const track = overlay.engine.getTrack(data.trackId);
-            if (track) {
-                track.keyframes = JSON.parse(JSON.stringify(overlay.clipboard.track));
-                track.updateDuration();
+        case ACTION.PASTE_LANE: {
+            if (!overlay.clipboard.lane || !overlay.clipboard.lane.length) return;
+            const lane = overlay.engine.getLane(data.laneId);
+            if (lane) {
+                lane.keyframes = JSON.parse(JSON.stringify(overlay.clipboard.lane));
+                lane.updateDuration();
                 overlay.renderTimeline();
             }
             break;

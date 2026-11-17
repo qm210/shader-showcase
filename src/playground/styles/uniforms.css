@@ -110,7 +110,7 @@
 #pg .intensity-slider {
     --slider-color: var(--overlay-pink);
     background: rgba(255, 150, 170, 0.2);
-    max-width: 20%;
+    max-width: 10%;
 }
 
 #pg .intensity-value {

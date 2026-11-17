@@ -6,16 +6,16 @@ const MIN_ZOOM_SPAN = 0.5;
 const TICK_STEPS = [1, 2, 5];
 
 export function timelineSpan(engine, factor = 1) {
-    const tracks = engine.getAllTracks();
+    const tracks = engine.getAllLanes();
     let maxTime = 0;
-    for (const track of tracks) {
-        for (const kf of track.keyframes) {
+    for (const lane of tracks) {
+        for (const kf of lane.keyframes) {
             if (kf.time > maxTime) {
                 maxTime = kf.time;
             }
         }
     }
-    // Also consider audio track durations
+    // Also consider audio lane durations
     for (const audio of engine.getAllAudioTracks()) {
         if (audio.duration > maxTime) {
             maxTime = audio.duration;

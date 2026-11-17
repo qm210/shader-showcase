@@ -1,5 +1,5 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from "../persistence.js";
-import {calcTrackValueRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
+import {calcLaneValueRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
 import {EASING_TYPES, keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 import {ACTION, runAction} from "../actions.js";
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from "./index.js";
@@ -8,7 +8,7 @@ import {TimeZoomControl} from "./timeZoomControl.js";
 import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from "../engine/timeZoom.js";
 import {createPlaygroundOverlay} from "./dom/scaffold.js";
 import {renderPlayback, renderPreview, renderTimeZoom,} from "./dom/timeline.js";
-import {renderAllTracks, renderTrack, stripFraction} from "./dom/tracks.js";
+import {renderAllLanes, renderLane, stripFraction} from "./dom/tracks.js";
 import {findAllUniformComponents, renderUniformList} from "./dom/uniformList.js";
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
@@ -30,12 +30,12 @@ export class Overlay {
         this.element = null;
         this.ui = null;
 
-        // Batch and track ids that are selected or being renamed.
+        // Batch and lane ids that are selected or being renamed.
         this.batch = {
             selectedId: null,
             renamingId: null
         };
-        this.track = {
+        this.lane = {
             selectedId: null,
             renamingId: null,
             collapsedIds: new Set(),
@@ -52,7 +52,7 @@ export class Overlay {
             origLeft: 0,
             origTop: 0,
         };
-        // Dragging a keyframe dot: {track, kf, lockTime, moved}.
+        // Dragging a keyframe dot: {lane, kf, lockTime, moved}.
         this._keyframeDrag = null;
         this._ignoreNextClick = false;
 
@@ -72,8 +72,8 @@ export class Overlay {
         // Zoomed time window {start, end} of the timeline, or null.
         this.zoom = null;
 
-        // Copy/paste state for track keyframes.
-        this.clipboard = { track: null };
+        // Copy/paste state for lane keyframes.
+        this.clipboard = { lane: null };
 
         // Context action bar for the selected keyframe (created in scaffold.js)
         this.contextBar = null;
@@ -115,9 +115,9 @@ export class Overlay {
             }
             const blob = await response.blob();
             const file = audioFile(blob, DEFAULT_AUDIO_FILE);
-            const track = await this.engine.loadAudioTrack(file);
+            const lane = await this.engine.loadAudioTrack(file);
 
-            DEBUG.log("[AUDIO] Loaded default audio:", {file, track});
+            DEBUG.log("[AUDIO] Loaded default audio:", {file, lane});
         } catch (err) {
             console.warn("[AUDIO] Failed to load default audio:", err.message);
             console.error(err);
@@ -150,7 +150,7 @@ export class Overlay {
 
         this._boxSelect = new KeyframeBoxSelect(overlay, (selection) => {
             if (selection) {
-                this.track.selectedKeyframes = new Set(selection);
+                this.lane.selectedKeyframes = new Set(selection);
             }
             this.renderTimeline();
         });
@@ -246,37 +246,37 @@ export class Overlay {
 
     // ─── Selection helpers ──────────────────────────────────────
 
-    /** All selected keyframes as {trackId, kfId}. */
+    /** All selected keyframes as {laneId, kfId}. */
     _selectedKeys() {
-        return [...this.track.selectedKeyframes].map(parseKeyframeKey);
+        return [...this.lane.selectedKeyframes].map(parseKeyframeKey);
     }
 
     _firstSelectedKey() {
         return this._selectedKeys()[0] ?? null;
     }
 
-    /** The first selected keyframe with its track and keyframe, or null. */
+    /** The first selected keyframe with its lane and keyframe, or null. */
     _selection() {
         const first = this._firstSelectedKey();
         if (!first) {
             return null;
         }
-        const track = this.engine.getTrack(first.trackId);
-        const kf = track?.keyframes.find(k => k.id === first.kfId);
-        return kf ? {track, kf} : null;
+        const lane = this.engine.getLane(first.laneId);
+        const kf = lane?.keyframes.find(k => k.id === first.kfId);
+        return kf ? {lane, kf} : null;
     }
 
-    _selectOnly(trackId, kfId) {
-        const selected = this.track.selectedKeyframes;
+    _selectOnly(laneId, kfId) {
+        const selected = this.lane.selectedKeyframes;
         selected.clear();
-        selected.add(keyframeKey(trackId, kfId));
+        selected.add(keyframeKey(laneId, kfId));
     }
 
-    /** Drops the selection of one track, e.g. as its indices shifted. */
-    _deselectTrack(trackId) {
-        const selected = this.track.selectedKeyframes;
+    /** Drops the selection of one lane, e.g. as its indices shifted. */
+    _deselectTrack(laneId) {
+        const selected = this.lane.selectedKeyframes;
         for (const key of [...selected]) {
-            if (parseKeyframeKey(key).trackId === trackId) {
+            if (parseKeyframeKey(key).laneId === laneId) {
                 selected.delete(key);
             }
         }
@@ -286,22 +286,22 @@ export class Overlay {
         const selection = this._selection();
         if (selection) {
             edit(selection.kf);
-            this.renderTrack(selection.track.id);
+            this.renderLane(selection.lane.id);
         }
     }
 
-    _selectTrackRow(row) {
-        this.track.selectedId = row.dataset.trackId;
-        this.element.querySelectorAll(".track-wrapper.selected")
+    _selectLaneRow(row) {
+        this.lane.selectedId = row.dataset.laneId;
+        this.element.querySelectorAll(".lane-wrapper.selected")
             .forEach(el => el.classList.remove("selected"));
         row.classList.add("selected");
         this._scheduleSave();
     }
 
-    /** First element matching `selector` inside the row of a track. */
-    _queryInTrack(trackId, selector) {
-        return this.ui.trackRows.querySelector(
-            `.track-wrapper[data-track-id="${CSS.escape(trackId)}"]`
+    /** First element matching `selector` inside the row of a lane. */
+    _queryInTrack(laneId, selector) {
+        return this.ui.laneRows.querySelector(
+            `.lane-wrapper[data-lane-id="${CSS.escape(laneId)}"]`
             + ` ${selector}`
         );
     }
@@ -319,29 +319,29 @@ export class Overlay {
         if (e.code === "Delete") {
             this._deleteSelectedKeyframes();
         }
-        // Ctrl+Z / Cmd+Z for undo on the selected track
+        // Ctrl+Z / Cmd+Z for undo on the selected lane
         if ((e.ctrlKey || e.metaKey) && e.code === "KeyZ") {
             e.preventDefault();
             this._doUndo();
         }
     }
 
-    /** Deletes the selected keyframes on the first selected track. */
+    /** Deletes the selected keyframes on the first selected lane. */
     _deleteSelectedKeyframes() {
         const selection = this._selection();
         if (!selection) {
             return;
         }
-        const track = selection.track;
+        const lane = selection.lane;
         // Collect times first, removing shifts the indices.
         const times = this._selectedKeys()
-            .filter(k => k.trackId === track.id)
-            .map(k => track.keyframes.find(kf => kf.id === k.kfId)?.time)
+            .filter(k => k.laneId === lane.id)
+            .map(k => lane.keyframes.find(kf => kf.id === k.kfId)?.time)
             .filter(time => time !== undefined);
         for (const time of times) {
-            track.removeKeyframe(time);
+            lane.removeKeyframe(time);
         }
-        this.track.selectedKeyframes.clear();
+        this.lane.selectedKeyframes.clear();
         this.renderTimeline();
     }
 
@@ -387,8 +387,8 @@ export class Overlay {
             return;
         }
 
-        const track = this.engine.getTrack(strip.dataset.trackId);
-        const {time, value} = this._pointerOnStrip(strip, track, e);
+        const lane = this.engine.getLane(strip.dataset.laneId);
+        const {time, value} = this._pointerOnStrip(strip, lane, e);
         const editorRect = this.element.getBoundingClientRect();
         this._setTooltipText(time, value);
         tooltip.style.left = `${e.clientX - editorRect.left + 12}px`;
@@ -402,9 +402,9 @@ export class Overlay {
     }
 
     /** Time and value under the pointer, as used for new keyframes. */
-    _pointerOnStrip(strip, track, e) {
-        const [minVal, maxVal] = track
-            ? calcTrackValueRange(track, this.ctx)
+    _pointerOnStrip(strip, lane, e) {
+        const [minVal, maxVal] = lane
+            ? calcLaneValueRange(lane, this.ctx)
             : [0, 1];
         const rect = strip.getBoundingClientRect();
         const yRatio = clamp(1 - (e.clientY - rect.top) / rect.height, 0, 1);
@@ -422,10 +422,10 @@ export class Overlay {
         ].join("<br>");
     }
 
-    /** Re-reads the target rows; call after every track render. */
+    /** Re-reads the target rows; call after every lane render. */
     _refreshTargetRows() {
         this.render.targetRows = [
-            ...this.ui.trackRows.querySelectorAll(".target-row")
+            ...this.ui.laneRows.querySelectorAll(".target-row")
         ];
         this.render.highlightedUniform = null;
     }
@@ -453,13 +453,13 @@ export class Overlay {
             return;
         }
         e.stopPropagation();
-        const track = this.engine.getTrack(dot.dataset.trackId);
-        const kf = track?.keyframes.find(k => k.id === dot.dataset.kfId);
+        const lane = this.engine.getLane(dot.dataset.laneId);
+        const kf = lane?.keyframes.find(k => k.id === dot.dataset.kfId);
         if (!kf) {
             return;
         }
         // The keyframe at t=0 may only move vertically.
-        this._keyframeDrag = {track, kf, lockTime: kf.time === 0, moved: false};
+        this._keyframeDrag = {lane, kf, lockTime: kf.time === 0, moved: false};
     }
 
     _onKeyframeDrag(e) {
@@ -467,24 +467,24 @@ export class Overlay {
         if (!drag) {
             return;
         }
-        // Re-query, as every move replaces the row of the track.
-        const strip = this._queryInTrack(drag.track.id, ".keyframe-strip");
+        // Re-query, as every move replaces the row of the lane.
+        const strip = this._queryInTrack(drag.lane.id, ".keyframe-strip");
         if (!strip) {
             return;
         }
-        const {time, value} = this._pointerOnStrip(strip, drag.track, e);
+        const {time, value} = this._pointerOnStrip(strip, drag.lane, e);
         if (!drag.lockTime) {
             drag.kf.time =
-                this._timeBetweenNeighbours(drag.track, drag.kf, time);
+                this._timeBetweenNeighbours(drag.lane, drag.kf, time);
         }
         drag.kf.value = value;
         drag.moved = true;
-        this.renderTrack(drag.track.id);
+        this.renderLane(drag.lane.id);
     }
 
     /** Keeps the keyframe order, so indices and curves stay valid. */
-    _timeBetweenNeighbours(track, kf, time) {
-        const kfs = track.keyframes;
+    _timeBetweenNeighbours(lane, kf, time) {
+        const kfs = lane.keyframes;
         const i = kfs.indexOf(kf);
         const min = (kfs[i - 1]?.time ?? 0) + MIN_TIME_STEP;
         const max = (kfs[i + 1]?.time ?? Infinity) - MIN_TIME_STEP;
@@ -548,16 +548,16 @@ export class Overlay {
             return;
         }
 
-        const trackName = e.target.closest(".track-name");
-        if (trackName) {
-            const row = trackName.closest(".track-wrapper");
-            this._ifSingleClick(() => this._selectTrackRow(row));
+        const laneName = e.target.closest(".lane-name");
+        if (laneName) {
+            const row = laneName.closest(".lane-wrapper");
+            this._ifSingleClick(() => this._selectLaneRow(row));
             return;
         }
 
-        const trackWidget = e.target.closest(".track-widget");
-        if (trackWidget) {
-            this._selectTrackRow(trackWidget.closest(".track-wrapper"));
+        const laneWidget = e.target.closest(".lane-widget");
+        if (laneWidget) {
+            this._selectLaneRow(laneWidget.closest(".lane-wrapper"));
             return;
         }
 
@@ -601,13 +601,13 @@ export class Overlay {
             toggle: e.shiftKey,
             range: e.ctrlKey || e.metaKey
         };
-        const trackId = dot.dataset.trackId;
+        const laneId = dot.dataset.laneId;
         const kfId = dot.dataset.kfId;
-        const key = keyframeKey(trackId, kfId);
-        const selected = this.track.selectedKeyframes;
+        const key = keyframeKey(laneId, kfId);
+        const selected = this.lane.selectedKeyframes;
 
         if (mode.toggle) {
-            this._selectRange(trackId, kfId);
+            this._selectRange(laneId, kfId);
         } else if (mode.range) {
             if (selected.has(key)) {
                 selected.delete(key);
@@ -615,44 +615,44 @@ export class Overlay {
                 selected.add(key);
             }
         } else {
-            this._selectOnly(trackId, kfId);
+            this._selectOnly(laneId, kfId);
         }
 
-        this._debugKeyFrames(trackId);
+        this._debugKeyFrames(laneId);
 
         // Selection may change on several tracks, so render them all.
         this.renderTimeline();
         this._showKeyframePopups();
     }
 
-    _debugKeyFrames(trackId) {
-        const track = this.engine.getTrack(trackId);
-        console.group("[KEYFRAMES] on Track", trackId, track, " - Keyframes:");
-        console.table(track.keyframes);
-        console.log("Selected:", this.track.selectedKeyframes);
+    _debugKeyFrames(laneId) {
+        const lane = this.engine.getLane(laneId);
+        console.group("[KEYFRAMES] on Track", laneId, lane, " - Keyframes:");
+        console.table(lane.keyframes);
+        console.log("Selected:", this.lane.selectedKeyframes);
         console.groupEnd();
     }
 
-    _addKeyframe(track, time, value) {
-        const lengthBefore = track.keyframes.length;
+    _addKeyframe(lane, time, value) {
+        const lengthBefore = lane.keyframes.length;
         if (lengthBefore === 0 && time > MIN_TIME_STEP) {
-            track.addKeyframe(0, value);
+            lane.addKeyframe(0, value);
         }
-        const kf = track.addKeyframe(time, value);
-        this.track.selectedKeyframes.add(
-            keyframeKey(track.id, kf.id)
+        const kf = lane.addKeyframe(time, value);
+        this.lane.selectedKeyframes.add(
+            keyframeKey(lane.id, kf.id)
         );
-        this.renderTrack(track.id);
+        this.renderLane(lane.id);
         this._showKeyframePopups();
     }
 
     _addKeyframeAtPointer(strip, e) {
-        const track = this.engine.getTrack(strip.dataset.trackId);
-        if (!track) {
+        const lane = this.engine.getLane(strip.dataset.laneId);
+        if (!lane) {
             return;
         }
-        const {time, value} = this._pointerOnStrip(strip, track, e);
-        this._addKeyframe(track, time, value);
+        const {time, value} = this._pointerOnStrip(strip, lane, e);
+        this._addKeyframe(lane, time, value);
     }
 
     _onDoubleClick(e) {
@@ -668,13 +668,13 @@ export class Overlay {
             return;
         }
 
-        const trackName = e.target.closest(".track-name");
-        if (trackName) {
-            const id = trackName.closest(".track-wrapper").dataset.trackId;
+        const laneName = e.target.closest(".lane-name");
+        if (laneName) {
+            const id = laneName.closest(".lane-wrapper").dataset.laneId;
             requestAnimationFrame(() => {
-                this.track.renamingId = id;
-                this.renderTrack(id);
-                this._focusName(".track-wrapper", "track-id", id);
+                this.lane.renamingId = id;
+                this.renderLane(id);
+                this._focusName(".lane-wrapper", "lane-id", id);
             });
             return;
         }
@@ -696,13 +696,13 @@ export class Overlay {
 
     /** Selects the keyframe and focuses the value input of the bar. */
     _focusKeyframeValue(dot) {
-        const {trackId} = dot.dataset;
+        const {laneId} = dot.dataset;
         const kfId = dot.dataset.kfId;
-        if (!this.engine.getTrack(trackId)?.keyframes.find(k => k.id === kfId)) {
+        if (!this.engine.getLane(laneId)?.keyframes.find(k => k.id === kfId)) {
             this._removeKeyframePopups();
             return;
         }
-        this.track.selectedKeyframes.add(keyframeKey(trackId, kfId));
+        this.lane.selectedKeyframes.add(keyframeKey(laneId, kfId));
         this.renderTimeline();
         this._showKeyframePopups();
         requestAnimationFrame(() => {
@@ -714,28 +714,28 @@ export class Overlay {
 
     _showKeyframePopups() {
         this._removeKeyframePopups();
-        for (const {trackId, kfId} of this._selectedKeys()) {
-            const kf = this.engine.getTrack(trackId)?.keyframes.find(k => k.id === kfId);
-            const trackWidget = this._queryInTrack(trackId, ".track-widget");
-            const dot = trackWidget?.querySelector(
+        for (const {laneId, kfId} of this._selectedKeys()) {
+            const kf = this.engine.getLane(laneId)?.keyframes.find(k => k.id === kfId);
+            const laneWidget = this._queryInTrack(laneId, ".lane-widget");
+            const dot = laneWidget?.querySelector(
                 `.keyframe-dot[data-kf-id="${kfId}"]`
             );
             if (!kf || !dot) {
                 continue;
             }
-            const popup = this._createKeyframePopup(trackId, kfId, kf);
-            const widgetRect = trackWidget.getBoundingClientRect();
+            const popup = this._createKeyframePopup(laneId, kfId, kf);
+            const widgetRect = laneWidget.getBoundingClientRect();
             const dotRect = dot.getBoundingClientRect();
             popup.style.top = `${widgetRect.height + 4}px`;
             popup.style.left = `${dotRect.left - widgetRect.left}px`;
             popup.style.transform = "translateX(-50%)";
             popup.style.maxWidth = "none";
             popup.style.width = "auto";
-            trackWidget.appendChild(popup);
+            laneWidget.appendChild(popup);
         }
     }
 
-    _createKeyframePopup(trackId, kfId, kf) {
+    _createKeyframePopup(laneId, kfId, kf) {
         const ease = kf.ease || "linear";
         const popup = document.createElement("div");
         popup.className = "keyframe-popup";
@@ -772,13 +772,13 @@ export class Overlay {
         popup.querySelector(".popup-remove")
             .addEventListener("click", (e) => {
                 e.stopPropagation();
-                this._removeKeyframe(trackId, kfId);
+                this._removeKeyframe(laneId, kfId);
             });
         popup.querySelector(".kf-ease-select-popup")
             .addEventListener("change", (e) => {
                 e.stopPropagation();
                 kf.ease = e.target.value;
-                this.renderTrack(trackId);
+                this.renderLane(laneId);
             });
         popup.querySelector(".kf-seek-btn")
             .addEventListener("click", (e) => {
@@ -789,48 +789,48 @@ export class Overlay {
         return popup;
     }
 
-    _selectRange(trackId, kfId) {
-        if (!this.engine.getTrack(trackId)) {
+    _selectRange(laneId, kfId) {
+        if (!this.engine.getLane(laneId)) {
             return;
         }
         const first = this._firstSelectedKey();
-        if (first?.trackId !== trackId) {
-            this._selectOnly(trackId, kfId);
+        if (first?.laneId !== laneId) {
+            this._selectOnly(laneId, kfId);
             return;
         }
-        const track = this.engine.getTrack(trackId);
-        const firstKf = track.keyframes.find(k => k.id === first.kfId);
-        const targetKf = track.keyframes.find(k => k.id === kfId);
+        const lane = this.engine.getLane(laneId);
+        const firstKf = lane.keyframes.find(k => k.id === first.kfId);
+        const targetKf = lane.keyframes.find(k => k.id === kfId);
         if (!firstKf || !targetKf) {
             return;
         }
-        const fromIdx = track.keyframes.indexOf(firstKf);
-        const toIdx = track.keyframes.indexOf(targetKf);
+        const fromIdx = lane.keyframes.indexOf(firstKf);
+        const toIdx = lane.keyframes.indexOf(targetKf);
         const from = Math.min(fromIdx, toIdx);
         const to = Math.max(fromIdx, toIdx);
-        const selected = this.track.selectedKeyframes;
+        const selected = this.lane.selectedKeyframes;
         selected.clear();
         for (let i = from; i <= to; i++) {
-            selected.add(keyframeKey(trackId, track.keyframes[i].id));
+            selected.add(keyframeKey(laneId, lane.keyframes[i].id));
         }
     }
 
     _removeKeyframePopups() {
-        for (const popup of this.ui.trackRows.querySelectorAll(".keyframe-popup")) {
+        for (const popup of this.ui.laneRows.querySelectorAll(".keyframe-popup")) {
             popup.remove();
         }
     }
 
-    _removeKeyframe(trackId, kfId) {
-        const track = this.engine.getTrack(trackId);
-        const kf = track?.keyframes.find(k => k.id === kfId);
+    _removeKeyframe(laneId, kfId) {
+        const lane = this.engine.getLane(laneId);
+        const kf = lane?.keyframes.find(k => k.id === kfId);
         if (!kf) {
             return;
         }
-        track.removeKeyframe(kf.time);
+        lane.removeKeyframe(kf.time);
         this._removeKeyframePopups();
-        this._deselectTrack(trackId);
-        this.renderTrack(trackId);
+        this._deselectTrack(laneId);
+        this.renderLane(laneId);
     }
 
     _focusName(containerSelector, dataKey, id) {
@@ -857,7 +857,7 @@ export class Overlay {
 
     _isEditingName(el) {
         return el.classList.contains("name")
-            && Boolean(this.track.renamingId || this.batch.renamingId);
+            && Boolean(this.lane.renamingId || this.batch.renamingId);
     }
 
     _onKeyDown(e) {
@@ -879,9 +879,9 @@ export class Overlay {
         const el = e.target;
         if (this._isEditingName(el)) {
             const cancelling = e.relatedTarget?.closest(
-                `[data-action="${ACTION.CANCEL_TRACK_NAME}"]`
+                `[data-action="${ACTION.CANCEL_LANE_NAME}"]`
             );
-            if (!(this.track.renamingId && cancelling)) {
+            if (!(this.lane.renamingId && cancelling)) {
                 this._commitNameEdit(el);
             }
             return;
@@ -891,13 +891,13 @@ export class Overlay {
         }
     }
 
-    /** Applies the inline-edited track or batch name and leaves editing. */
+    /** Applies the inline-edited lane or batch name and leaves editing. */
     _commitNameEdit(input) {
         const name = input.value.trim();
-        if (this.track.renamingId) {
-            const track = this.engine.getTrack(this.track.renamingId);
-            if (name && track) {
-                track.name = name;
+        if (this.lane.renamingId) {
+            const lane = this.engine.getLane(this.lane.renamingId);
+            if (name && lane) {
+                lane.name = name;
             }
             this._stopTrackNameEdit();
         } else if (this.batch.renamingId) {
@@ -911,7 +911,7 @@ export class Overlay {
     }
 
     _cancelNameEdit() {
-        if (this.track.renamingId) {
+        if (this.lane.renamingId) {
             this._stopTrackNameEdit();
         } else if (this.batch.renamingId) {
             this.batch.renamingId = null;
@@ -920,21 +920,21 @@ export class Overlay {
     }
 
     _stopTrackNameEdit() {
-        const trackId = this.track.renamingId;
+        const laneId = this.lane.renamingId;
         // Cleared before rendering, so the blur of the replaced input
         // does not commit a second time.
-        this.track.renamingId = null;
-        this.renderTrack(trackId);
+        this.lane.renamingId = null;
+        this.renderLane(laneId);
     }
 
     /** Removes a target whose name was cleared. */
     _removeEmptyTarget(input) {
-        const track = this.engine.getTrack(input.dataset.trackId);
+        const lane = this.engine.getLane(input.dataset.laneId);
         // The trailing "add" row has no target object and is never removed.
-        const target = track?.targets[intAttr(input, "targetIdx")];
+        const target = lane?.targets[intAttr(input, "targetIdx")];
         if (target && !target.uniformName.trim()) {
-            track.removeTarget(target.uniformName);
-            this.renderTrack(track.id);
+            lane.removeTarget(target.uniformName);
+            this.renderLane(lane.id);
         }
     }
 
@@ -951,12 +951,12 @@ export class Overlay {
             this.engine.speed = parseFloat(el.value) || 1.0;
             this._scheduleSave();
         } else if (el.classList.contains("target-enable")) {
-            const {trackId} = el.dataset;
-            const target = this.engine.getTrack(trackId)
+            const {laneId} = el.dataset;
+            const target = this.engine.getLane(laneId)
                 ?.targets[intAttr(el, "targetIdx")];
             if (target) {
                 target.enabled = el.checked;
-                this.renderTrack(trackId);
+                this.renderLane(laneId);
             }
         } else if (el.closest(".batch-uniform-row")) {
             this._updateBatchUniformField(el);
@@ -1041,28 +1041,28 @@ export class Overlay {
     }
 
     _onTargetNameInput(input) {
-        const {trackId} = input.dataset;
+        const {laneId} = input.dataset;
         const targetIdx = intAttr(input, "targetIdx");
-        const track = this.engine.getTrack(trackId);
-        if (!track) {
+        const lane = this.engine.getLane(laneId);
+        if (!lane) {
             return;
         }
         const newName = input.value.trim();
 
         // Typing into the trailing "add" row creates a real target.
-        if (newName && targetIdx === track.targets.length) {
-            track.addTarget(newName);
-            this.renderTrack(trackId);
-            this._refocusTargetSelector(trackId, targetIdx);
+        if (newName && targetIdx === lane.targets.length) {
+            lane.addTarget(newName);
+            this.renderLane(laneId);
+            this._refocusTargetSelector(laneId, targetIdx);
             return;
         }
 
-        const target = track.targets[targetIdx];
+        const target = lane.targets[targetIdx];
         if (!target || newName === target.uniformName) {
             return;
         }
         if (target.uniformName) {
-            track.removeTarget(target.uniformName);
+            lane.removeTarget(target.uniformName);
         }
         target.uniformName = newName;
         this._resetTargetRange(target);
@@ -1070,9 +1070,9 @@ export class Overlay {
     }
 
     /** Puts the caret back into a target input after a re-render. */
-    _refocusTargetSelector(trackId, targetIdx) {
+    _refocusTargetSelector(laneId, targetIdx) {
         const input = this._queryInTrack(
-            trackId, `.target-selector[data-target-idx="${targetIdx}"]`
+            laneId, `.target-selector[data-target-idx="${targetIdx}"]`
         );
         if (input) {
             input.focus();
@@ -1139,8 +1139,8 @@ export class Overlay {
 
     _doUndo() {
         const first = this._firstSelectedKey();
-        if (this.engine.getTrack(first?.trackId)?.undo()) {
-            this.renderTrack(first.trackId);
+        if (this.engine.getLane(first?.laneId)?.undo()) {
+            this.renderLane(first.laneId);
         }
     }
 
@@ -1149,7 +1149,7 @@ export class Overlay {
         renderContextActionBar(
             this.contextBar,
             selection?.kf,
-            selection?.track,
+            selection?.lane,
             selection && this._neighbours(selection),
         );
         const anchor = selection && this._contextBarAnchor();
@@ -1165,12 +1165,12 @@ export class Overlay {
             return null;
         }
         const dot = this._queryInTrack(
-            first.trackId, `.keyframe-dot[data-kf-id="${first.kfId}"]`
+            first.laneId, `.keyframe-dot[data-kf-id="${first.kfId}"]`
         );
         if (dot) {
             return dot.getBoundingClientRect();
         }
-        const strip = this.ui.trackRows.querySelector(".keyframe-strip");
+        const strip = this.ui.laneRows.querySelector(".keyframe-strip");
         if (!strip) {
             return null;
         }
@@ -1184,10 +1184,10 @@ export class Overlay {
         };
     }
 
-    _neighbours({track, index}) {
+    _neighbours({lane, index}) {
         return {
-            prev: track.keyframes[index - 1] ?? null,
-            next: track.keyframes[index + 1] ?? null,
+            prev: lane.keyframes[index - 1] ?? null,
+            next: lane.keyframes[index + 1] ?? null,
         };
     }
 
@@ -1201,7 +1201,7 @@ export class Overlay {
             .then(json => {
                 // Load into the existing engine so references stay valid.
                 this.engine.loadTimelineFromJSON(json);
-                this.track.selectedKeyframes.clear();
+                this.lane.selectedKeyframes.clear();
                 this.syncUI();
                 this.renderTimeline();
             })
@@ -1209,7 +1209,7 @@ export class Overlay {
     }
 
     /**
-     * Load an audio file and add it as an audio track.
+     * Load an audio file and add it as an audio lane.
      * @param {File} file
      */
     async _loadAudioFile(file) {
@@ -1239,8 +1239,8 @@ export class Overlay {
         this._cancelPendingSave();
 
         this.engine.reset();
-        this.track.selectedKeyframes.clear();
-        this.track.collapsedIds.clear();
+        this.lane.selectedKeyframes.clear();
+        this.lane.collapsedIds.clear();
         this.batch.selectedId = null;
         this.randomIntensity = 1;
         this.zoom = null;
@@ -1313,8 +1313,8 @@ export class Overlay {
         this.randomIntensity = Number.isFinite(intensity)
             ? clamp(intensity, 0, 1)
             : 1;
-        this.track.selectedId = stored.selectedTrackId ?? null;
-        this.track.collapsedIds = new Set(stored.collapsedTracks ?? []);
+        this.lane.selectedId = stored.selectedTrackId ?? null;
+        this.lane.collapsedIds = new Set(stored.collapsedTracks ?? []);
         this.zoom = ifValidTimeZoom(stored.zoom);
         this.element.classList.toggle("collapsed", Boolean(stored.collapsed));
 
@@ -1370,25 +1370,25 @@ export class Overlay {
     renderTimeline() {
         this.render.renderedSpan = timelineSpan(this.engine);
         renderTimeZoom(this.ui, this.render.renderedSpan, this.zoom);
-        renderAllTracks(this.ui, this.ctx, ...this._trackRenderState());
+        renderAllLanes(this.ui, this.ctx, ...this._lanesRenderState());
         this._refreshTargetRows();
         this._renderPlayback();
         const view = visibleRange(this.zoom, this.render.renderedSpan);
-        renderAudioWaveforms(this.ui, this.engine, view, this.render.renderedSpan, this.engine.currentTime);
+        renderAudioWaveforms(this.ui, this.engine, view);
         this._renderPreview();
         this._positionContextBar();
         this._scheduleSave();
     }
 
     /**
-     * Re-renders only the row of one track, e.g. after editing its
+     * Re-renders only the row of one lane, e.g. after editing its
      * keyframes or targets. Falls back to renderTimeline() if the row
      * is missing or the timeline span changed, as that rescales all rows.
      */
-    renderTrack(trackId) {
+    renderLane(laneId) {
         const replaced = timelineSpan(this.engine) === this.render.renderedSpan
-            && renderTrack(
-                this.ui, this.ctx, trackId, ...this._trackRenderState()
+            && renderLane(
+                this.ui, this.ctx, laneId, ...this._lanesRenderState()
             );
         if (!replaced) {
             this.renderTimeline();
@@ -1401,10 +1401,12 @@ export class Overlay {
     }
 
     _normalizeEasingLines() {
-        const strips = this.ui.trackRows.querySelectorAll(".keyframe-strip");
+        const strips = this.ui.laneRows.querySelectorAll(".keyframe-strip");
         strips.forEach(strip => {
             const svg = strip.querySelector(".easing-line");
-            if (!svg) return;
+            if (!svg) {
+                return;
+            }
             const w = strip.clientWidth;
             const h = strip.clientHeight;
             if (w > 0 && h > 0) {
@@ -1414,9 +1416,14 @@ export class Overlay {
         });
     }
 
-    _trackRenderState() {
-        const {selectedId, renamingId, collapsedIds, selectedKeyframes} = this.track;
-        return [selectedId, renamingId, collapsedIds, selectedKeyframes, this._timeView()];
+    _lanesRenderState() {
+        return [
+            this.lane.selectedId,
+            this.lane.renamingId,
+            this.lane.collapsedIds,
+            this.lane.selectedKeyframes,
+            this._timeView()
+        ];
     }
 
     _renderPreview(opts) {

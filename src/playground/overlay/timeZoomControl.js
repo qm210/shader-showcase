@@ -41,7 +41,7 @@ export class TimeZoomControl {
         this.timeline = timeline;
         this.drag = null;
 
-        const {timeRuler, timeRangeBar, trackRows} = ui;
+        const {timeRuler, timeRangeBar, laneRows} = ui;
         timeRuler.addEventListener("pointerdown", (e) => this._begin(e));
         timeRuler.addEventListener("pointermove", (e) => this._move(e));
         timeRuler.addEventListener("pointerup", (e) => this._end(e));
@@ -64,7 +64,7 @@ export class TimeZoomControl {
         const active = {passive: false};
         timeRangeBar.addEventListener("wheel", (e) => this._onBarWheel(e),
             active);
-        trackRows.addEventListener("wheel", (e) => this._onStripWheel(e),
+        laneRows.addEventListener("wheel", (e) => this._onStripWheel(e),
             active);
     }
 

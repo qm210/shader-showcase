@@ -36,7 +36,7 @@ export class PlaybackSync {
     }
 
     /**
-     * Connect the main page's track actions so overlay seek/play
+     * Connect the main page's lane actions so overlay seek/play
      * also trigger the main page's audio handling logic.
      * @param {object} mainActions - { seek: fn, togglePlay: fn }
      */
@@ -70,7 +70,7 @@ export class PlaybackSync {
      * Call when main page loop state changes.
      */
     onMainLoopChanged() {
-        // Loop state is per-track in the engine, not global.
+        // Loop state is per-lane in the engine, not global.
         // The engine auto-loops tracks individually.
     }
 

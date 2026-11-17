@@ -7,7 +7,7 @@
     transition: min-height 400ms cubic-bezier(0.23, 1, 0.37, 1);
 }
 
-#pg .track-wrapper.selected .track-widget .keyframe-strip {
+#pg .lane-wrapper.selected .track-widget .keyframe-strip {
     background-color: var(--overlay-bg);
     min-height: 200px;
 }
