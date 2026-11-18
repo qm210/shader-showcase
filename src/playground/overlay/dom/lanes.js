@@ -1,7 +1,7 @@
 import {ACTION, LANE_ACTIONS} from "../../actions.js";
 import {smoothstep} from "../../engine/math.js";
 import {calcLaneRange} from "../../engine/valueRanges.js";
-import {CHAR, clamp, DEBUG} from "../index.js";
+import {CHAR, clamp} from "../index.js";
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from "./html.js";
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
@@ -105,7 +105,6 @@ function targetRow(laneId, index, target, knownNames) {
     const data = dataAttrs({laneId, targetIdx: index});
     const name = target?.uniformName ?? "";
     const isValid = !name || knownNames.has(name);
-    DEBUG.log("TARGET", {name, target, isValid, knownNames});
     const checked = target && (!isValid || target.enabled);
     const disabled = target && !isValid && target.enabled;
     const removeButton =

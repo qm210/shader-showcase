@@ -599,7 +599,7 @@ export class Overlay {
         }
 
         if (!e.target.closest(".target-selector")) {
-            this.ui.randomize.targetDropdown.hidden = true;
+            this.ui.randomize.targetDropdown.hidden = true;f
         }
 
         e.target.closest(".uniform-group-header")
@@ -1096,6 +1096,7 @@ export class Overlay {
             lane.removeTarget(target.uniformName);
         }
         target.uniformName = newName;
+        DEBUG.log("[TARGET INPUT]", {lane, targetIdx, target});
         this._resetTargetRange(lane, targetIdx, target);
         this._scheduleSave();
     }

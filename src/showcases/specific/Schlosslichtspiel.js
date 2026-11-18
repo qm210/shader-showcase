@@ -186,7 +186,7 @@ const createUniforms = () => [
     { type: "float", name: "iLightSwitchRate", defaultValue: 0.08, min: 0, max: 2, step: 0.01 },
     { type: "float", name: "iLightSpill", defaultValue: 0.22, min: 0, max: 2, step: 0.01 },
     { type: "float", name: "iGlassReflect", defaultValue: 0.10, min: 0, max: 1, step: 0.01 },
-    { type: "float", name: "iVignetteStrength", defaultValue: 0.25, min: 0, max: 1, step: 0.01 },
+    { type: "float", name: "iVignetteStrength", defaultValue: 0., hidden: true, min: 0, max: 1, step: 0.01 },
     { type: "float", name: "iGamma", defaultValue: 1.0, min: 0.1, max: 3, step: 0.01 },
 
     { separator: "Events: circle / square / triangle / hexagon" },
