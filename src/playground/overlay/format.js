@@ -32,13 +32,15 @@ export function formatOverwrite(value) {
 }
 
 /** One component of a scalar or vector value as text, "" when unset. */
-export function formatComponent(value, index) {
+export function formatComponent(value, index, normalized) {
     if (isNil(value)) {
         return "";
     }
-    return Array.isArray(value)
-        ? String(value[index] ?? "")
-        : String(value);
+    const v = Array.isArray(value) ? value[index] ?? 0 : value;
+    if (normalized) {
+        return v.toFixed(2);
+    }
+    return String(v);
 }
 
 /** Min/max/step of one component of a control range. */

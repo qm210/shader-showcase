@@ -71,9 +71,10 @@ export function runAction(overlay, data) {
             break;
 
         case ACTION.DELETE_LANE:
-            if (confirm("Delete this lane?")) {
-                overlay.engine.removeLane(data.laneId);
-                overlay.lane.collapsedIds.delete(data.laneId);
+            const lane = this.engine.getLane(data.laneId);
+            if (confirm(`Delete lane "${lane.name}"?`)) {
+                overlay.engine.removeLane(lane.id);
+                overlay.lane.collapsedIds.delete(lane.id);
                 overlay.selectedKeyframe = null;
                 const lanes = overlay.engine.getAllLanes();
                 if (lanes.length === 1) {

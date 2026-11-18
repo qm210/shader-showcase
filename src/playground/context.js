@@ -21,13 +21,14 @@ export class PlaygroundContext {
             getCurrentTime: () => state.time,
             setCurrentTime: (to) => state.play.actions.jump({to}),
         });
+        this._provider = this._createProvider();
+        this.randomizer = new Randomizer(this._provider);
+        this.overlay = new Overlay(this._provider);
+
         this._controlMap = null;
         this.batches = { auto: [], custom: [] };
         this.uniformGroups = [];
         this._connect(state, controls, elements);
-        this._provider = this._createProvider();
-        this.randomizer = new Randomizer(this._provider);
-        this.overlay = new Overlay(this._provider);
 
         this.overlay.init()
             .catch(err => {
@@ -91,7 +92,6 @@ export class PlaygroundContext {
     resolveControl(entry) {
         let control = this._controlMap?.get(entry.name);
         if (!control) {
-            console.warn("Failed to resolveRange()", entry, this._controlMap);
             control = { ...FALLBACK_RANGE, defaultValue: 0 };
         }
         return {

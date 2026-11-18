@@ -80,7 +80,7 @@
     bottom: 0.1em;
 }
 
-#pg .keyframe-strip .zero-marker {
+#pg .keyframe-strip .constant-marker {
     position: absolute;
     right: 100%;
     margin-right: 0.3em;

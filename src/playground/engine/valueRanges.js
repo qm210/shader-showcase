@@ -18,7 +18,7 @@ export function isFiniteArray(value) {
 }
 
 export function calcLaneRange(lane, context) {
-    let [min, max] = [0, 1];
+    let [min, max] = [FALLBACK_RANGE.min, FALLBACK_RANGE.max];
     for (const target of lane.targets) {
         if (target.enabled && target.uniformName) {
             const range = context.getControl(target.uniformName);

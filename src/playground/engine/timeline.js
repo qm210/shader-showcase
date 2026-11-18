@@ -1,7 +1,6 @@
 import {createKeyframeId, findSurroundingKeyframes, interpolateKeyframes} from "./keyframes.js";
 import {MIN_TIME_STEP} from "./timeZoom.js";
 import {FALLBACK_RANGE} from "./valueRanges.js";
-import {clamp} from "../../app/algorithms.js";
 
 const MAX_UNDO_STEPS = 50;
 
@@ -58,19 +57,6 @@ export class TimeLane {
     }
 
     addKeyframe(time, value, ease = "linear") {
-        // Clamp value to target ranges if possible
-        const clampedValue = Array.isArray(value)
-            ? value.map((v, i) => {
-                const target = this.targets[i];
-                if (target && target.enabled) {
-                    return Math.max(target.minValue, Math.min(target.maxValue, v));
-                }
-                return v;
-            })
-            : this.targets[0]?.enabled
-                ? Math.max(this.targets[0].minValue, Math.min(this.targets[0].maxValue, value))
-                : value;
-
         const kf = this.createKeyframe(time, value, ease);
         // Insert sorted by time
         let inserted = false;
@@ -84,7 +70,6 @@ export class TimeLane {
         if (!inserted) {
             this.keyframes.push(kf);
         }
-
         this._pushUndo({ type: "add", keyframes: [kf] });
         this.updateDuration();
         return kf;
@@ -152,6 +137,11 @@ export class TimeLane {
         }
     }
 
+    /** Map a [-1, +1] value to the target's min/max range. */
+    _mapToRange(value, target) {
+        return target.minValue + (value + 1) * (target.maxValue - target.minValue) / 2;
+    }
+
     /** Get interpolated value for a specific target uniform at current time */
     getTargetValue(uniformName, currentTime) {
         const target = this.targets.find(t => t.uniformName === uniformName);
@@ -161,18 +151,19 @@ export class TimeLane {
 
         const surrounding = findSurroundingKeyframes(this.keyframes, currentTime);
         if (!surrounding) {
-            return target.minValue;
+            return this._mapToRange(-1, target);
         }
 
         const rawValue = interpolateKeyframes(surrounding.prev, surrounding.next, surrounding.t,
             surrounding.prev.ease);
 
         if (Array.isArray(rawValue)) {
-            return rawValue.map(v =>
-                clamp(v, target.minValue, target.maxValue)
-            );
+            return rawValue.map((v, i) => {
+                const t = this.targets[i];
+                return t ? this._mapToRange(v, t) : v;
+            });
         }
-        return clamp(rawValue, target.minValue, target.maxValue);
+        return this._mapToRange(rawValue, target);
     }
 
     getAllValues(currentTime) {

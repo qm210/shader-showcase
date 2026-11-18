@@ -119,10 +119,10 @@ function uniformRows(provider, entry, isChecked) {
                     <input type="range"
                            class="uniform-slider"
                            ${data}
-                           min="${compRange.min}"
-                           max="${compRange.max}"
-                           step="${compRange.step}"
-                           value="${compValue}"
+                           min="-1"
+                           max="1"
+                           step="0.01"
+                           value="${formatComponent(currentValue, i, true)}"
                            title="${compValue}">
                 </td>
                 ${overwriteCell('max', entry, i, compRange.max)}
@@ -130,7 +130,7 @@ function uniformRows(provider, entry, isChecked) {
     }).join("");
 }
 
-export function updateUniformRow(container, name, value) {
+export function updateUniformRow(container, name, value, range) {
     const sliders = Array.from(
         container.querySelectorAll(
             `input[data-uniform-name="${name}"]`
@@ -142,7 +142,11 @@ export function updateUniformRow(container, name, value) {
         const compValue = Array.isArray(value)
             ? (value[idx] ?? 0)
             : value;
-        slider.value = compValue;
+        const compMin = Array.isArray(range?.min) ? range.min[idx] ?? 0 : (range?.min ?? 0);
+        const compMax = Array.isArray(range?.max) ? range.max[idx] ?? 1 : (range?.max ?? 1);
+        const compRange = compMax - compMin;
+        const normalized = compRange === 0 ? 0 : 2 * (compValue - compMin) / compRange - 1;
+        slider.value = normalized;
         slider.title = formatNumber(compValue);
         const tooltip = slider.parentElement
             .querySelector(".slider-tooltip");

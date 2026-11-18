@@ -1,5 +1,5 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from "../persistence.js";
-import {calcLaneRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
+import {FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
 import {EASING_TYPES, keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 import {ACTION, runAction} from "../actions.js";
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from "./index.js";
@@ -236,12 +236,13 @@ export class Overlay {
             });
         bar.querySelector(".kf-current-val")
             .addEventListener("change", (e) => {
-                const value = parseFloat(e.target.value);
-                if (!isNaN(value)) {
-                    this._editSelectedKeyframe(kf => {
-                        kf.value = value;
-                    });
+                const displayValue = parseFloat(e.target.value);
+                if (isNaN(displayValue)) {
+                    return;
                 }
+                this._editSelectedKeyframe(({lane, kf}) => {
+                    kf.value = this._toNormalized(displayValue, lane);
+                });
             });
     }
 
@@ -348,7 +349,8 @@ export class Overlay {
 
     _updateUniform(name, value) {
         this.engine.setActualUniformValue(name, value);
-        updateUniformRow(this.element, name, value);
+        const range = this.ctx.getControl(name);
+        updateUniformRow(this.element, name, value, range);
         this._renderPreview();
     }
 
@@ -387,13 +389,12 @@ export class Overlay {
         const tooltip = this.ui.timelineTooltip;
 
         if (this._keyframeDrag) {
-            const {kf} = this._keyframeDrag;
-            this._setTooltipText(kf.time, kf.value);
+            const {kf, lane} = this._keyframeDrag;
+            this._setTooltipText(kf.time, this._fromNormalized(kf.value, lane));
             tooltip.classList.add("visible");
             return;
         }
 
-        // Delegate audio-widget hover to audioTrack.js
         if (this.ui.onAudioTooltip?.(e)) {
             return;
         }
@@ -420,16 +421,45 @@ export class Overlay {
     }
 
     /** Time and value under the pointer, as used for new keyframes. */
+    /** Convert a value in the lane's range to [-1, +1]. */
+    /** Convert a value (or array) from lane range to [-1, +1]. */
+    _toNormalized(value, lane) {
+        if (!lane || lane.targets.length === 0) {
+            return Array.isArray(value) ? value.map(() => 0) : 0;
+        }
+        const mapScalar = (v, target) => {
+            const range = target.maxValue - target.minValue;
+            return range === 0 ? 0 : 2 * (v - target.minValue) / range - 1;
+        };
+        if (Array.isArray(value)) {
+            return value.map((v, i) => {
+                const t = lane.targets[i] || lane.targets[0];
+                return t ? mapScalar(v, t) : v;
+            });
+        }
+        return mapScalar(value, lane.targets[0]);
+    }
+
+    /** Convert a normalized [-1, +1] value (or array) to the lane's range. */
+    _fromNormalized(normalized, lane) {
+        if (!lane || lane.targets.length === 0) {
+            return normalized;
+        }
+        return mapScalar(normalized, lane.targets[0]);
+
+        function mapScalar(v, target) {
+            return target.minValue +
+                (v + 1) * (target.maxValue - target.minValue) / 2;
+        }
+    }
+
     _pointerOnStrip(strip, lane, e) {
-        const [minVal, maxVal] = lane
-            ? calcLaneRange(lane, this.ctx)
-            : [0, 1];
         const rect = strip.getBoundingClientRect();
         const yRatio = clamp(1 - (e.clientY - rect.top) / rect.height, 0, 1);
         const {start, end} = this._timeView();
         return {
             time: start + stripFraction(strip, e.clientX) * (end - start),
-            value: minVal + yRatio * (maxVal - minVal),
+            value: 2 * yRatio - 1,
         };
     }
 
@@ -491,6 +521,7 @@ export class Overlay {
             return;
         }
         const {time, value} = this._pointerOnStrip(strip, drag.lane, e);
+        DEBUG.log("[DRAG]", time, value, drag.kf);
         if (!drag.lockTime) {
             drag.kf.time =
                 this._timeBetweenNeighbours(drag.lane, drag.kf, time);
@@ -647,9 +678,10 @@ export class Overlay {
     _addKeyframe(lane, time, value) {
         const lengthBefore = lane.keyframes.length;
         if (lengthBefore === 0 && time > MIN_TIME_STEP) {
-            lane.addKeyframe(0, value);
+            lane.addKeyframe(0, 0);
         }
         const kf = lane.addKeyframe(time, value);
+        this.lane.selectedKeyframes.clear();
         this.lane.selectedKeyframes.add(
             keyframeKey(lane.id, kf.id)
         );
@@ -756,7 +788,9 @@ export class Overlay {
     }
 
     _createKeyframePopup(laneId, kfId, kf) {
+        const lane = this.engine.getLane(laneId);
         const ease = kf.ease || "linear";
+        const displayValue = this._fromNormalized(kf.value, lane);
         const popup = document.createElement("div");
         popup.className = "keyframe-popup";
         popup.innerHTML = `
@@ -772,7 +806,7 @@ export class Overlay {
             <div class="popup-row">
                 <span class="popup-label">Value:</span>
                 <span class="popup-value">${
-                    formatNumber(kf.value)
+                    formatNumber(displayValue)
                 }&nbsp;&nbsp;&nbsp;</span>
             </div>
             <div class="popup-row">
@@ -968,10 +1002,15 @@ export class Overlay {
             );
         } else if (el.classList.contains("target-enable")) {
             const {laneId} = el.dataset;
-            const target = this.engine.getLane(laneId)
-                ?.targets[intAttr(el, "targetIdx")];
+            const targetIdx = intAttr(el, "targetIdx");
+            const lane = this.engine.getLane(laneId);
+            const target = lane?.targets[targetIdx];
             if (target) {
+                const wasEnabled = target.enabled;
                 target.enabled = el.checked;
+                if (el.checked && !wasEnabled) {
+                    this._resetTargetRange(lane, targetIdx, target);
+                }
                 this.renderLane(laneId);
             }
         } else if (el.closest(".batch-uniform-row")) {
@@ -1045,7 +1084,15 @@ export class Overlay {
         } else if (el.classList.contains("uniform-slider")) {
             const name = el.dataset.uniformName;
             const components = findAllUniformComponents(name, el);
-            const value = components.length === 1 ? components[0] : components;
+            const normalizedValue = components.length === 1 ? components[0] : components;
+            const range = this.ctx.getControl(name);
+            const value = Array.isArray(normalizedValue)
+                ? normalizedValue.map((v, i) => {
+                    const r = Array.isArray(range.min) ? range.min[i] : range.min;
+                    const mx = Array.isArray(range.max) ? range.max[i] : range.max;
+                    return r + (v + 1) * (mx - r) / 2;
+                })
+                : range.min + (normalizedValue + 1) * (range.max - range.min) / 2;
             this.engine.setActualUniformValue(name, value);
             const tooltip = sliderTooltip(el);
             if (tooltip) {
@@ -1082,7 +1129,7 @@ export class Overlay {
             lane.removeTarget(target.uniformName);
         }
         target.uniformName = newName;
-        this._resetTargetRange(target);
+        this._resetTargetRange(lane, targetIdx, target);
         this._scheduleSave();
     }
 
@@ -1099,7 +1146,7 @@ export class Overlay {
     }
 
     /** Scalar control ranges are taken over, vectors use -1..1. */
-    _resetTargetRange(target) {
+    _resetTargetRange(lane, targetIdx, target) {
         const range = target.uniformName
             ? this.ctx.getControl(target.uniformName)
             : FALLBACK_RANGE;
@@ -1395,7 +1442,8 @@ export class Overlay {
      * is missing or the timeline span changed, as that rescales all rows.
      */
     renderLane(laneId) {
-        const replaced = timelineSpan(this.engine) === this.render.renderedSpan
+        const replaced =
+            timelineSpan(this.engine) === this.render.renderedSpan
             && renderLane(
                 this.ui, this.ctx, laneId, ...this._lanesRenderState()
             );

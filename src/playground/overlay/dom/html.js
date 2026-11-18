@@ -1,3 +1,5 @@
+import {clamp} from "../../../app/algorithms.js";
+
 const toKebab = (key) =>
     key.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
 
@@ -73,7 +75,7 @@ export function pointerFraction(el, clientX, inset = 0) {
     const rect = el.getBoundingClientRect();
     const width = rect.width - 2 * inset;
     return width > 0
-        ? Math.min(Math.max((clientX - rect.left - inset) / width, 0), 1)
+        ? clamp((clientX - rect.left - inset) / width, 0, 1)
         : 0;
 }
 
@@ -85,4 +87,5 @@ export function isTypingTarget(target) {
     );
 }
 
-export const intAttr = (el, key) => parseInt(el.dataset[key], 10);
+export const intAttr = (el, key) =>
+    parseInt(el.dataset[key], 10);

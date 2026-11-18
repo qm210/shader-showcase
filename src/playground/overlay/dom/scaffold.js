@@ -7,7 +7,7 @@ import {uniformPanelTemplate} from "./uniformList.js";
 import {randomizerTemplate} from "./randomizer.js";
 
 export const DATALIST = {
-    UNIFORMS: "playground-uniform-names",
+    UNIFORMS: "playground-uniform-targets",
 };
 
 const UI_SELECTORS = {

@@ -1,7 +1,7 @@
 import {ACTION, LANE_ACTIONS} from "../../actions.js";
 import {smoothstep} from "../../engine/math.js";
 import {calcLaneRange} from "../../engine/valueRanges.js";
-import {CHAR, clamp} from "../index.js";
+import {CHAR, clamp, DEBUG} from "../index.js";
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from "./html.js";
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
@@ -51,7 +51,7 @@ function easingPath(kf1, kf2, toPoint) {
  * after the last one. The viewBox is 0..100 in both directions and is
  * stretched over the strip, like the percent positions of the dots.
  */
-function curveLines(lane, view, min, max) {
+function curveLines(lane, view) {
     const kfs = lane.keyframes;
     const span = view.end - view.start;
     if (kfs.length === 0 || span <= 0) {
@@ -59,7 +59,7 @@ function curveLines(lane, view, min, max) {
     }
     const toPoint = (time, value) => [
         (time - view.start) / span * 100,
-        valueFraction(value, min, max) * 100,
+        percentFromTop(value),
     ];
     // Segments overlapping the view, also those spanning all of it.
     const easing = kfs.slice(0, -1)
@@ -102,6 +102,7 @@ function targetRow(laneId, index, target, knownNames) {
     const data = dataAttrs({laneId, targetIdx: index});
     const name = target?.uniformName ?? "";
     const isValid = !name || knownNames.has(name);
+    DEBUG.log("TARGET", {name, target, isValid, knownNames});
     const checked = target && (!isValid || target.enabled);
     const disabled = target && !isValid && target.enabled;
     const removeButton =
@@ -138,7 +139,9 @@ function targetRows(lane, knownNames) {
     const rows = lane.targets.map((target, i) =>
         targetRow(lane.id, i, target, knownNames)
     );
-    rows.push(targetRow(lane.id, lane.targets.length, null, knownNames));
+    rows.push(
+        targetRow(lane.id, lane.targets.length, null, knownNames)
+    );
     return rows.join("");
 }
 
@@ -163,9 +166,11 @@ function keyframeDots(lane, view, selectedKeyframes, min, max) {
         }
         const key = keyframeKey(lane.id, kf.id);
         const selected = selectedKeyframes.has(key);
+        const displayValue = min + (kf.value + 1) * (max - min) / 2;
+        DEBUG.log("[KF]", {...kf, max, min, displayValue});
         const title = [
             `t = ${kf.time.toFixed(1)}s`,
-            `val = ${kf.value.toFixed(4)}`,
+            `val = ${displayValue.toFixed(4)}`,
             kf.ease
         ].join("; ");
 
@@ -173,19 +178,21 @@ function keyframeDots(lane, view, selectedKeyframes, min, max) {
             <div class="${cls('keyframe-dot', selected && 'selected')}"
                  ${dataAttrs({laneId: lane.id, kfId: kf.id})}
                  style="${position(kf, view)}"
-                 title="${esc(title)}"></div>`;
+                 title="${esc(title)}"></div>
+        `;
     }).join("");
 
     function position(kf, view) {
         const left = stripPosition(kf.time, view);
-        const top = `top:${valuePosition(kf.value)}`;
+        const top = `top:${percentFromTop(kf.value).toFixed(1)}%`;
         return `${left}; ${top}`;
     }
+}
 
-    function valuePosition(value) {
-        const fraction = valueFraction(value, min, max);
-        return `${clamp(fraction * 100, 0, 100).toFixed(1)}%`;
-    }
+function percentFromTop(normalized) {
+    // normalized is in [-1, +1]; -1 -> bottom (100%), +1 -> top (0%)
+    const fraction = 1 - (normalized + 1) / 2;
+    return clamp(fraction * 100, 0, 100);
 }
 
 function valueLine(target, min, max, currentValue) {
@@ -207,7 +214,7 @@ function valueLine(target, min, max, currentValue) {
         <div class="value-line ${outside && 'outside'}"
              ${dataAttrs({uniformName: target.uniformName})}
              style="top:${topPercent}%"
-             title="${esc(target.uniformName)}">
+             title="${target.uniformName} = ${value}">
         </div>`;
 }
 
@@ -234,7 +241,7 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
                  style="${playhead}"></div>
             ${uniformLines}
             <span class="range-label max-label">${esc(max.toFixed(2))}</span>
-            <span class="zero-marker">0</span>
+            <span class="constant-marker">0</span>
             <span class="range-label min-label">${esc(min.toFixed(2))}</span>
         </div>
     `;
