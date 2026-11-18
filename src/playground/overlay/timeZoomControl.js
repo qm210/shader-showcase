@@ -8,7 +8,7 @@
 //   Esc / button   back to the full timeline
 
 import {pointerFraction} from "./dom/html.js";
-import {stripFraction} from "./dom/tracks.js";
+import {stripFraction} from "./dom/lanes.js";
 import {clampZoom, panBy, timeAt, visibleRange, zoomAround, zoomFromAnchor,} from "../engine/timeZoom.js";
 
 /** Pointer travel below which a ruler press counts as a click. */

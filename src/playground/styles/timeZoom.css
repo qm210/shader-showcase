@@ -24,6 +24,10 @@
     margin-left: auto;
 }
 
+#pg .time-zoom-reset:disabled {
+    display: none;
+}
+
 #pg .time-ruler {
     position: relative;
     height: 18px;

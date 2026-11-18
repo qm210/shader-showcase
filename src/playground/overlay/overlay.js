@@ -1,5 +1,5 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from "../persistence.js";
-import {calcLaneValueRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
+import {calcLaneRange, FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
 import {EASING_TYPES, keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 import {ACTION, runAction} from "../actions.js";
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from "./index.js";
@@ -8,7 +8,7 @@ import {TimeZoomControl} from "./timeZoomControl.js";
 import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from "../engine/timeZoom.js";
 import {createPlaygroundOverlay} from "./dom/scaffold.js";
 import {renderPlayback, renderPreview, renderTimeZoom,} from "./dom/timeline.js";
-import {renderAllLanes, renderLane, stripFraction} from "./dom/tracks.js";
+import {renderAllLanes, renderLane, stripFraction} from "./dom/lanes.js";
 import {findAllUniformComponents, renderUniformList} from "./dom/uniformList.js";
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
@@ -20,7 +20,8 @@ import {toggleTargetDropdown} from "./dom/targetSelector.js";
 
 // Default audio file for development (Vite asset import).
 // Place your audio file in the public/ directory and update the path below.
-const DEFAULT_AUDIO_FILE = "/DreamySchilfester2024_3_2025-12-11_2128.ogg";
+const DEFAULT_AUDIO_FILE =
+    "/DreamySchilfester2024_3_2025-12-11_2128.ogg";
 
 
 export class Overlay {
@@ -74,9 +75,6 @@ export class Overlay {
 
         // Copy/paste state for lane keyframes.
         this.clipboard = { lane: null };
-
-        // Context action bar for the selected keyframe (created in scaffold.js)
-        this.contextBar = null;
     }
 
     async init() {
@@ -95,9 +93,8 @@ export class Overlay {
         this.element = dom.element;
         this.ui = dom.ui;
         this.ui.onSeek = (time) => this._seek(time);
-        this.contextBar = this.ui.contextBar;
         document.body.append(this.element);
-        document.body.append(this.contextBar);
+        document.body.append(this.ui.contextBar);
     }
 
     /**
@@ -221,7 +218,7 @@ export class Overlay {
     }
 
     _bindContextBar() {
-        const bar = this.contextBar;
+        const bar = this.ui.contextBar;
         bar.addEventListener("click", (e) => {
             if (e.target.classList.contains("kf-undo-btn")) {
                 this._doUndo();
@@ -262,7 +259,7 @@ export class Overlay {
             return null;
         }
         const lane = this.engine.getLane(first.laneId);
-        const kf = lane?.keyframes.find(k => k.id === first.kfId);
+        const kf = lane?.findKeyframe(first.kfId);
         return kf ? {lane, kf} : null;
     }
 
@@ -298,10 +295,10 @@ export class Overlay {
         this._scheduleSave();
     }
 
-    /** First element matching `selector` inside the row of a lane. */
-    _queryInTrack(laneId, selector) {
+    _queryInLane(laneId, selector) {
+        laneId = CSS.escape(laneId);
         return this.ui.laneRows.querySelector(
-            `.lane-wrapper[data-lane-id="${CSS.escape(laneId)}"]`
+            `.lane-wrapper[data-lane-id="${laneId}"]`
             + ` ${selector}`
         );
     }
@@ -336,7 +333,7 @@ export class Overlay {
         // Collect times first, removing shifts the indices.
         const times = this._selectedKeys()
             .filter(k => k.laneId === lane.id)
-            .map(k => lane.keyframes.find(kf => kf.id === k.kfId)?.time)
+            .map(k => lane.findKeyframe(k.kfId)?.time)
             .filter(time => time !== undefined);
         for (const time of times) {
             lane.removeKeyframe(time);
@@ -353,7 +350,8 @@ export class Overlay {
         }
         e.preventDefault();
 
-        const name = row.querySelector("[data-uniform-name]")
+        const name =
+            row.querySelector("[data-uniform-name]")
             ?.dataset.uniformName;
         if (!name) {
             return;
@@ -404,7 +402,7 @@ export class Overlay {
     /** Time and value under the pointer, as used for new keyframes. */
     _pointerOnStrip(strip, lane, e) {
         const [minVal, maxVal] = lane
-            ? calcLaneValueRange(lane, this.ctx)
+            ? calcLaneRange(lane, this.ctx)
             : [0, 1];
         const rect = strip.getBoundingClientRect();
         const yRatio = clamp(1 - (e.clientY - rect.top) / rect.height, 0, 1);
@@ -454,7 +452,7 @@ export class Overlay {
         }
         e.stopPropagation();
         const lane = this.engine.getLane(dot.dataset.laneId);
-        const kf = lane?.keyframes.find(k => k.id === dot.dataset.kfId);
+        const kf = lane?.findKeyframe(dot.dataset.kfId);
         if (!kf) {
             return;
         }
@@ -468,7 +466,7 @@ export class Overlay {
             return;
         }
         // Re-query, as every move replaces the row of the lane.
-        const strip = this._queryInTrack(drag.lane.id, ".keyframe-strip");
+        const strip = this._queryInLane(drag.lane.id, ".keyframe-strip");
         if (!strip) {
             return;
         }
@@ -694,11 +692,10 @@ export class Overlay {
         }
     }
 
-    /** Selects the keyframe and focuses the value input of the bar. */
     _focusKeyframeValue(dot) {
         const {laneId} = dot.dataset;
         const kfId = dot.dataset.kfId;
-        if (!this.engine.getLane(laneId)?.keyframes.find(k => k.id === kfId)) {
+        if (!this.engine.getLane(laneId)?.findKeyframe(kfId)) {
             this._removeKeyframePopups();
             return;
         }
@@ -706,7 +703,7 @@ export class Overlay {
         this.renderTimeline();
         this._showKeyframePopups();
         requestAnimationFrame(() => {
-            const input = this.contextBar.querySelector(".kf-current-val");
+            const input = this.ui.contextBar.querySelector(".kf-current-val");
             input.focus();
             input.select();
         });
@@ -715,8 +712,8 @@ export class Overlay {
     _showKeyframePopups() {
         this._removeKeyframePopups();
         for (const {laneId, kfId} of this._selectedKeys()) {
-            const kf = this.engine.getLane(laneId)?.keyframes.find(k => k.id === kfId);
-            const laneWidget = this._queryInTrack(laneId, ".lane-widget");
+            const kf = this.engine.getLane(laneId)?.findKeyframe(kfId);
+            const laneWidget = this._queryInLane(laneId, ".lane-widget");
             const dot = laneWidget?.querySelector(
                 `.keyframe-dot[data-kf-id="${kfId}"]`
             );
@@ -799,8 +796,8 @@ export class Overlay {
             return;
         }
         const lane = this.engine.getLane(laneId);
-        const firstKf = lane.keyframes.find(k => k.id === first.kfId);
-        const targetKf = lane.keyframes.find(k => k.id === kfId);
+        const firstKf = lane.findKeyframe(first.kfId);
+        const targetKf = lane.findKeyframe(kfId);
         if (!firstKf || !targetKf) {
             return;
         }
@@ -816,14 +813,15 @@ export class Overlay {
     }
 
     _removeKeyframePopups() {
-        for (const popup of this.ui.laneRows.querySelectorAll(".keyframe-popup")) {
+        const popups = this.ui.laneRows.querySelectorAll(".keyframe-popup");
+        for (const popup of popups) {
             popup.remove();
         }
     }
 
     _removeKeyframe(laneId, kfId) {
         const lane = this.engine.getLane(laneId);
-        const kf = lane?.keyframes.find(k => k.id === kfId);
+        const kf = lane?.findKeyframe(kfId);
         if (!kf) {
             return;
         }
@@ -834,12 +832,10 @@ export class Overlay {
     }
 
     _focusName(containerSelector, dataKey, id) {
-        this.element
-            .querySelector(
-                `${containerSelector}[data-${dataKey}="${CSS.escape(id)}"]`
-                + " .name"
-            )
-            ?.focus();
+        const dataAttr = `[data-${dataKey}="${CSS.escape(id)}"]`;
+        this.element.querySelector(
+            `${containerSelector}${dataAttr} .name`
+        )?.focus();
     }
 
     _ifSingleClick(callback) {
@@ -947,9 +943,6 @@ export class Overlay {
                 parseFloat(this.ui.timeStart.value),
                 parseFloat(this.ui.timeEnd.value)
             );
-        } else if (el.classList.contains("speed-input")) {
-            this.engine.speed = parseFloat(el.value) || 1.0;
-            this._scheduleSave();
         } else if (el.classList.contains("target-enable")) {
             const {laneId} = el.dataset;
             const target = this.engine.getLane(laneId)
@@ -1019,8 +1012,8 @@ export class Overlay {
                 this.randomIntensity.toFixed(2);
             this._scheduleSave();
         } else if (el.matches(
-            ".uniform-min, .uniform-max,"
-            + " .batch-uniform-row .min, .batch-uniform-row .max"
+            ".uniform-min, .uniform-max," +
+            " .batch-uniform-row .min, .batch-uniform-row .max"
         )) {
             // Validate while typing; values are committed on change.
             el.classList.toggle(
@@ -1071,7 +1064,7 @@ export class Overlay {
 
     /** Puts the caret back into a target input after a re-render. */
     _refocusTargetSelector(laneId, targetIdx) {
-        const input = this._queryInTrack(
+        const input = this._queryInLane(
             laneId, `.target-selector[data-target-idx="${targetIdx}"]`
         );
         if (input) {
@@ -1123,16 +1116,17 @@ export class Overlay {
     // ─── Actions ────────────────────────────────────────────────
 
     togglePlaying() {
-        this.engine.playing = !this.engine.playing;
-        console.log("engine playing?", this.engine.playing);
-        this.ctx._playbackSync?.onOverlayPlayToggled(this.engine.playing);
-        console.log("-> engine playing?", this.engine.playing);
+        const wasPlaying = this.engine.playing();
+        this.engine.setPlaying(!wasPlaying);
         this._syncPlayButton();
+        if (wasPlaying) {
+            this._renderPlayback();
+        }
     }
 
     _syncPlayButton() {
         const {playBtn} = this.ui;
-        const playing = this.engine.playing;
+        const playing = this.engine.playing();
         playBtn.textContent = playing ? CHAR.PAUSE : CHAR.PLAY;
         playBtn.title = playing ? "Pause" : "Play";
     }
@@ -1147,14 +1141,14 @@ export class Overlay {
     _positionContextBar() {
         const selection = this._selection();
         renderContextActionBar(
-            this.contextBar,
+            this.ui.contextBar,
             selection?.kf,
             selection?.lane,
             selection && this._neighbours(selection),
         );
         const anchor = selection && this._contextBarAnchor();
         if (anchor) {
-            positionContextBar(this.contextBar, anchor);
+            positionContextBar(this.ui.contextBar, anchor);
         }
     }
 
@@ -1164,7 +1158,7 @@ export class Overlay {
         if (!first) {
             return null;
         }
-        const dot = this._queryInTrack(
+        const dot = this._queryInLane(
             first.laneId, `.keyframe-dot[data-kf-id="${first.kfId}"]`
         );
         if (dot) {
@@ -1176,7 +1170,7 @@ export class Overlay {
         }
         const rect = strip.getBoundingClientRect();
         const {start, end} = this._timeView();
-        const fraction = (this.engine.currentTime - start) / (end - start);
+        const fraction = (this.engine.time() - start) / (end - start);
         return {
             left: rect.left + rect.width * fraction,
             width: 0,
@@ -1300,7 +1294,6 @@ export class Overlay {
         }
         if (stored.timeline) {
             this.engine.loadTimelineFromJSON(stored.timeline);
-            this.engine.playing = false;
         }
         for (const [name, value] of Object.entries(stored.overrides ?? {})) {
             if (isRangeValue(value)) {
@@ -1313,7 +1306,7 @@ export class Overlay {
         this.randomIntensity = Number.isFinite(intensity)
             ? clamp(intensity, 0, 1)
             : 1;
-        this.lane.selectedId = stored.selectedTrackId ?? null;
+        this.lane.selectedId = stored.selectedLaneId ?? null;
         this.lane.collapsedIds = new Set(stored.collapsedTracks ?? []);
         this.zoom = ifValidTimeZoom(stored.zoom);
         this.element.classList.toggle("collapsed", Boolean(stored.collapsed));
@@ -1327,7 +1320,8 @@ export class Overlay {
     _applyPosition(left, top) {
         const rect = this.element.getBoundingClientRect();
         const headerHeight =
-            this.element.querySelector(".panel-header").offsetHeight || 32;
+            this.element.querySelector(".panel-header")
+                ?.offsetHeight || 32;
         const maxLeft = Math.max(0, window.innerWidth - rect.width);
         const maxTop = Math.max(0, window.innerHeight - headerHeight);
         const position = {
@@ -1340,8 +1334,7 @@ export class Overlay {
     }
 
     syncUI() {
-        this.ui.timeSlider.value = this.engine.currentTime;
-        this.ui.speedInput.value = this.engine.speed;
+        this.ui.timeSlider.value = this.engine.time();
         this._syncPlayButton();
         this.ui.randomize.intensitySlider.value = this.randomIntensity;
         this.ui.randomize.intensityValue.textContent = this.randomIntensity.toFixed(2);
@@ -1359,8 +1352,7 @@ export class Overlay {
     }
 
     _seek(time) {
-        this.engine.currentTime = time;
-        this.ctx._playbackSync?.onOverlaySeek(time);
+        this.engine.setTime(time);
         this._renderPlayback();
         this._scheduleSave();
     }
@@ -1458,7 +1450,7 @@ export class Overlay {
     // ─── Public API ─────────────────────────────────────────────
 
     update() {
-        if (this.engine.playing) {
+        if (this.engine.playing()) {
             this._renderPlayback();
             this._scheduleSave();
         }

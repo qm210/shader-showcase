@@ -308,7 +308,7 @@ export function renderAudioWaveforms(ui, engine, view) {
     const audioData = engine.getAllAudioTracks()
         .map(t => analyzeAudioWaveform(t, view));
     const rows = audioData
-        .map(wave => renderAudioWaveform(wave, engine.currentTime))
+        .map(wave => renderAudioWaveform(wave, engine.time()))
         .filter(Boolean);
     if (rows.length === 0) {
         return;

@@ -1,7 +1,6 @@
 import {ACTION} from "../../actions.js";
-import {percentOfSpan} from "../../engine/math.js";
 import {CHAR} from "../index.js";
-import {formatValue} from "../format.js";
+import {formatValue, percent, percentageInView} from "../format.js";
 import {actionButton, esc, setShown} from "./html.js";
 import {fullView, isInView, MIN_TIME_STEP, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
 
@@ -23,14 +22,14 @@ export function timelineTemplate() {
                 ${actionButton({
                     action: ACTION.REMOVE_ALL_LANES,
                     label: `${CHAR.TRASH} Clear All`,
-                    className: 'btn danger',
-                    title: 'Delete all lanes! Irreversible!',
+                    className: "btn danger",
+                    title: "Delete all lanes! Irreversible!",
                     disabled: true
                 })}             
                 ${actionButton({
                     action: ACTION.ADD_LANE,
-                    label: '+ Lane',
-                    title: 'Create a new lane',
+                    label: "+ Lane",
+                    title: "Create a new lane",
                 })}
                 <input type="file"
                        id="audio-file-input"
@@ -39,14 +38,6 @@ export function timelineTemplate() {
             </div>
             <div class="timeline-controls">
                 <div class="play-controls">
-                    <div class="speed-control">
-                        <label for="playground-speed">${CHAR.TIMES}</label>
-                        <input type="number"
-                               id="playground-speed"
-                               class="field num speed-input"
-                               min="0.1" max="20" step="0.1"
-                               value="1.0">
-                    </div>
                     ${actionButton({
                         action: ACTION.PLAY,
                         label: CHAR.PLAY,
@@ -83,7 +74,9 @@ export function timelineTemplate() {
                     <input type="range"
                            class="time-slider"
                            aria-label="Time"
-                           min="0" max="${MIN_TIMELINE_SPAN}" step="0.1"
+                           min="0"
+                           max="${MIN_TIMELINE_SPAN}"
+                           step="${MIN_TIME_STEP}"
                            value="0">
                     <span class="slider-tooltip"></span>
                 </div>
@@ -92,7 +85,9 @@ export function timelineTemplate() {
                     <input type="range"
                            class="time-sub-slider"
                            aria-label="Time within the zoomed range"
-                           min="0" max="${MIN_TIMELINE_SPAN}" step=${MIN_TIME_STEP}
+                           min="0"
+                           max="${MIN_TIMELINE_SPAN}"
+                           step="${MIN_TIME_STEP}"
                            value="0">
                     <div class="time-ticks time-sub-ticks"></div>
                 </div>
@@ -103,8 +98,6 @@ export function timelineTemplate() {
             <div class="timeline-tooltip"></div>
         </div>`;
 }
-
-const percent = (fraction) => `${(100 * fraction).toFixed(3)}%`;
 
 function tickMarks(view) {
     const width = view.end - view.start;
@@ -147,14 +140,14 @@ export function renderTimeZoom(ui, span, zoom) {
 }
 
 export function renderPlayback(ui, engine, view = fullView(engine)) {
-    const time = engine.currentTime;
+    const time = engine.time();
     const inView = isInView(view, time);
     ui.timeSlider.value = time;
-    ui.timeSlider.classList.toggle("playing", engine.playing);
+    ui.timeSlider.classList.toggle("playing", engine.playing());
     ui.timeSubSlider.value = time;
     ui.timeSubSlider.classList.toggle("out-of-view", !inView);
 
-    const percentage = percentOfSpan(time - view.start, view.end - view.start);
+    const percentage = percentageInView(time, view);
     const editor = ui.laneRows.parentElement;
     const playheadElements = editor.querySelectorAll(".playhead");
     for (const playhead of playheadElements) {
@@ -166,7 +159,7 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
 export function renderPreview(ui, engine, {debug = false} = {}) {
     const currentValues = engine.getCurrentUniformDetails()
     if (debug) {
-        console.group("[UNIFORM PREVIEW] t =", engine.currentTime, "sec.");
+        console.group("[UNIFORM PREVIEW] t =", engine.time(), "sec.");
         console.table(currentValues);
         console.groupEnd();
     }

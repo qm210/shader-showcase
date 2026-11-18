@@ -1,7 +1,3 @@
-export function percentOfSpan(time, span) {
-    return ((time / span) * 100).toFixed(3) + "%";
-}
-
 export function lerp(a, b, t) {
     return a + (b - a) * Math.max(0, Math.min(1, t));
 }

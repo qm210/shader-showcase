@@ -1,5 +1,6 @@
-import {DEBUG} from "./overlay/index.js";
-import {calcLaneValueRange} from "./engine/valueRanges.js";
+import {CHAR, DEBUG} from "./overlay/index.js";
+import {calcLaneRange} from "./engine/valueRanges.js";
+import {queryLaneWrapper} from "./overlay/dom/lanes.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: "hide-overlay",
@@ -43,13 +44,14 @@ export function runAction(overlay, data) {
 
         case ACTION.ADD_LANE: {
             const count = overlay.engine.getAllLanes().length + 1;
-            const name = `Track ${count}`;
+            const name = `Lane ${count}`;
             overlay.engine.addLane(name);
-            const tracks = overlay.engine.getAllLanes();
-            if (tracks.length === 1) {
-                overlay.lane.selectedId = tracks[0].id;
+            const lanes = overlay.engine.getAllLanes();
+            if (lanes.length === 1) {
+                overlay.lane.selectedId = lanes[0].id;
             }
             overlay.renderTimeline();
+            DEBUG.table(lanes);
             break;
         }
 
@@ -62,7 +64,7 @@ export function runAction(overlay, data) {
             break;
 
         case ACTION.RESET:
-            if (confirm("Reset? This clears all tracks, batches and values, including the stored ones.")) {
+            if (confirm("Reset? This clears all lanes, batches and values, including the stored ones.")) {
                 overlay.reset();
             }
             break;
@@ -70,11 +72,11 @@ export function runAction(overlay, data) {
         case ACTION.DELETE_LANE:
             if (confirm("Delete this lane?")) {
                 overlay.engine.removeLane(data.laneId);
-                overlay.collapsedTrackIds.delete(data.laneId);
+                overlay.lane.collapsedIds.delete(data.laneId);
                 overlay.selectedKeyframe = null;
-                const tracks = overlay.engine.getAllLanes();
-                if (tracks.length === 1) {
-                    overlay.lane.selectedId = tracks[0].id;
+                const lanes = overlay.engine.getAllLanes();
+                if (lanes.length === 1) {
+                    overlay.lane.selectedId = lanes[0].id;
                 }
                 overlay.renderTimeline();
             }
@@ -82,17 +84,20 @@ export function runAction(overlay, data) {
 
         case ACTION.ADD_TARGET: {
             const lane = overlay.engine.getLane(data.laneId);
-            if (lane) {
-                // Add an empty target that the user can fill in
-                lane.addTarget("");
-                overlay.renderTimeline();
-                // Focus the new selector (last one added)
-                const selectors = overlay.ui.trackList.querySelectorAll(".target-selector");
-                const lastSelector = selectors[selectors.length - 1];
-                if (lastSelector) {
-                    lastSelector.focus();
-                    lastSelector.select();
-                }
+            if (!lane) {
+                return;
+            }
+            // Add an empty target that the user can fill in
+            lane.addTarget("");
+            overlay.renderTimeline();
+            // Focus the new selector (last one added)
+            const selectors =
+                queryLaneWrapper(overlay.ui, lane.id)
+                    ?.querySelectorAll(".target-selector");
+            const lastSelector = selectors[selectors.length - 1];
+            if (lastSelector) {
+                lastSelector.focus();
+                lastSelector.select();
             }
             break;
         }
@@ -113,7 +118,7 @@ export function runAction(overlay, data) {
                 return;
             }
             // Use prompt for X (time) and Y (value) coordinates per user override.
-            const defaultTime = overlay.engine.currentTime.toFixed(1);
+            const defaultTime = overlay.engine.time().toFixed(1);
             const timeStr = prompt("Keyframe time (s):", defaultTime);
             if (timeStr === null) {
                 return;
@@ -122,7 +127,7 @@ export function runAction(overlay, data) {
             if (isNaN(time)) {
                 return;
             }
-            const [minVal, maxVal] = calcLaneValueRange(lane, overlay.ctx);
+            const [minVal, maxVal] = calcLaneRange(lane, overlay.ctx);
             const midVal = ((minVal + maxVal) / 2).toFixed(3);
             const defaultVal = overlay.ctx.getControlValue() ?? midVal;
             const valStr = prompt("Keyframe value:", defaultVal);
@@ -200,14 +205,14 @@ export function runAction(overlay, data) {
 
         case ACTION.RANDOMIZE:
             if (overlay.batch.selectedId) {
-                overlay.ctx.randomizeBatch(overlay.batch.selectedId, overlay.randomIntensity, overlay.engine);
+                overlay.ctx.randomizeBatch(overlay.batch.selectedId, overlay.randomIntensity);
                 overlay._renderPreview();
                 overlay._scheduleSave();
             }
             break;
 
         case ACTION.CANCEL_LANE_NAME:
-            overlay._editingTrackId = null;
+            overlay.lane.renamingId = null;
             overlay.renderTimeline();
             break;
 
@@ -271,9 +276,10 @@ export function runAction(overlay, data) {
         case ACTION.LOAD_SNAPSHOT: {
             overlay.engine.loadCurrentSnapshot();
             console.info("[SNAPSHOT] Loaded:", overlay.engine.latestSnapshot);
+            const count = overlay.engine.overrides.length;
             alert(
                 "Current Uniform values read from main state;\n" +
-                `There are still ${overlay.engine.overrideCount} Overrides set.\n\n` +
+                `There are still ${count} Overrides set.\n\n` +
                 "Use \"Clear Overrides\" to discard all of these."
             );
             overlay.renderTimeline();
@@ -307,3 +313,27 @@ function userWantsToDiscardOverrides() {
         "Snapshot loaded, do you want to discard all previous Overwrites?"
     );
 }
+
+export const LANE_ACTIONS = [
+    {action: ACTION.ADD_KEYFRAME,
+        label: "+",
+        title: "Add keyframe at current time"},
+    {action: ACTION.RESCALE_LANE,
+        label: CHAR.RESCALE,
+        title: "Rescale time range"},
+    {action: ACTION.COPY_LANE,
+        label: CHAR.ARROW_PAIR_RIGHT,
+        title: "Copy keyframes"},
+    {action: ACTION.PASTE_LANE,
+        label: CHAR.ARROW_PAIR_LEFT,
+        title: "Paste keyframes"},
+    {action: ACTION.CLEAR_LANE,
+        label: CHAR.CLEAR,
+        title: "Clear all keyframes",
+        className: "btn icon danger"},
+    {action: ACTION.DELETE_LANE,
+        label: CHAR.TRASH,
+        title: "Delete Lane!",
+        className: "btn icon danger"
+    },
+];

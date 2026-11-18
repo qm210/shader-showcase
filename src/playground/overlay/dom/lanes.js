@@ -1,11 +1,13 @@
-import {ACTION} from "../../actions.js";
-import {percentOfSpan, smoothstep} from "../../engine/math.js";
-import {calcLaneValueRange} from "../../engine/valueRanges.js";
+import {ACTION, LANE_ACTIONS} from "../../actions.js";
+import {smoothstep} from "../../engine/math.js";
+import {calcLaneRange} from "../../engine/valueRanges.js";
 import {CHAR, clamp} from "../index.js";
 import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from "./html.js";
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
 import {keyframeKey} from "../../engine/keyframes.js";
+
+import {percentageInView} from "../format.js";
 
 function easedT(t, ease) {
     if (ease === "step") {
@@ -86,20 +88,6 @@ function curveLines(lane, view, min, max) {
         </svg>`;
 }
 
-const TRACK_ACTIONS = [
-    {action: ACTION.ADD_KEYFRAME, label: "+",
-        title: "Add keyframe at current time"},
-    {action: ACTION.RESCALE_LANE, label: CHAR.RESCALE,
-        title: "Rescale time range"},
-    {action: ACTION.COPY_LANE, label: CHAR.ARROW_PAIR_RIGHT,
-        title: "Copy keyframes"},
-    {action: ACTION.PASTE_LANE, label: CHAR.ARROW_PAIR_LEFT,
-        title: "Paste keyframes"},
-    {action: ACTION.CLEAR_LANE, label: CHAR.CLEAR,
-        title: "Clear track keyframes", className: "btn icon danger"},
-    {action: ACTION.DELETE_LANE, label: CHAR.TRASH,
-        title: "Delete track", className: "btn icon danger"},
-];
 
 function knownTargetNames(provider) {
     const names = new Set(provider.getKnownUniformNames());
@@ -162,8 +150,9 @@ export function stripFraction(strip, clientX) {
 }
 
 function stripPosition(time, view) {
-    return isInView(view, time)
-        ? `left:${percentOfSpan(time - view.start, view.end - view.start)}`
+    const percentStr = percentageInView(time, view);
+    return percentStr
+        ? `left:${percentStr}`
         : "display:none";
 }
 
@@ -223,22 +212,23 @@ function valueLine(target, min, max, currentValue) {
 }
 
 function keyframeStrip(lane, provider, view, selectedKeyframes) {
-    const [min, max] = calcLaneValueRange(lane, provider);
-    const playhead = stripPosition(provider.engine.currentTime, view);
+    const [min, max] = calcLaneRange(lane, provider);
+    const playhead = stripPosition(provider.engine.time(), view);
     const values = provider.engine.getUniformBaseValues();
     const uniformLines = lane.targets
         .filter(t => t.uniformName)
         .map(t => valueLine(t, min, max, values))
         .join("");
     const keyframes = keyframeDots(lane, view, selectedKeyframes, min, max);
-    const showHint = lane.keyframes.length === 0 ? "Click to set keyframe" : "";
+    const showHint = lane.keyframes.length === 0
+        ? "Click to set keyframe" : "";
     return `
         <div class="keyframe-strip"
              ${dataAttrs({laneId: lane.id})}
              title="${showHint}"
              >
             <div class="strip-bg"></div>
-            ${curveLines(track, view, min, max)}
+            ${curveLines(lane, view, min, max)}
             ${keyframes}
             <div class="playhead"
                  style="${playhead}"></div>
@@ -251,7 +241,7 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
 }
 
 function laneActions(laneId) {
-    return TRACK_ACTIONS
+    return LANE_ACTIONS
         .map(({className = "btn icon", ...button}) =>
             actionButton({...button, className, data: {laneId}})
         )
@@ -259,11 +249,11 @@ function laneActions(laneId) {
 }
 
 function laneColumns(
-    lane, provider, view, knownNames, editingTrackId, selectedKeyframes
+    lane, provider, view, knownNames, renamingId, selectedKeyframes
 ) {
     const data = {laneId: lane.id};
     const nameCol = editableName({
-        isEditing: editingTrackId === lane.id,
+        isEditing: renamingId === lane.id,
         name: lane.name,
         data,
         labelClass: "lane-name",
@@ -289,17 +279,17 @@ function laneColumns(
         </div>`;
 }
 
-function createLaneRow(lane, provider, knownNames, selectedTrackId,
-                        editingTrackId, collapsedTrackIds, selectedKeyframes,
-                        view) {
+function createLaneRow(
+    lane, provider, knownNames, selectedId, renamingId,
+    collapsedIds, selectedKeyframes, view
+) {
     const wrapper = document.createElement("div");
     wrapper.className = "lane-wrapper";
-    wrapper.classList.toggle("selected", selectedTrackId === lane.id);
-    wrapper.classList.toggle("collapsed", collapsedTrackIds.has(lane.id));
+    wrapper.classList.toggle("selected", selectedId === lane.id);
+    wrapper.classList.toggle("collapsed", collapsedIds.has(lane.id));
     wrapper.dataset.laneId = lane.id;
     wrapper.innerHTML = laneColumns(
-        lane, provider, view, knownNames, editingTrackId,
-        selectedKeyframes
+        lane, provider, view, knownNames, renamingId, selectedKeyframes
     );
     return wrapper;
 }
@@ -314,9 +304,7 @@ export function renderAllLanes(ui, provider, ...state) {
 
 export function renderLane(ui, provider, laneId, ...state) {
     const lane = provider.engine.getLane(laneId);
-    const row = ui.laneRows.querySelector(
-        `.lane-wrapper[data-lane-id="${CSS.escape(laneId)}"]`
-    );
+    const row = queryLaneWrapper(laneId);
     if (!lane || !row) {
         return false;
     }
@@ -324,4 +312,11 @@ export function renderLane(ui, provider, laneId, ...state) {
         createLaneRow(lane, provider, knownTargetNames(provider), ...state)
     );
     return true;
+}
+
+export function queryLaneWrapper(ui, laneId) {
+    laneId = CSS.escape(laneId);
+    return ui.laneRows.querySelector(
+        `.lane-wrapper[data-lane-id="${laneId}"]`
+    );
 }

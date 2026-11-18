@@ -50,11 +50,12 @@ function withPlaybackFeatures(state) {
         },
         previousTimestamp: null,
         rememberedTime: null,
-        // "Forward-Deklaration" zur Selbstdokumentation
+        // Forward-Deklaration (hier dokumentiert, später definiert):
         actions: {
             jump: void 0,
             toggle: void 0,
             toggleLoop: void 0,
+            setBookmark: void 0,
         },
         animate: void 0,
         animationFrame: null,

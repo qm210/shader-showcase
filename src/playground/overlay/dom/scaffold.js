@@ -24,7 +24,6 @@ const UI_SELECTORS = {
     timeZoomLens:          ".time-zoom-lens",
     timeSubSlider:         ".time-sub-slider",
     timeSubTicks:          ".time-sub-ticks",
-    speedInput:            ".speed-input",
     audioFileInput:        "#audio-file-input",
     timelineEditor:        ".timeline-editor",
     laneRows:              ".lane-rows",

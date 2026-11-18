@@ -41,7 +41,6 @@ export const addFreeRow = ({parent, label, id, content, valuePrefix, isSeparator
 };
 
 export function createInputElements(state, control) {
-
     const expected = state.expectedUniforms.find(
         uniform => uniform.name === control.name
     );
@@ -76,6 +75,7 @@ export function createInputElements(state, control) {
         uniform => uniform.name === control.name
     );
     if (!activelyUsed && !control.notAnUniform) {
+        control.unused = true;
         return;
     }
 

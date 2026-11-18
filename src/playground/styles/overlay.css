@@ -34,12 +34,13 @@
     top: 1em;
     left: 1em;
     z-index: 10000;
-    display: grid;
+    resize: both;
+    overflow: hidden;
+
     width: 60vw;
     max-width: calc(100vw - 2em);
     height: 90vh;
     max-height: calc(100dvh - 2em);
-    overflow: hidden;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius);
     background: rgb(from var(--overlay-bg) r g b / 98%);
@@ -51,6 +52,7 @@
     color-scheme: dark;
     user-select: none;
 
+    display: grid;
     grid-template-areas:
         "title title"
         "actions uniforms"

@@ -48,22 +48,10 @@ function activeNames(batch) {
         return null;
     }
     return new Set(
-        batch.uniforms.filter(u => u.active !== false).map(u => u.name)
+        batch.uniforms
+            .filter(u => u.active !== false)
+            .map(u => u.name)
     );
-}
-
-/** Auto-batch uniforms grouped by batch name (empty batches skipped). */
-function groupByBatch(autoBatches) {
-    const groups = new Map();
-    for (const batch of autoBatches) {
-        if (!batch.uniforms.length) {
-            continue;
-        }
-        const entries = groups.get(batch.name) ?? [];
-        entries.push(...batch.uniforms);
-        groups.set(batch.name, entries);
-    }
-    return groups;
 }
 
 function overwriteCell(kind, entry, index, placeholder) {
@@ -82,7 +70,7 @@ function overwriteCell(kind, entry, index, placeholder) {
 
 /** One table row per component (a vec3 gives three rows). */
 function uniformRows(provider, entry, isChecked) {
-    const range = provider.getControlRange(entry.name);
+    const range = provider.getControl(entry.name);
     const currentValue = provider.getUniformValue(entry.name);
     const isInteger = isIntegerType(entry.type);
     return vectorComponents(entry.type).map((suffix, i) => {
@@ -190,7 +178,7 @@ export function renderUniformList(ui, provider, uiBatch) {
     if (!uniformListBody) {
         return;
     }
-    const groups = groupByBatch(provider.batches.auto);
+    const groups = provider.uniformGroups;
     if (!groups.size) {
         uniformListBody.innerHTML =
             '<div class="uniform-empty">No uniforms known yet</div>';
@@ -198,7 +186,6 @@ export function renderUniformList(ui, provider, uiBatch) {
     }
 
     const selectedNames = activeNames(provider.getBatch(uiBatch.selectedId));
-    // While editing a batch, the checkboxes reflect that batch instead.
     const checkedNames = activeNames(provider.getBatch(uiBatch.renamingId))
         ?? selectedNames;
     const isChecked = (entry) => Boolean(checkedNames?.has(entry.name));

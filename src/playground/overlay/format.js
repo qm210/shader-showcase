@@ -1,4 +1,5 @@
 import {CHAR} from "./index.js";
+import {isInView} from "../engine/timeZoom.js";
 
 const VECTOR_COMPONENTS = ["x", "y", "z", "w"];
 
@@ -17,7 +18,7 @@ export function formatValue(value, empty = CHAR.NO_VALUE) {
     if (Array.isArray(value)) {
         return `[${value.map(v => v.toFixed(3)).join(', ')}]`;
     }
-    return value.toFixed(4);
+    return value.toFixed(3);
 }
 
 /** Content of an overwrite field: "a/b/c" for vectors, "" when unset. */
@@ -82,3 +83,14 @@ export function parseRangeInput(text) {
     }
     return parts.length === 1 ? parts[0] : parts;
 }
+
+export function percentageInView(time, view) {
+    if (!isInView(view, time)) {
+        return "";
+    }
+    const ratio = (time - view.start) / (view.end - view.start)
+    return `${(100 * ratio).toFixed(3)}%`;
+}
+
+export const percent = (fraction) =>
+    `${(100 * fraction).toFixed(3)}%`;

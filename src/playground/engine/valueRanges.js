@@ -17,7 +17,7 @@ export function isFiniteArray(value) {
     );
 }
 
-export function calcLaneValueRange(lane, context) {
+export function calcLaneRange(lane, context) {
     let [min, max] = [0, 1];
     for (const target of lane.targets) {
         if (target.enabled && target.uniformName) {

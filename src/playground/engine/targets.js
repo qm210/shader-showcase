@@ -25,6 +25,7 @@ export class BatchTarget {
         this.name = name;
         this.custom = custom;
         this.uniforms = [];
+        this.containsAll = false;
     }
 
     static newAuto(name) {
@@ -148,10 +149,27 @@ export function deriveAutoBatches(controls) {
     }
     if (allUniforms.length > 0) {
         const allBatch = BatchTarget.newAuto("All Uniforms");
+        allBatch.containsAll = true;
         for (const control of allUniforms) {
             allBatch.addUniformFrom(control);
         }
         batches.unshift(allBatch);
     }
-    return batches.filter(b => b.uniforms.length > 0);
+    return batches;
+}
+
+export function groupUniforms(autoBatches) {
+    const groups = new Map();
+    for (const batch of autoBatches) {
+        if (!batch.uniforms.length) {
+            continue;
+        }
+        if (batch.containsAll && autoBatches.length > 1) {
+            continue;
+        }
+        const entries = groups.get(batch.name) ?? [];
+        entries.push(...batch.uniforms);
+        groups.set(batch.name, entries);
+    }
+    return groups;
 }

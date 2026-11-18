@@ -6,9 +6,9 @@ const MIN_ZOOM_SPAN = 0.5;
 const TICK_STEPS = [1, 2, 5];
 
 export function timelineSpan(engine, factor = 1) {
-    const tracks = engine.getAllLanes();
+    const lanes = engine.getAllLanes();
     let maxTime = 0;
-    for (const lane of tracks) {
+    for (const lane of lanes) {
         for (const kf of lane.keyframes) {
             if (kf.time > maxTime) {
                 maxTime = kf.time;

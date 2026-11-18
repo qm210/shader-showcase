@@ -90,7 +90,6 @@ export class TimeLane {
         return kf;
     }
 
-    /** Remove a keyframe at the given time (with tolerance) */
     removeKeyframe(time, tolerance = MIN_TIME_STEP) {
         const removed = [];
         this.keyframes = this.keyframes.filter(k => {
@@ -104,6 +103,10 @@ export class TimeLane {
             this._pushUndo({ type: "remove", keyframes: removed });
         }
         this.updateDuration();
+    }
+
+    findKeyframe(kfId) {
+        return this.keyframes.find(k => k.id === kfId);
     }
 
     /** Undo the last action on this lane. Returns true if something was undone. */

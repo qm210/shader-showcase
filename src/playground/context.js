@@ -1,35 +1,38 @@
 import {Overlay} from "./overlay/overlay.js";
 import {Randomizer} from "./engine/randomizer.js";
-import {isNumeric} from "../app/controls.js";
+import {isControllable} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import "./styles/overlay.css";
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
-import {PlaybackSync} from "./engine/playbackSync.js";
-import {BatchTarget, deriveAutoBatches} from "./engine/targets.js";
+import {BatchTarget, deriveAutoBatches, groupUniforms, TARGET_PREFIX} from "./engine/targets.js";
 
 export class PlaygroundContext {
+
     constructor(state, controls, elements) {
-        this.engine = new PlaygroundEngine(state, elements);
+        this.engine = new PlaygroundEngine({
+            getUniformEntries: () =>
+                Object.entries(state.uni),
+            setUniformValue: (name, value) =>
+                elements.uniforms[name].updateValue(value),
+            getPlaying: () => state.play.running,
+            setPlaying: (p) => state.play.actions.toggle(p),
+            getCurrentTime: () => state.time,
+            setCurrentTime: (to) => state.play.actions.jump({to}),
+        });
         this._controlMap = null;
-        this._controls = null;
-        this.batches = {
-            auto: [],
-            custom: []
-        };
+        this.batches = { auto: [], custom: [] };
+        this.uniformGroups = [];
         this._connect(state, controls, elements);
         this._provider = this._createProvider();
         this.randomizer = new Randomizer(this._provider);
         this.overlay = new Overlay(this._provider);
-        this._playbackSync = new PlaybackSync(state, this.engine);
-        this._playbackSync.connectOverlay(this.overlay);
-        this._playbackSync.connectMainActions(state.track?.actions ?? null);
-        
-        // Initialize overlay asynchronously (loads default audio, etc.)
-        this.overlay.init().catch(err => {
-            console.error("[PLAYGROUND] Overlay init failed:", err);
-        });
+
+        this.overlay.init()
+            .catch(err => {
+                console.error("[PLAYGROUND] Overlay init failed:", err);
+            });
 
         DEBUG.log("[PLAYGROUND] Context constructed.", {
             overlay: this.overlay,
@@ -38,81 +41,63 @@ export class PlaygroundContext {
     }
 
     _connect(state, controls, elements) {
-        const list = Array.isArray(controls)
-            ? controls
-            : controls?.uniforms;
-        if (!Array.isArray(list)) {
-            console.error("Cannot connectControls:", controls);
-            return;
-        }
+        const uniformControls = controls?.uniforms.filter(isControllable);
 
-        this._controls = list;
         this._controlMap = new Map();
-        for (const control of list) {
-            if (control.separator || !isNumeric(control)) {
-                continue;
-            }
-            const mainElements = elements.uniforms[control.name];
+        for (const control of uniformControls) {
             this._controlMap.set(control.name, {
                 min: control.min,
                 max: control.max,
                 defaultValue: control.defaultValue,
                 type: control.type,
-                mainElements,
             });
+            const mainElements = elements.uniforms[control.name];
+            if (!mainElements?.updateValue) {
+                console.warn("Uniform Elements have no updateValue:", {
+                    ...control,
+                    elements: mainElements
+                });
+            }
+
             const callbacks = mainElements?.synchronize?.onChange;
             if (!callbacks || callbacks.has("overlay")) {
                 continue;
             }
             callbacks.set("overlay", value => {
-                /** This would update the Playground when the Main State changes.
-                 *  This direction is currently intentionally unused.
+                /** Currently unused on purpose:
+                 *  Update the Playground when the Main State changes.
                  * */
             });
         }
 
-        this.batches.auto = deriveAutoBatches(list);
+        this.batches.auto = deriveAutoBatches(uniformControls);
+        this.uniformGroups = groupUniforms(this.batches.auto);
 
-        DEBUG.log("[PLAYGROUND] connectControls(…) ->", {
-            controls: this._controls,
+        DEBUG.log("[PLAYGROUND] _connect(…) ->", {
+            uniformControls,
             controlMap: this._controlMap,
             batches: structuredClone(this.batches)
         });
-
-        this._initUniformValues(state);
     }
 
-    _initUniformValues(state) {
-        if (!this._controls) {
-            return;
-        }
-        for (const control of this._controls) {
-            if (control.separator || control.boolean) {
-                continue;
-            }
-            const target = control.notAnUniform ? state : state.uni;
-            if (target[control.name] === undefined) {
-                target[control.name] = control.defaultValue;
-            }
-        }
-    }
-
-    update(dt) {
-        this.engine.update(dt);
+    update(_dt) {
         this.overlay.update();
-        this._playbackSync.updateFromEngine();
     }
 
-    resolveRange(entry) {
-        const control = this._controlMap?.get(entry.name);
-
-        const min = entry.min ?? control?.min ?? FALLBACK_RANGE.min;
-        const max = entry.max ?? control?.max ?? FALLBACK_RANGE.max;
-
-        const components = [control?.defaultValue, min, max]
-            .find(Array.isArray)?.length ?? 1;
-
-        return {min, max, components};
+    resolveControl(entry) {
+        let control = this._controlMap?.get(entry.name);
+        if (!control) {
+            console.warn("Failed to resolveRange()", entry, this._controlMap);
+            control = { ...FALLBACK_RANGE, defaultValue: 0 };
+        }
+        return {
+            ...control,
+            name: entry.name,
+            min: entry.min ?? control.min,
+            max: entry.max ?? control.max,
+            components: Array.isArray(control.defaultValue)
+                ? control.defaultValue.length : 1
+        };
     }
 
     _createProvider() {
@@ -121,10 +106,11 @@ export class PlaygroundContext {
         return {
             get engine() { return ctx.engine; },
 
-            get resolveControlRange() { return ctx.resolveRange; },
-
-            getControlRange(name) {
-                return ctx.resolveRange({ name });
+            getControl(entry) {
+                if (typeof entry === "string") {
+                    entry = {name: entry};
+                }
+                return ctx.resolveControl(entry);
             },
 
             getUniformValue(name) {
@@ -138,6 +124,10 @@ export class PlaygroundContext {
                 return Array.from(ctx._controlMap.entries())
                     .filter(([, ctrl]) => !isIntegerType(ctrl.type))
                     .map(([name]) => name);
+            },
+
+            get uniformGroups() {
+                return ctx.uniformGroups;
             },
 
             get batches() { return ctx.batches; },
@@ -173,7 +163,7 @@ export class PlaygroundContext {
             addBatch(name) {
                 const batch = new BatchTarget(
                     name, {
-                        id: `custom:${Date.now()}`,
+                        id: `${TARGET_PREFIX.BATCH}:${Date.now()}`,
                         custom: true,
                     });
                 ctx.batches.custom.push(batch);
@@ -188,16 +178,15 @@ export class PlaygroundContext {
                 }
             },
 
-            randomizeBatch(batchId, intensity, engine) {
+            randomizeBatch(batchId, intensity) {
                 const batch = this.getBatch(batchId);
-                if (batch) {
-                    return ctx.randomizer.randomizeBatch(batch, intensity, engine);
+                if (!batch) {
+                    return {};
                 }
-                return {};
+                return ctx.randomizer.randomizeBatch(batch, intensity);
             },
         };
     }
-
 }
 
 let _pg = null;

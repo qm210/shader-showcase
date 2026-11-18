@@ -3,43 +3,48 @@ import {AudioTrack} from "./audioTrack.js";
 
 const LATEST_SNAPSHOT_KEY = "_LATEST_";
 
+/**
+ * @typedef {Object} PlaygroundEngineDependencies
+ * @property {() => [string, unknown][]} getUniformEntries
+ * @property {(name: string, value: number) => void} setUniformValue
+ * @property {() => boolean} getPlaying
+ * @property {(boolean) => void} setPlaying
+ * @property {() => number} getCurrentTime
+ * @property {(number) => void} setCurrentTime
+ */
 export class PlaygroundEngine {
-    constructor(mainState, mainElements) {
-        this._mainState = mainState;
-        this._mainElements = mainElements;
+    constructor(deps) {
+        this._deps = deps;
+        this.playing = deps.getPlaying;
+        this.setPlaying = deps.setPlaying;
+        this.time = deps.getCurrentTime;
+        this.setTime = deps.setCurrentTime;
+
+        this.lanes = new Map();
+        this.overrides = {};
         this.snapshots = new Map();
         this.loadCurrentSnapshot();
-        this.lanes = new Map();
+
+        this.onlyOneAudioTrack = true;
         this.audioTracks = new Map();
         this._audioContext = null;
-        this.onlyOneAudioTrack = true;
-        this.currentTime = 0;
-        this.playing = false;
-        this.speed = 1.0;
-        this.baseTime = 0; // offset for shader iTime sync
-        this.onUpdate = null; // callback: (engine) => void, called every frame
-        this._overrides = {};
+    }
+
+    get audioContext() {
+        if (!this._audioContext) {
+            const AudioContext =
+                window.AudioContext ||
+                window.webkitAudioContext;
+            this._audioContext = new AudioContext();
+        }
+        return this._audioContext;
     }
 
     reset() {
         this.lanes.clear();
+        this.overrides = {};
         this.audioTracks.clear();
-        this.currentTime = 0;
-        this.playing = false;
-        this.speed = 1.0;
-        this.baseTime = 0;
-        this._overrides = {};
-    }
-
-    /**
-     * Get or create an AudioContext for decoding audio.
-     * @returns {AudioContext}
-     */
-    _getAudioContext() {
-        if (!this._audioContext) {
-            this._audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        return this._audioContext;
+        this.setTime(0);
     }
 
     addLane(name) {
@@ -60,13 +65,8 @@ export class PlaygroundEngine {
         return Array.from(this.lanes.values());
     }
 
-    /**
-     * Load an audio file and add it as an audio lane.
-     * @param {File} file
-     * @returns {Promise<AudioTrack>}
-     */
     async loadAudioTrack(file) {
-        const lane = await AudioTrack.load(file, this._getAudioContext());
+        const lane = await AudioTrack.load(file, this.audioContext);
         if (this.onlyOneAudioTrack) {
             this.audioTracks.clear();
         }
@@ -74,47 +74,33 @@ export class PlaygroundEngine {
         return lane;
     }
 
-    removeAudioTrack(id) {
-        this.audioTracks.delete(id);
-    }
-
-    getAudioTrack(id) {
-        return this.audioTracks.get(id);
+    removeLoadedAudio(id = undefined) {
+        if (!id) {
+            this.audioTracks.clear();
+        } else {
+            this.audioTracks.delete(id);
+        }
     }
 
     getAllAudioTracks() {
         return Array.from(this.audioTracks.values());
     }
 
-    update(dt) {
-        if (!this.playing) return;
-        this.currentTime += dt * this.speed;
-
-        // Auto-loop tracks that exceed their duration
-        for (const lane of this.lanes.values()) {
-            if (lane.loop && lane.duration > 0 && this.currentTime > lane.duration) {
-                this.currentTime -= lane.duration;
-            }
-        }
-
-        if (this.onUpdate) this.onUpdate(this);
-    }
-
     getAllTimelineValues() {
         const result = {};
         for (const lane of this.lanes.values()) {
-            const vals = lane.getAllValues(this.currentTime);
+            const vals = lane.getAllValues(this.time());
             Object.assign(result, vals);
         }
         return result;
     }
 
     getOverrides() {
-        return {...this._overrides};
+        return {...this.overrides};
     }
 
     getUniformBaseValue(name) {
-        return this._overrides[name] ?? this.latestSnapshot[name];
+        return this.overrides[name] ?? this.latestSnapshot[name];
     }
 
     getUniformBaseValues() {
@@ -125,40 +111,45 @@ export class PlaygroundEngine {
         return {
             ...snapshot,
             ...this.getOverrides()
-        }
+        };
     }
 
     getCurrentUniformValues() {
         return {
             ...this.getUniformBaseValues(),
             ...this.getAllTimelineValues(),
-        }
+        };
     }
 
-    getActualUniformValue(name) {
-        return this._mainState.uni[name];
+    updateUniformValue(name, value) {
+        try {
+            this._deps.setUniformValue(name, value);
+        } catch (error) {
+            console.error("Error setting uniform", {name, value, error});
+        }
     }
 
     setActualUniformValue(name, value) {
         this.setUniformOverride(name, value);
-        const elements = this._mainElementsForUniform(name);
-        return elements.updateValue(value);
+        this.updateUniformValue(name, value);
     }
 
-    _mainElementsForUniform(name) {
-        return this._mainElements.uniforms[name];
+    setUniformOverride(name, value) {
+        this.overrides[name] = value;
     }
 
-    setUniformOverride(uniformName, value) {
-        this._overrides[uniformName] = value;
-    }
-
-    clearOverrides() {
-        this._overrides = {};
-    }
-
-    get overrideCount() {
-        return this._overrides.length;
+    clearOverrides({writeSnapshot = false} = {}) {
+        if (writeSnapshot) {
+            const snapshot = this.latestSnapshot
+                ?? this.loadCurrentSnapshot();
+            for (const name in this.overrides) {
+                const resetValue = snapshot[name];
+                if (resetValue !== undefined) {
+                    this.updateUniformValue(name, resetValue);
+                }
+            }
+        }
+        this.overrides = {};
     }
 
     get latestSnapshot() {
@@ -168,10 +159,11 @@ export class PlaygroundEngine {
     loadCurrentSnapshot() {
         const snapshot = this._collectSnapshotOfUniforms();
         this.snapshots.set(LATEST_SNAPSHOT_KEY, snapshot);
+        return snapshot;
     }
 
     _collectSnapshotOfUniforms() {
-        const entries = Object.entries(this._mainState.uni);
+        const entries = this._deps.getUniformEntries();
         const snapshot = {};
         for (const [name, value] of entries) {
             if (typeof value === "number" || Array.isArray(value)) {
@@ -183,7 +175,6 @@ export class PlaygroundEngine {
 
     getCurrentUniformDetails() {
         const tracksByName = new Map();
-
         for (const lane of this.lanes.values()) {
             for (const target of lane.targets) {
                 if (!target.enabled) {
@@ -199,7 +190,7 @@ export class PlaygroundEngine {
 
         return Object.entries(this.getCurrentUniformValues())
             .map(([name, value]) => {
-                const override = this._overrides[name];
+                const override = this.overrides[name];
                 const usedInTracks = (tracksByName.get(name) ?? [])
                         .map(t => t.name).join(", ");
                 return {
@@ -213,25 +204,15 @@ export class PlaygroundEngine {
     }
 
     timelineToJSON() {
-        const tracks = [];
+        const lanes = [];
         for (const lane of this.lanes.values()) {
-            tracks.push(lane.toJSON());
+            lanes.push(lane.toJSON());
         }
-        return {
-            currentTime: this.currentTime,
-            playing: this.playing,
-            speed: this.speed,
-            baseTime: this.baseTime,
-            tracks,
-        };
+        return { lanes };
     }
 
     loadTimelineFromJSON(json) {
         this.reset();
-        this.currentTime = Number(json?.currentTime) || 0;
-        this.playing = Boolean(json?.playing);
-        this.speed = Number(json?.speed) || 1.0;
-        this.baseTime = Number(json?.baseTime) || 0;
         for (const laneJson of json?.tracks ?? []) {
             const lane = TimeLane.fromJSON(laneJson);
             this.lanes.set(lane.id, lane);

@@ -1,20 +1,16 @@
 import {STORAGE_KEY} from "../app/constants.js";
 
-const OVERLAY_STATE_VERSION = 3;
+const OVERLAY_STATE_VERSION = 4;
 
 export function collectStorageJson(overlay) {
     const store = {
         version: OVERLAY_STATE_VERSION,
         position: overlay.position,
-        collapsed: overlay.element.classList.contains("collapsed"),
-        collapsedTracks: [...overlay.lane.collapsedIds]
+        collapsedLaneIds: [...overlay.lane.collapsedIds]
             .filter(overlay.engine.getLane),
-        timeline: {
-            ...overlay.engine.timelineToJSON(),
-            playing: false
-        },
+        timeline: overlay.engine.timelineToJSON(),
         overrides: overlay.engine.getOverrides(),
-        selectedTrackId: overlay.lane.selectedId,
+        selectedLaneId: overlay.lane.selectedId,
         selectedBatchId: overlay.batch.selectedId,
         customBatches: overlay.ctx.batches.custom.map(b => b.toJSON()),
         randomIntensity: overlay.randomIntensity,

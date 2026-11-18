@@ -18,7 +18,7 @@ function overwriteInput(kind, value, placeholder, data) {
 }
 
 function batchUniformRow(provider, batchId, entry, index) {
-    const range = provider.getControlRange(entry.name);
+    const range = provider.getControl(entry.name);
     const data = dataAttrs({batchId, index});
     return `
         <div class="batch-uniform-row">
