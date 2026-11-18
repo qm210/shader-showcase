@@ -33,7 +33,7 @@
     position: fixed;
     top: 1em;
     left: 1em;
-    z-index: 10000;
+    z-index: 99;
     resize: both;
     overflow: hidden;
 

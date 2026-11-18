@@ -104,25 +104,10 @@ function showNeighbour(el, neighbour, kf, lane) {
     const visible = Boolean(neighbour) && neighbour !== kf;
     setShown(el, visible);
     if (visible) {
-        el.textContent = formatValue(_fromNormalized(neighbour.value, lane));
+        el.textContent = formatValue(
+            lane.scaleToFirstTargetRange(neighbour.value)
+        );
     }
-}
-
-/** Map a [-1, +1] value (or array) to the lane's range for display. */
-function _fromNormalized(normalized, lane) {
-    if (!lane || lane.targets.length === 0) {
-        return normalized;
-    }
-    const mapScalar = (val, target) =>
-        target.minValue + (val + 1) * (target.maxValue - target.minValue) / 2;
-    if (Array.isArray(normalized)) {
-        return normalized.map((v, i) => {
-            const t = lane.targets[i] || lane.targets[0];
-            return t ? mapScalar(v, t) : v;
-        });
-    }
-    const target = lane.targets[0];
-    return mapScalar(normalized, target);
 }
 
 /** Fill the bar with keyframe info; hides it when kf is missing. */
@@ -134,10 +119,11 @@ export function renderContextActionBar(bar, kf, lane, surrounding) {
     if (!kf) {
         return;
     }
-    bar.querySelector(".kf-time-value").textContent = `${kf.time.toFixed(1)}s`;
-    bar.querySelector(".kf-current-val").value = formatValue(_fromNormalized(kf.value, lane));
-    bar.querySelector(".kf-ease-select").value =
-        kf.ease || "linear";
+    bar.querySelector(".kf-time-value").textContent =`${kf.time.toFixed(1)}s`;
+    bar.querySelector(".kf-current-val").value = formatValue(
+        lane.scaleToFirstTargetRange(kf.value)
+    );
+    bar.querySelector(".kf-ease-select").value = kf.ease || "linear";
     showNeighbour(bar.querySelector(".kf-prev-val"), surrounding?.prev, kf, lane);
     showNeighbour(bar.querySelector(".kf-next-val"), surrounding?.next, kf, lane);
     bar.querySelector(".kf-undo-btn").disabled = !lane?._undoStack?.length;

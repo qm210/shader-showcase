@@ -9,7 +9,7 @@ import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from "../eng
 import {createPlaygroundOverlay} from "./dom/scaffold.js";
 import {renderPlayback, renderPreview, renderTimeZoom,} from "./dom/timeline.js";
 import {renderAllLanes, renderLane, stripFraction} from "./dom/lanes.js";
-import {findAllUniformComponents, renderUniformList, updateUniformRow} from "./dom/uniformList.js";
+import {collectUniformComponents, renderUniformList, updateUniformRow} from "./dom/uniformList.js";
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
 import {positionContextBar, renderContextActionBar} from "./dom/contextBar.js";
@@ -241,7 +241,7 @@ export class Overlay {
                     return;
                 }
                 this._editSelectedKeyframe(({lane, kf}) => {
-                    kf.value = this._toNormalized(displayValue, lane);
+                    kf.value = lane.normalizeToFirstTarget(displayValue);
                 });
             });
     }
@@ -390,7 +390,8 @@ export class Overlay {
 
         if (this._keyframeDrag) {
             const {kf, lane} = this._keyframeDrag;
-            this._setTooltipText(kf.time, this._fromNormalized(kf.value, lane));
+            const value = lane.scaleToFirstTargetRange(kf.value);
+            this._setTooltipText(kf.time, value);
             tooltip.classList.add("visible");
             return;
         }
@@ -418,39 +419,6 @@ export class Overlay {
         const el = document.elementFromPoint(e.clientX, e.clientY);
         const valueLine = el?.closest(".value-line");
         this._highlightValueLine(valueLine?.dataset.uniformName ?? null);
-    }
-
-    /** Time and value under the pointer, as used for new keyframes. */
-    /** Convert a value in the lane's range to [-1, +1]. */
-    /** Convert a value (or array) from lane range to [-1, +1]. */
-    _toNormalized(value, lane) {
-        if (!lane || lane.targets.length === 0) {
-            return Array.isArray(value) ? value.map(() => 0) : 0;
-        }
-        const mapScalar = (v, target) => {
-            const range = target.maxValue - target.minValue;
-            return range === 0 ? 0 : 2 * (v - target.minValue) / range - 1;
-        };
-        if (Array.isArray(value)) {
-            return value.map((v, i) => {
-                const t = lane.targets[i] || lane.targets[0];
-                return t ? mapScalar(v, t) : v;
-            });
-        }
-        return mapScalar(value, lane.targets[0]);
-    }
-
-    /** Convert a normalized [-1, +1] value (or array) to the lane's range. */
-    _fromNormalized(normalized, lane) {
-        if (!lane || lane.targets.length === 0) {
-            return normalized;
-        }
-        return mapScalar(normalized, lane.targets[0]);
-
-        function mapScalar(v, target) {
-            return target.minValue +
-                (v + 1) * (target.maxValue - target.minValue) / 2;
-        }
     }
 
     _pointerOnStrip(strip, lane, e) {
@@ -790,7 +758,7 @@ export class Overlay {
     _createKeyframePopup(laneId, kfId, kf) {
         const lane = this.engine.getLane(laneId);
         const ease = kf.ease || "linear";
-        const displayValue = this._fromNormalized(kf.value, lane);
+        const displayValue = lane.scaleToFirstTargetRange(kf.value);
         const popup = document.createElement("div");
         popup.className = "keyframe-popup";
         popup.innerHTML = `
@@ -1083,16 +1051,15 @@ export class Overlay {
             );
         } else if (el.classList.contains("uniform-slider")) {
             const name = el.dataset.uniformName;
-            const components = findAllUniformComponents(name, el);
-            const normalizedValue = components.length === 1 ? components[0] : components;
+            const normalized = collectUniformComponents(name, el);
             const range = this.ctx.getControl(name);
-            const value = Array.isArray(normalizedValue)
-                ? normalizedValue.map((v, i) => {
-                    const r = Array.isArray(range.min) ? range.min[i] : range.min;
-                    const mx = Array.isArray(range.max) ? range.max[i] : range.max;
-                    return r + (v + 1) * (mx - r) / 2;
+            const value = Array.isArray(normalized)
+                ? normalized.map((v, i) => {
+                    const min = Array.isArray(range.min) ? range.min[i] : range.min;
+                    const max = Array.isArray(range.max) ? range.max[i] : range.max;
+                    return min + (v + 1) * (max - min) / 2;
                 })
-                : range.min + (normalizedValue + 1) * (range.max - range.min) / 2;
+                : range.min + (normalized + 1) * (range.max - range.min) / 2;
             this.engine.setActualUniformValue(name, value);
             const tooltip = sliderTooltip(el);
             if (tooltip) {

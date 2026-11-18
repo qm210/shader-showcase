@@ -176,6 +176,26 @@ export class TimeLane {
         return result;
     }
 
+    normalizeToFirstTarget(value) {
+        if (this.targets.length === 0) {
+            return value;
+        }
+        const {minValue, maxValue} = this.targets[0];
+        const range = maxValue - minValue;
+        return range === 0
+            ? 0
+            : 2 * (value - minValue) / range - 1;
+    }
+
+    scaleToFirstTargetRange(normalized) {
+        if (this.targets.length === 0) {
+            return normalized;
+        }
+        const {minValue, maxValue} = this.targets[0];
+        const range = maxValue - minValue;
+        return minValue + (normalized + 1) * range / 2;
+    }
+
     toJSON() {
         return {
             id: this.id,

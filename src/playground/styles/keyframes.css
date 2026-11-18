@@ -80,7 +80,7 @@
     bottom: 0.1em;
 }
 
-#pg .keyframe-strip .constant-marker {
+#pg .keyframe-strip .range-label.center-label {
     position: absolute;
     right: 100%;
     margin-right: 0.3em;

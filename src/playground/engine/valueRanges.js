@@ -22,9 +22,6 @@ export function calcLaneRange(lane, context) {
     for (const target of lane.targets) {
         if (target.enabled && target.uniformName) {
             const range = context.getControl(target.uniformName);
-            if (Array.isArray(range.min) || Array.isArray(range.max)) {
-                console.warn("IS ARRAY", range);
-            }
             const tMin = Array.isArray(range.min)
                 ? FALLBACK_RANGE.min : range.min;
             const tMax = Array.isArray(range.max)

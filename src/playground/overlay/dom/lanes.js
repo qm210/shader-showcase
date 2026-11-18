@@ -6,8 +6,11 @@ import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from 
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
 import {keyframeKey} from "../../engine/keyframes.js";
+import {parseVectorComponent} from "../../context.js";
 
 import {percentageInView} from "../format.js";
+
+const COMPONENT_INDEX = {x: 0, y: 1, z: 2, w: 3};
 
 function easedT(t, ease) {
     if (ease === "step") {
@@ -167,7 +170,6 @@ function keyframeDots(lane, view, selectedKeyframes, min, max) {
         const key = keyframeKey(lane.id, kf.id);
         const selected = selectedKeyframes.has(key);
         const displayValue = min + (kf.value + 1) * (max - min) / 2;
-        DEBUG.log("[KF]", {...kf, max, min, displayValue});
         const title = [
             `t = ${kf.time.toFixed(1)}s`,
             `val = ${displayValue.toFixed(4)}`,
@@ -199,7 +201,15 @@ function valueLine(target, min, max, currentValue) {
     if (!target || !target.uniformName) {
         return "";
     }
-    const value = currentValue?.[target.uniformName];
+    const {baseName, component} = parseVectorComponent(target.uniformName);
+    const rawValue = currentValue?.[baseName];
+    if (rawValue === undefined || rawValue === null) {
+        return "";
+    }
+    // Extract scalar value from vector or use scalar directly
+    const value = component
+        ? (Array.isArray(rawValue) ? rawValue[COMPONENT_INDEX[component]] : rawValue)
+        : rawValue;
     if (value === undefined || value === null) {
         return "";
     }
@@ -241,7 +251,7 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
                  style="${playhead}"></div>
             ${uniformLines}
             <span class="range-label max-label">${esc(max.toFixed(2))}</span>
-            <span class="constant-marker">0</span>
+            <span class="range-label label"></span>
             <span class="range-label min-label">${esc(min.toFixed(2))}</span>
         </div>
     `;

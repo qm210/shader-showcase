@@ -156,14 +156,14 @@ export function updateUniformRow(container, name, value, range) {
     }
 }
 
-export function findAllUniformComponents(uniformName, container) {
+export function collectUniformComponents(uniformName, container) {
     const table = container.closest(".uniform-table");
     const sliders = Array.from(
         table?.querySelectorAll(
             `input[data-uniform-name="${uniformName}"]`
         ) ?? []
     ).filter(s => s.classList.contains("uniform-slider"));
-    return sliders.map(s => ({
+    const values = sliders.map(s => ({
             idx: parseInt(s.dataset.component, 10),
             value: parseFloat(s.value)
         }))
@@ -171,6 +171,7 @@ export function findAllUniformComponents(uniformName, container) {
             a.idx - b.idx
         )
         .map(s => s.value);
+    return values.length === 1 ? values[0] : values;
 }
 
 function uniformTable(provider, entries, isChecked, extraClass = "") {
