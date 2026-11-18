@@ -9,7 +9,7 @@ import {ifValidTimeZoom, MIN_TIME_STEP, timelineSpan, visibleRange} from "../eng
 import {createPlaygroundOverlay} from "./dom/scaffold.js";
 import {renderPlayback, renderPreview, renderTimeZoom,} from "./dom/timeline.js";
 import {renderAllLanes, renderLane, stripFraction} from "./dom/lanes.js";
-import {findAllUniformComponents, renderUniformList} from "./dom/uniformList.js";
+import {findAllUniformComponents, renderUniformList, updateUniformRow} from "./dom/uniformList.js";
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
 import {positionContextBar, renderContextActionBar} from "./dom/contextBar.js";
@@ -346,8 +346,24 @@ export class Overlay {
         this.renderTimeline();
     }
 
+    _updateUniform(name, value) {
+        this.engine.setActualUniformValue(name, value);
+        updateUniformRow(this.element, name, value);
+        this._renderPreview();
+    }
+
     /** Right-click on a uniform row logs its data for debugging. */
     _onContextMenu(e) {
+        const slider = e.target.closest(".uniform-slider");
+        if (slider) {
+            e.preventDefault();
+            const name = slider.dataset.uniformName;
+            const snapshot = this.engine.latestSnapshot;
+            if (snapshot && name in snapshot) {
+                this._updateUniform(name, snapshot[name]);
+            }
+            return;
+        }
         const row = e.target.closest(".uniform-row");
         if (!row) {
             return;
@@ -363,7 +379,7 @@ export class Overlay {
         console.group(`Uniform: ${name}`);
         console.log("Entry:", this._findUniformEntry(name)
             ?? "(not in any batch)");
-        console.log("Control Range:", this.ctx.getControlRange(name));
+        console.log("Control Range:", this.ctx.getControl(name));
         console.groupEnd();
     }
 
@@ -659,6 +675,16 @@ export class Overlay {
             return;
         }
 
+        const slider = e.target.closest(".uniform-slider");
+        if (slider) {
+            const name = slider.dataset.uniformName;
+            const control = this.ctx.getControl(name);
+            if (control?.defaultValue !== undefined) {
+                this._updateUniform(name, control.defaultValue);
+            }
+            return;
+        }
+
         if (e.target.closest("button, input")) {
             return;
         }
@@ -684,7 +710,7 @@ export class Overlay {
             );
         }
 
-        if (e.target.closest(".value-preview")) {
+        if (e.target.closest(".preview-btn")) {
             this._renderPreview({debug: true});
         }
     }
@@ -1075,7 +1101,7 @@ export class Overlay {
     /** Scalar control ranges are taken over, vectors use -1..1. */
     _resetTargetRange(target) {
         const range = target.uniformName
-            ? this.ctx.getControlRange(target.uniformName)
+            ? this.ctx.getControl(target.uniformName)
             : FALLBACK_RANGE;
         const scalarOr = (value, fallback) =>
             Array.isArray(value) ? fallback : value;
@@ -1094,7 +1120,7 @@ export class Overlay {
             const name = el.value.trim();
             batch.updateUniform(index, {name});
             // Update the range placeholders in place to keep the focus.
-            const range = this.ctx.getControlRange(name);
+            const range = this.ctx.getControl(name);
             const row = el.closest(".batch-uniform-row");
             row.querySelector(".min").placeholder = formatRange(range.min);
             row.querySelector(".max").placeholder = formatRange(range.max);

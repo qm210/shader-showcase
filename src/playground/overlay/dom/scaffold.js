@@ -27,7 +27,7 @@ const UI_SELECTORS = {
     audioFileInput:        "#audio-file-input",
     timelineEditor:        ".timeline-editor",
     laneRows:              ".lane-rows",
-    preview:               ".value-preview",
+    preview:               ".preview-btn",
     timelineTooltip:       ".timeline-tooltip",
     batchList:             ".batch-list",
     uniformNames:          `#${DATALIST.UNIFORMS}`,

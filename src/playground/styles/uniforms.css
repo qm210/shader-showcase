@@ -390,7 +390,11 @@
     height: 1em;
     margin: 0;
     accent-color: var(--overlay-pink);
-    cursor: pointer;
+}
+
+#pg .cell-check input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 #pg .cell-name {

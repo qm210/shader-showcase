@@ -80,6 +80,7 @@ function uniformRows(provider, entry, isChecked) {
     const range = provider.getControl(entry.name);
     const currentValue = provider.getUniformValue(entry.name);
     const isInteger = isIntegerType(entry.type);
+    const checked = isInteger ? false : isChecked;
 
     return vectorComponents(entry.type).map((suffix, i) => {
         const isComponent = i > 0;
@@ -93,7 +94,8 @@ function uniformRows(provider, entry, isChecked) {
                       class="uniform-checkbox"
                       id="${checkInputId}"
                       ${dataAttrs({uniformName: entry.name})}
-                      ${isChecked ? 'checked' : ''}>
+                      ${checked ? 'checked' : ''}
+                      ${isInteger ? 'disabled' : ''}>
             </td>`;
         const rowClass = cls(
             "uniform-row", isComponent && "uniform-row-component"
@@ -130,7 +132,7 @@ function uniformRows(provider, entry, isChecked) {
 
 export function updateUniformRow(container, name, value) {
     const sliders = Array.from(
-        this.element.querySelectorAll(
+        container.querySelectorAll(
             `input[data-uniform-name="${name}"]`
         )
     ).filter(s => s.classList.contains("uniform-slider"));

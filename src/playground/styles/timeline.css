@@ -39,6 +39,7 @@
 #pg .lanes-actions {
     display: flex;
     flex-direction: column;
+    justify-content: flex-end;
     gap: 1ch;
     font-size: 0.9em;
 }
@@ -46,6 +47,7 @@
 #pg .lanes-actions .btn {
     flex: 1;
     width: 100%;
+    max-height: 2.5em;
 }
 
 #pg .play-controls {
@@ -148,6 +150,10 @@
 
 #pg .time-slider-cell .time-slider.playing ~ .slider-tooltip:not(:empty) {
     opacity: 1;
+}
+
+#pg .time-slider-cell .slider-tooltip:empty {
+    opacity: 0;
 }
 
 #pg .lane-rows,
@@ -412,49 +418,30 @@
     flex: 1 1 auto;
 }
 
-#pg .value-preview {
+#pg .preview-btn {
     grid-column: 1 / -1;
-    overflow-y: auto;
     padding: 0.4em 0.85em;
     border-top: 1px solid var(--overlay-divider);
     background: rgba(255, 255, 255, 0.05);
     color: #9c9;
     font-family: var(--overlay-mono), monospace;
     font-size: 0.8em;
-    user-select: text;
-
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.2em;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
 }
 
-#pg .value-preview:empty {
+#pg .preview-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#pg .preview-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+#pg .preview-btn:empty {
     display: none;
-}
-
-#pg .value-preview .val-line {
-    flex: 1 0 auto;
-
-    display: flex;
-    justify-content: center;
-    gap: 1em;
-    overflow-wrap: anywhere;
-    border: 1px solid #fff3;
-    padding: 0.1em;
-    font-size: 0.95em;
-}
-
-#pg .value-preview .val-name {
-    min-width: 0;
-    color: #adf;
-}
-
-#pg .value-preview .val-num {
-    font-variant-numeric: tabular-nums;
-}
-
-#pg .value-preview .val-empty {
-    opacity: 0.7;
 }
 
 #pg .timeline-actions {

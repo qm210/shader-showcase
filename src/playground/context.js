@@ -42,7 +42,7 @@ export class PlaygroundContext {
 
     _connect(state, controls, elements) {
         const uniformsWithSeparators = controls.uniforms.filter(
-            c => c.separator || (isNumeric(c) && !c.unused)
+            c => c.separator || (isNumeric(c) && !c.hidden)
         );
         this.batches.auto = deriveAutoBatches(uniformsWithSeparators);
         this.uniformGroups = groupUniforms(this.batches.auto);

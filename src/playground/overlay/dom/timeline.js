@@ -1,7 +1,7 @@
 import {ACTION} from "../../actions.js";
 import {CHAR} from "../index.js";
-import {formatValue, percent, percentageInView} from "../format.js";
-import {actionButton, esc, setShown} from "./html.js";
+import {percent, percentageInView} from "../format.js";
+import {actionButton, setShown} from "./html.js";
 import {fullView, isInView, MIN_TIME_STEP, MIN_TIMELINE_SPAN, tickTimes, visibleRange} from "../../engine/timeZoom.js";
 
 function timeRangeField(label, className, min, value) {
@@ -84,7 +84,7 @@ export function timelineTemplate() {
             </div>
             <div></div>
             <div class="lane-rows"></div>
-            <div class="value-preview"></div>
+            <button class="preview-btn" disabled></button>
             
         </div>`;
 }
@@ -147,20 +147,22 @@ export function renderPlayback(ui, engine, view = fullView(engine)) {
 }
 
 export function renderPreview(ui, engine, {debug = false} = {}) {
-    const currentValues = engine.getCurrentUniformDetails()
+    const currentValues = engine.getCurrentUniformDetails();
     if (debug) {
+        const entries = currentValues.filter(it => !it.isUntouched);
         console.group("[UNIFORM PREVIEW] t =", engine.time(), "sec.");
-        console.table(currentValues);
+        console.table(entries);
         console.groupEnd();
+        return;
     }
-    const lines = currentValues
-        .filter(it => !it.isUntouched)
-        .map(it => `
-            <div class="val-line">
-                <span class="val-name">${esc(it.name)}</span>
-                <span class="val-num">${formatValue(it.value)}</span>
-            </div>`
-        );
-    ui.preview.innerHTML = lines.join("");
+    const count = currentValues.filter(it => !it.isUntouched).length;
+    const btn = ui.preview;
+    if (!btn) {
+        return;
+    }
+    btn.textContent = "Print to Console" + (
+        count > 0 ? ` (${count})` : ""
+    );
+    btn.disabled = count === 0;
 }
 

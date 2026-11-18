@@ -67,15 +67,15 @@ export function createInputElements(state, control) {
         target[control.name] = toVec(control.dim, target[control.name]);
     }
 
-    if (control.hidden) {
-        return;
-    }
-
     const activelyUsed = state.activeUniforms.find(
         uniform => uniform.name === control.name
     );
     if (!activelyUsed && !control.notAnUniform) {
-        control.unused = true;
+        control.hidden = true;
+        return;
+    }
+
+    if (control.hidden) {
         return;
     }
 

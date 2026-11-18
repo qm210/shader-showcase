@@ -21,7 +21,7 @@ export function calcLaneRange(lane, context) {
     let [min, max] = [0, 1];
     for (const target of lane.targets) {
         if (target.enabled && target.uniformName) {
-            const range = context.getControlRange(target.uniformName);
+            const range = context.getControl(target.uniformName);
             if (Array.isArray(range.min) || Array.isArray(range.max)) {
                 console.warn("IS ARRAY", range);
             }
