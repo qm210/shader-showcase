@@ -72,9 +72,13 @@ export class Overlay {
 
         // Zoomed time window {start, end} of the timeline, or null.
         this.zoom = null;
-
         // Copy/paste state for lane keyframes.
         this.clipboard = { lane: null };
+
+        // for syncing state changes
+        this._previously = {
+            playing: false
+        };
     }
 
     async init() {
@@ -1028,6 +1032,7 @@ export class Overlay {
             if (tooltip) {
                 tooltip.textContent = formatNumber(value);
             }
+            this._renderPreview();
         } else if (el.classList.contains("target-selector")) {
             this._onTargetNameInput(el);
         }
@@ -1112,8 +1117,6 @@ export class Overlay {
         }
         this._scheduleSave();
     }
-
-    // ─── Actions ────────────────────────────────────────────────
 
     togglePlaying() {
         const wasPlaying = this.engine.playing();
@@ -1202,10 +1205,6 @@ export class Overlay {
             .catch(err => alert(`Invalid timeline file: ${err.message}`));
     }
 
-    /**
-     * Load an audio file and add it as an audio lane.
-     * @param {File} file
-     */
     async _loadAudioFile(file) {
         try {
             await this.engine.loadAudioTrack(file);
@@ -1267,8 +1266,7 @@ export class Overlay {
                 STORAGE_KEY.PLAYGROUND_OVERLAY, collectStorageJson(this)
             );
         } catch (error) {
-            console.warn("Failed to store the playground overlay state:",
-                error);
+            console.warn("Overlay failed saveState()", error);
         }
     }
 
@@ -1392,22 +1390,6 @@ export class Overlay {
         this._scheduleSave();
     }
 
-    _normalizeEasingLines() {
-        const strips = this.ui.laneRows.querySelectorAll(".keyframe-strip");
-        strips.forEach(strip => {
-            const svg = strip.querySelector(".easing-line");
-            if (!svg) {
-                return;
-            }
-            const w = strip.clientWidth;
-            const h = strip.clientHeight;
-            if (w > 0 && h > 0) {
-                svg.style.transform = `scale(${w / 100}, ${h / 100})`;
-                svg.style.transformOrigin = "0 0";
-            }
-        });
-    }
-
     _lanesRenderState() {
         return [
             this.lane.selectedId,
@@ -1450,9 +1432,14 @@ export class Overlay {
     // ─── Public API ─────────────────────────────────────────────
 
     update() {
-        if (this.engine.playing()) {
+        const playing = this.engine.playing();
+        if (playing) {
             this._renderPlayback();
-            this._scheduleSave();
+            // this._scheduleSave();
+        }
+        if (playing !== this._previously.playing) {
+            this._syncPlayButton();
+            this._previously.playing = playing;
         }
     }
 

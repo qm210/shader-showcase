@@ -113,6 +113,7 @@ export function createPlaygroundOverlay() {
         headerTemplate(),
         timelineTemplate(),
         uniformPanelTemplate(),
+        `<div class="timeline-tooltip"></div>`,
         randomizerTemplate(),
         contextBarTemplate(),
     ].join("");

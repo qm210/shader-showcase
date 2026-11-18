@@ -6,7 +6,7 @@
     gap: 0.5em;
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
+    overflow: auto;
     padding: 0.5em;
     background: rgba(255, 255, 255, 0.03);
     scrollbar-width: thin;
@@ -27,7 +27,7 @@
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.1s;
-    z-index: 200;
+    z-index: 20000;
     white-space: pre;
     line-height: 1.4;
 }

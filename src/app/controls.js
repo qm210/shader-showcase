@@ -48,9 +48,3 @@ export function isNumeric(control) {
         && control.min !== undefined
         && control.max !== undefined;
 }
-
-export function isControllable(control) {
-    return isNumeric(control)
-        && !control.separator
-        && !control.unused;
-}

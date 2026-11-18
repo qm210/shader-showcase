@@ -1,5 +1,12 @@
 import {ACTION} from "../../actions.js";
-import {componentRange, formatComponent, formatRange, isIntegerType, vectorComponents,} from "../format.js";
+import {
+    componentRange,
+    formatComponent,
+    formatNumber,
+    formatRange,
+    isIntegerType,
+    vectorComponents,
+} from "../format.js";
 import {actionButton, cls, dataAttrs, esc} from "./html.js";
 
 const TABLE_HEADER = `
@@ -73,6 +80,7 @@ function uniformRows(provider, entry, isChecked) {
     const range = provider.getControl(entry.name);
     const currentValue = provider.getUniformValue(entry.name);
     const isInteger = isIntegerType(entry.type);
+
     return vectorComponents(entry.type).map((suffix, i) => {
         const isComponent = i > 0;
         const compRange = componentRange(range, i, isInteger);
@@ -112,11 +120,34 @@ function uniformRows(provider, entry, isChecked) {
                            min="${compRange.min}"
                            max="${compRange.max}"
                            step="${compRange.step}"
+                           value="${compValue}"
                            title="${compValue}">
                 </td>
                 ${overwriteCell('max', entry, i, compRange.max)}
             </tr>`;
     }).join("");
+}
+
+export function updateUniformRow(container, name, value) {
+    const sliders = Array.from(
+        this.element.querySelectorAll(
+            `input[data-uniform-name="${name}"]`
+        )
+    ).filter(s => s.classList.contains("uniform-slider"));
+
+    for (const slider of sliders) {
+        const idx = parseInt(slider.dataset.component, 10);
+        const compValue = Array.isArray(value)
+            ? (value[idx] ?? 0)
+            : value;
+        slider.value = compValue;
+        slider.title = formatNumber(compValue);
+        const tooltip = slider.parentElement
+            .querySelector(".slider-tooltip");
+        if (tooltip) {
+            tooltip.textContent = formatNumber(compValue);
+        }
+    }
 }
 
 export function findAllUniformComponents(uniformName, container) {

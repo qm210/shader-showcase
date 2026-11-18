@@ -1,6 +1,6 @@
 import {Overlay} from "./overlay/overlay.js";
 import {Randomizer} from "./engine/randomizer.js";
-import {isControllable} from "../app/controls.js";
+import {isNumeric} from "../app/controls.js";
 import {FALLBACK_RANGE} from "./engine/valueRanges.js";
 import "./styles/overlay.css";
 import {DEBUG} from "./overlay/index.js";
@@ -41,8 +41,15 @@ export class PlaygroundContext {
     }
 
     _connect(state, controls, elements) {
-        const uniformControls = controls?.uniforms.filter(isControllable);
+        const uniformsWithSeparators = controls.uniforms.filter(
+            c => c.separator || (isNumeric(c) && !c.unused)
+        );
+        this.batches.auto = deriveAutoBatches(uniformsWithSeparators);
+        this.uniformGroups = groupUniforms(this.batches.auto);
 
+        const uniformControls = uniformsWithSeparators.filter(
+            c => !c.separator
+        );
         this._controlMap = new Map();
         for (const control of uniformControls) {
             this._controlMap.set(control.name, {
@@ -69,9 +76,6 @@ export class PlaygroundContext {
                  * */
             });
         }
-
-        this.batches.auto = deriveAutoBatches(uniformControls);
-        this.uniformGroups = groupUniforms(this.batches.auto);
 
         DEBUG.log("[PLAYGROUND] _connect(…) ->", {
             uniformControls,

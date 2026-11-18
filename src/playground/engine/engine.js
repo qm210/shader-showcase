@@ -138,7 +138,7 @@ export class PlaygroundEngine {
         this.overrides[name] = value;
     }
 
-    clearOverrides({writeSnapshot = false} = {}) {
+    clearOverrides({writeSnapshot = true} = {}) {
         if (writeSnapshot) {
             const snapshot = this.latestSnapshot
                 ?? this.loadCurrentSnapshot();

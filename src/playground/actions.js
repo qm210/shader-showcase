@@ -1,6 +1,7 @@
 import {CHAR, DEBUG} from "./overlay/index.js";
 import {calcLaneRange} from "./engine/valueRanges.js";
 import {queryLaneWrapper} from "./overlay/dom/lanes.js";
+import {updateUniformRow} from "./overlay/dom/uniformList.js";
 
 export const ACTION = Object.freeze({
     HIDE_OVERLAY: "hide-overlay",
@@ -205,7 +206,12 @@ export function runAction(overlay, data) {
 
         case ACTION.RANDOMIZE:
             if (overlay.batch.selectedId) {
-                overlay.ctx.randomizeBatch(overlay.batch.selectedId, overlay.randomIntensity);
+                const values = overlay.ctx.randomizeBatch(
+                    overlay.batch.selectedId, overlay.randomIntensity
+                );
+                for (const name of Object.keys(values)) {
+                    updateUniformRow(overlay.element, name, values[name]);
+                }
                 overlay._renderPreview();
                 overlay._scheduleSave();
             }
@@ -288,6 +294,9 @@ export function runAction(overlay, data) {
 
         case ACTION.CLEAR_OVERRIDES: {
             overlay.engine.clearOverrides();
+            for (const [name, value] of Object.entries(overlay.engine.latestSnapshot)) {
+                updateUniformRow(overlay.element, name, value);
+            }
             overlay.renderTimeline();
             break;
         }

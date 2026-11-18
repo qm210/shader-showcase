@@ -95,7 +95,7 @@ export function timelineTemplate() {
             <div></div>
             <div class="lane-rows"></div>
             <div class="value-preview"></div>
-            <div class="timeline-tooltip"></div>
+            
         </div>`;
 }
 
