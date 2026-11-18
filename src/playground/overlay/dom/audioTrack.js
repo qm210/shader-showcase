@@ -1,5 +1,7 @@
 import {isInView} from "../../engine/timeZoom.js";
 import {CHAR} from "../../../app/constants.js";
+import {clamp} from "../../../app/algorithms.js";
+import {DEBUG} from "../index.js";
 
 let _samplesPerPixel = 16;
 
@@ -78,9 +80,6 @@ function withResolutionApplied(totalSamples) {
     return `${str.samples} samples ~ ${str.pixels} px`;
 }
 
-const MAX_COLUMNS = 2048;
-const WAVE_HEIGHT = 200;
-
 /**
  * @param {MouseEvent} e
  * @returns {{ratio: number, svg: SVGElement}|null}
@@ -102,18 +101,25 @@ function getAudioWidthRatio(e) {
 /** Last computed path per waveform buffer, reused while the view is unchanged. */
 const _pathCache = new WeakMap();
 
-function waveformPath(data, start, end, duration) {
+const MAX_COLUMNS = 2048;
+const WAVE_HEIGHT = 200;
+
+function waveformPath(data, start, end, duration, maxColumns = 0) {
     const first = Math.max(0, Math.floor((start / duration) * data.length));
     const last =
         Math.min(data.length, Math.ceil((end / duration) * data.length));
     const visible = last - first;
     if (visible <= 0) {
-        return {path: "", columns: 1};
+        return {path: "", columns: 1, bins: []};
     }
 
-    // More columns than screen pixels only cost parse and raster time.
-    const columns = Math.max(2, Math.min(MAX_COLUMNS,
-        Math.floor(visible / _samplesPerPixel)));
+    const columns = clamp(
+        Math.floor(visible / _samplesPerPixel),
+        2, maxColumns || MAX_COLUMNS
+    );
+    DEBUG.log("[WAVEFORM]", {
+        visible, first, last, columns, _samplesPerPixel, start, end, duration
+    });
 
     const key = `${first}:${last}:${columns}`;
     const cached = _pathCache.get(data);
@@ -122,13 +128,18 @@ function waveformPath(data, start, end, duration) {
     }
 
     const half = WAVE_HEIGHT / 2;
+    const bins = new Array(columns * 2);
     const tops = new Array(columns);
     const bottoms = new Array(columns);
 
     for (let col = 0; col < columns; col++) {
-        // Floor-divided bounds: every column gets samples, none stays empty.
+        // Floor-divided bounds spread samples evenly over the columns.
+        // At least one sample per column, even if visible < columns.
         const sStart = first + Math.floor(col * visible / columns);
-        const sEnd = first + Math.floor((col + 1) * visible / columns);
+        const sEnd = Math.min(last, Math.max(
+            sStart + 1,
+            first + Math.floor((col + 1) * visible / columns)
+        ));
 
         let min = Infinity;
         let max = -Infinity;
@@ -138,6 +149,8 @@ function waveformPath(data, start, end, duration) {
             if (val > max) max = val;
         }
 
+        bins[2 * col] = min;
+        bins[2 * col + 1] = max;
         tops[col] = Math.round((1 - max) * half);
         bottoms[col] = Math.round((1 - min) * half);
     }
@@ -151,12 +164,12 @@ function waveformPath(data, start, end, duration) {
     }
     parts.push("Z");
 
-    const result = {key, path: parts.join(""), columns};
+    const result = {key, path: parts.join(""), columns, bins};
     _pathCache.set(data, result);
     return result;
 }
 
-export function analyzeAudioWaveform(track, view) {
+export function analyzeAudioWaveform(track, view, maxPixels = 0) {
     if (track.loading) {
         return {track, loading: true};
     }
@@ -173,8 +186,8 @@ export function analyzeAudioWaveform(track, view) {
         return {track, data, visible: false};
     }
 
-    const {path, columns} =
-        waveformPath(data, audioStart, audioEnd, track.duration);
+    const {path, columns, bins} =
+        waveformPath(data, audioStart, audioEnd, track.duration, maxPixels);
 
     return {
         track,
@@ -183,60 +196,10 @@ export function analyzeAudioWaveform(track, view) {
         audioStart,
         audioEnd,
         path,
+        columns,
+        bins,
         width: columns - 1,
-        ...analyzeBins(data, {
-            start: audioStart,
-            end: audioEnd,
-            duration: track.duration,
-            width: 100,
-            height: 40
-        })
     };
-}
-
-function analyzeBins(data, {start, end, duration, height}) {
-    const counts = {
-        columns: 0,
-        perColumn: 0,
-        tops: [],
-        bottoms: [],
-        bins: [],
-    };
-    if (!data || data.length === 0) {
-        return counts;
-    }
-    const startSample = Math.floor((start / duration) * data.length);
-    const endSample = Math.ceil((end / duration) * data.length);
-    const visibleSamples = endSample - startSample;
-    if (visibleSamples <= 0) {
-        return counts;
-    }
-
-    // Downsample: for each pixel column, find min/max of samples
-    counts.columns = Math.max(1, Math.floor(visibleSamples / _samplesPerPixel));
-    counts.perColumn = Math.ceil(visibleSamples / counts.columns);
-
-    for (let col = 0; col < counts.columns; col++) {
-        const sStart = startSample + col * counts.perColumn;
-        const sEnd = Math.min(sStart + counts.perColumn, endSample);
-
-        let min = 1;
-        let max = -1;
-        for (let s = sStart; s < sEnd; s++) {
-            const val = data[s];
-            if (val < min) min = val;
-            if (val > max) max = val;
-        }
-
-        counts.tops.push(normalize(max));
-        counts.bottoms.push(normalize(min));
-        counts.bins.push(min, max);
-    }
-    return counts;
-
-    function normalize(value) {
-        return ((1 - value) / 2) * height;
-    }
 }
 
 export function renderAudioWaveform(wave, currentTime = 0) {
@@ -305,8 +268,11 @@ export function renderAudioWaveform(wave, currentTime = 0) {
  * @param {object} view - {start, end}
  */
 export function renderAudioWaveforms(ui, engine, view) {
+    const maxPixels = Math.ceil(
+        ui.timeSlider.parentElement.getBoundingClientRect().width
+    );
     const audioData = engine.getAllAudioTracks()
-        .map(t => analyzeAudioWaveform(t, view));
+        .map(t => analyzeAudioWaveform(t, view, maxPixels));
     const rows = audioData
         .map(wave => renderAudioWaveform(wave, engine.time()))
         .filter(Boolean);
