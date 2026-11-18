@@ -7,7 +7,6 @@
 }
 
 #pg .audio-name-col {
-    grid-column: span 2;
     min-width: 0;
     contain: inline-size;
     padding: 0.3em 0.65em;
@@ -40,8 +39,8 @@
 }
 
 #pg .audio-widget {
-    min-width: var(--track-widget-min-width);
-    padding: var(--track-widget-pad);
+    min-width: var(--lane-widget-min-width);
+    padding: var(--lane-widget-pad);
     display: flex;
     align-items: stretch;
     position: relative;

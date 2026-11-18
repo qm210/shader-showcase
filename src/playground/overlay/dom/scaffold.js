@@ -52,7 +52,15 @@ function headerTemplate() {
             </span>
             <div class="panel-header-actions">
                 <div class="timeline-actions">
-                    <span>Timeline:</span>                   
+                    <span>Timeline:</span>       
+                    <div class="play-controls">
+                        ${actionButton({
+                            action: ACTION.PLAY,
+                            label: CHAR.PLAY,
+                            className: 'btn icon play-btn',
+                            title: 'Play/Pause (Space)',
+                        })}
+                    </div>
                     ${actionButton({
                         action: ACTION.EXPORT,
                         label: 'Export'
@@ -68,7 +76,7 @@ function headerTemplate() {
                         className: 'btn icon'
                     })}                    
                 </div>
-                <div class="uniform-snaphot">
+                <div class="uniform-snapshot">
                     <span>Uniform Snapshot:</span>
                     ${actionButton({
                         action: ACTION.LOAD_SNAPSHOT,

@@ -773,12 +773,12 @@ export class Overlay {
                 e.stopPropagation();
                 kf.ease = e.target.value;
                 this.renderLane(laneId);
+                this._showKeyframePopups();
             });
         popup.querySelector(".kf-seek-btn")
             .addEventListener("click", (e) => {
                 e.stopPropagation();
                 this._seek(kf.time);
-                this._removeKeyframePopups();
             });
         return popup;
     }

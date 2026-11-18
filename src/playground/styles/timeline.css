@@ -1,7 +1,7 @@
 #pg .timeline-editor {
     grid-area: tracks;
     display: grid;
-    grid-template-columns: repeat(2, max-content) minmax(0, 1fr) max-content;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
     grid-auto-rows: max-content;
     gap: 0.5em;
     flex: 1 1 auto;
@@ -40,20 +40,12 @@
     display: flex;
     flex-direction: column;
     gap: 1ch;
+    font-size: 0.9em;
 }
 
 #pg .lanes-actions .btn {
     flex: 1;
     width: 100%;
-}
-
-#pg .timeline-controls {
-    flex: 3;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: flex-end;
-    gap: 0.5em;
 }
 
 #pg .play-controls {
@@ -64,10 +56,11 @@
     gap: 1ch;
 }
 
-#pg .timeline-controls .btn.icon {
-    padding-block: 0.33em;
+#pg .play-controls .btn.icon {
+    padding-block: 0.3em;
     width: 2em;
     font-size: 1.1em;
+    margin-inline: 0.5em;
 }
 
 #pg .time-range-bar {
@@ -168,20 +161,26 @@
     visibility: collapse;
 }
 
-#pg .lane-name-col {
+#pg .lane-header-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
     min-width: 6em;
+    height: 100%;
+}
+
+#pg .lane-header-name {
     padding: 0.5em 0.65em;
     display: flex;
-    height: 100%;
     align-items: center;
     gap: 0.3em;
 }
 
-#pg .lane-wrapper.selected .lane-name-col {
+#pg .lane-wrapper.selected .lane-header-name {
     align-items: flex-start;
 }
 
-#pg .lane-name-col .lane-name {
+#pg .lane-header-name .lane-name {
     color: #9bf;
     font-weight: 600;
     overflow-wrap: anywhere;
@@ -190,7 +189,7 @@
     min-width: 0;
 }
 
-#pg .lane-name-col .field.name {
+#pg .lane-header-name .field.name {
     flex: 1;
     min-width: 0;
     color: inherit;
@@ -200,13 +199,13 @@
     padding: 0.2em 0.3em;
 }
 
-#pg .lane-name-col .field.name:focus {
+#pg .lane-header-name .field.name:focus {
     border-color: var(--overlay-border);
     background: var(--overlay-field);
     outline: none;
 }
 
-#pg .lane-name-col .btn {
+#pg .lane-header-name .btn {
     flex: 0 0 auto;
     font-size: 0.85em;
 }

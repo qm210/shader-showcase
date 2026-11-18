@@ -23,8 +23,8 @@
     --overlay-randomize: #bb9fee;
 
     --slider-color: var(--overlay-accent);
-    --track-widget-pad: 0.1em 0.5em 0.1em 2em;
-    --track-widget-min-width: 15em;
+    --lane-widget-pad: 0.1em 0.5em 0.1em 2em;
+    --lane-widget-min-width: 15em;
     --keyframe-color-idle: var(--overlay-neutral);
     --keyframe-dot-size: 0.5em;
     --keyframe-hit-size: 24px;
@@ -124,6 +124,7 @@
 #pg .panel-header-actions {
     display: flex;
     gap: 1ch;
+    align-items: center;
 }
 
 #pg .panel-header-actions span {
@@ -134,8 +135,13 @@
 #pg .panel-header span,
 #pg .panel-header .btn {
     font-size: 0.75em;
-    padding: 0.15em 0.45em;
     flex-shrink: 0;
+}
+
+#pg .panel-header .uniform-snapshot {
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 
 #pg .minimize-btn {

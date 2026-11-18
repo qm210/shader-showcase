@@ -36,16 +36,6 @@ export function timelineTemplate() {
                        accept="audio/*"
                        style="display:none">
             </div>
-            <div class="timeline-controls">
-                <div class="play-controls">
-                    ${actionButton({
-                        action: ACTION.PLAY,
-                        label: CHAR.PLAY,
-                        className: 'btn icon play-btn',
-                        title: 'Play/Pause (Space)',
-                    })}
-                </div>
-            </div>
             <div class="time-range-bar">
                 <div class="time-range-labels">
                     ${timeRangeField('Start:', 'time-start', 0, 0)}

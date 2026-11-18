@@ -265,11 +265,13 @@ function laneColumns(
         }),
     });
     return `
-        <div class="lane-name-col">
-            ${nameCol}
-        </div>
-        <div class="lane-targets-col">
-            ${targetRows(lane, knownNames)}
+        <div class="lane-header-col">
+            <div class="lane-header-name">
+                ${nameCol}
+            </div>
+            <div class="lane-targets-col">
+                ${targetRows(lane, knownNames)}
+            </div>
         </div>
         <div class="lane-widget">
             ${keyframeStrip(lane, provider, view, selectedKeyframes)}
@@ -304,7 +306,7 @@ export function renderAllLanes(ui, provider, ...state) {
 
 export function renderLane(ui, provider, laneId, ...state) {
     const lane = provider.engine.getLane(laneId);
-    const row = queryLaneWrapper(laneId);
+    const row = queryLaneWrapper(ui, laneId);
     if (!lane || !row) {
         return false;
     }
