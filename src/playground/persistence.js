@@ -12,7 +12,8 @@ export function collectStorageJson(overlay) {
         overrides: overlay.engine.getOverrides(),
         selectedLaneId: overlay.lane.selectedId,
         selectedBatchId: overlay.batch.selectedId,
-        customBatches: overlay.ctx.batches.custom.map(b => b.toJSON()),
+        customBatches: overlay.ctx.batches.custom
+            .map(b => b.toJSON()),
         randomIntensity: overlay.randomIntensity,
     };
     return JSON.stringify(store);

@@ -1,46 +1,8 @@
 import {isInView} from "../../engine/timeZoom.js";
 import {CHAR} from "../../../app/constants.js";
 import {clamp} from "../../../app/algorithms.js";
-import {DEBUG} from "../index.js";
 
-let _samplesPerPixel = 16;
-
-const SAMPLE_OPTIONS = [32, 16, 8, 4, 2];
-
-export function setWaveformSamples(value) {
-    _samplesPerPixel = Number(value);
-}
-
-function sampleSelectorHTML(current, tooltipText) {
-    const options = SAMPLE_OPTIONS.map(v =>
-        `<div class="sample-option"
-              data-value="${v}"
-              ${v === current ? 'data-selected="true"' : ''}>${v}</div>`
-    ).join("");
-    return `
-        <div class="sample-selector"
-             tabindex="0"
-             title="${tooltipText}">
-            <div class="sample-selector-value">${current}</div>
-            <div class="sample-selector-dropdown">
-                ${options}
-            </div>
-        </div>
-    `;
-}
-
-function controlsColHTML(tooltipText) {
-    return `
-        <div class="audio-controls-col"
-             title="${tooltipText}">
-            <label class="sample-res-label"
-                   title="${tooltipText}">res</label>
-            ${sampleSelectorHTML(_samplesPerPixel, tooltipText)}
-        </div>
-    `;
-}
-
-function rowHTML(track, content, tooltipText, empty = false) {
+function rowHTML(track, content, empty = false) {
     const duration = track.duration > 0
         ? `(${track.duration.toFixed(1)}\u2009s)` : "";
     return `
@@ -56,28 +18,14 @@ function rowHTML(track, content, tooltipText, empty = false) {
             <div class="audio-widget">
                 ${content}
             </div>
-            ${controlsColHTML(tooltipText)}
+            <div class="audio-control"></div>
         </div>
     `;
 }
 
-function emptyRow(track, statusText, tooltipText) {
-    const fullTooltip = `${tooltipText} (${statusText})`;
+function emptyRow(track, statusText) {
     const content = `<span class="audio-status">${statusText}</span>`;
-    return rowHTML(track, content, fullTooltip, true);
-}
-
-function basicResolutionInfo() {
-    return `Waveform Resolution ${_samplesPerPixel}/px`;
-}
-
-function withResolutionApplied(totalSamples) {
-    const totalPixels = Math.max(1, Math.floor(totalSamples / _samplesPerPixel));
-    const str = {
-        samples: totalSamples.toLocaleString(),
-        pixels: totalPixels.toLocaleString(),
-    }
-    return `${str.samples} samples ~ ${str.pixels} px`;
+    return rowHTML(track, content, true);
 }
 
 /**
@@ -104,22 +52,24 @@ const _pathCache = new WeakMap();
 const MAX_COLUMNS = 2048;
 const WAVE_HEIGHT = 200;
 
-function waveformPath(data, start, end, duration, maxColumns = 0) {
-    const first = Math.max(0, Math.floor((start / duration) * data.length));
-    const last =
-        Math.min(data.length, Math.ceil((end / duration) * data.length));
+function waveformPath(data, view, duration, pixelWidth = 0, maxColumns = 0) {
+    const {start, end} = view;
+    const first = Math.max(
+        0,
+        Math.floor((start / duration) * data.length)
+    );
+    const last = Math.min(
+        data.length,
+        Math.ceil((end / duration) * data.length)
+    );
     const visible = last - first;
     if (visible <= 0) {
         return {path: "", columns: 1, bins: []};
     }
 
-    const columns = clamp(
-        Math.floor(visible / _samplesPerPixel),
-        2, maxColumns || MAX_COLUMNS
-    );
-    DEBUG.log("[WAVEFORM]", {
-        visible, first, last, columns, _samplesPerPixel, start, end, duration
-    });
+    const columns = Math.ceil(clamp(
+        pixelWidth, 2, maxColumns || MAX_COLUMNS
+    ));
 
     const key = `${first}:${last}:${columns}`;
     const cached = _pathCache.get(data);
@@ -169,7 +119,7 @@ function waveformPath(data, start, end, duration, maxColumns = 0) {
     return result;
 }
 
-export function analyzeAudioWaveform(track, view, maxPixels = 0) {
+export function analyzeAudioWaveform(track, view, pixelWidth = 0) {
     if (track.loading) {
         return {track, loading: true};
     }
@@ -178,23 +128,23 @@ export function analyzeAudioWaveform(track, view, maxPixels = 0) {
     if (!data) {
         return {track, data};
     }
+    const audioView = {
+        start: Math.max(view.start, 0),
+        end: Math.min(view.end, track.duration),
+    };
 
-    const audioStart = Math.max(view.start, 0);
-    const audioEnd = Math.min(view.end, track.duration);
-
-    if (!isInView({start: audioStart, end: audioEnd}, 0)) {
+    if (!isInView(audioView, 0)) {
         return {track, data, visible: false};
     }
 
     const {path, columns, bins} =
-        waveformPath(data, audioStart, audioEnd, track.duration, maxPixels);
+        waveformPath(data, audioView, track.duration, pixelWidth, MAX_COLUMNS);
 
     return {
         track,
         data,
         visible: true,
-        audioStart,
-        audioEnd,
+        audioView,
         path,
         columns,
         bins,
@@ -204,26 +154,23 @@ export function analyzeAudioWaveform(track, view, maxPixels = 0) {
 
 export function renderAudioWaveform(wave, currentTime = 0) {
     const {track, data} = wave;
-    let tooltipText = basicResolutionInfo();
 
     if (wave.loading) {
-        return emptyRow(track, "Decoding audio…", tooltipText);
+        return emptyRow(track, "Decoding audio…");
     }
     if (!data) {
-        return emptyRow(track, "No audio data", tooltipText);
+        return emptyRow(track, "No audio data");
     }
     if (!wave.visible) {
         return "";
     }
-    const {audioStart, audioEnd, path, width} = wave;
-
-    tooltipText += ` (${withResolutionApplied(data.length)})`;
+    const {audioView: {start, end}, path, width} = wave;
 
     const playheadPercent = track.duration > 0
-        ? ((currentTime - audioStart) / (audioEnd - audioStart)) * 100
+        ? ((currentTime - start) / (end - start)) * 100
         : 0;
     const showPlayhead =
-        currentTime >= audioStart && currentTime <= audioEnd;
+        currentTime >= start && currentTime <= end;
 
     const playhead = showPlayhead ? `
         <div class="playhead"
@@ -258,7 +205,7 @@ export function renderAudioWaveform(wave, currentTime = 0) {
             ${playhead}
         </div>
     `;
-    return rowHTML(track, content, tooltipText);
+    return rowHTML(track, content);
 }
 
 /**
@@ -268,11 +215,10 @@ export function renderAudioWaveform(wave, currentTime = 0) {
  * @param {object} view - {start, end}
  */
 export function renderAudioWaveforms(ui, engine, view) {
-    const maxPixels = Math.ceil(
-        ui.timeSlider.parentElement.getBoundingClientRect().width
-    );
+    const containerWidth = ui.timeSlider.parentElement
+        ?.getBoundingClientRect().width ?? 0;
     const audioData = engine.getAllAudioTracks()
-        .map(t => analyzeAudioWaveform(t, view, maxPixels));
+        .map(t => analyzeAudioWaveform(t, view, containerWidth));
     const rows = audioData
         .map(wave => renderAudioWaveform(wave, engine.time()))
         .filter(Boolean);
@@ -289,6 +235,17 @@ export function renderAudioWaveforms(ui, engine, view) {
         existing.replaceWith(container);
     } else {
         ui.laneRows.after(container);
+    }
+
+    if (!ui._audioResizeObserver) {
+        let _resizeTimer = null;
+        ui._audioResizeObserver = new ResizeObserver(() => {
+            clearTimeout(_resizeTimer);
+            _resizeTimer = setTimeout(() => {
+                renderAudioWaveforms(ui, engine, view);
+            }, 300);
+        });
+        ui._audioResizeObserver.observe(ui.timelineEditor);
     }
 
     container.addEventListener("click", (e) => {
@@ -347,39 +304,4 @@ export function renderAudioWaveforms(ui, engine, view) {
     container.addEventListener("mouseleave", () => {
         tooltip?.classList.remove("visible");
     });
-
-    ui.onToggleSampleSelect = (e) => {
-        const selector = e.target.closest(".sample-selector");
-        if (!selector) {
-            document.querySelectorAll(".sample-selector.open")
-                .forEach(el =>
-                    el.classList.remove("open")
-                );
-            return false;
-        } else {
-            selector.classList.toggle("open");
-            return true;
-        }
-    };
-
-    ui.onSampleSelectOption = (e) => {
-        const el = e.target;
-        if (!el.classList.contains("sample-option")) {
-            return false;
-        }
-        const value = Number(el.dataset.value);
-        setWaveformSamples(value);
-        const selector = el.closest(".sample-selector");
-        if (selector) {
-            const valueEl = selector.querySelector(".sample-selector-value");
-            if (valueEl) valueEl.textContent = `${value}/px`;
-            // Update selected state
-            selector.querySelectorAll(".sample-option").forEach(opt =>
-                opt.removeAttribute("data-selected")
-            );
-            el.setAttribute("data-selected", "true");
-            selector.classList.remove("open");
-        }
-        return true;
-    };
 }

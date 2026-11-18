@@ -523,17 +523,10 @@ export class Overlay {
             return;
         }
 
-        if (this.ui.onToggleSampleSelect?.(e)) {
-            return;
-        }
-        if (this.ui.onSampleSelectOption?.(e)) {
-            this.renderTimeline();
-            return;
-        }
-
         const actionData = e.target.closest("[data-action]")?.dataset;
         if (actionData) {
             runAction(this, actionData);
+            this._scheduleSave();
             return;
         }
 

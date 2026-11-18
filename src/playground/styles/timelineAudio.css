@@ -34,68 +34,6 @@
     white-space: nowrap;
 }
 
-#pg .audio-controls-col .sample-selector {
-    font-size: 0.76em;
-    font-family: var(--overlay-mono), monospace;
-    position: relative;
-    cursor: pointer;
-    user-select: none;
-}
-
-#pg .audio-controls-col .sample-selector-value {
-    padding: 0.1em 0.3em;
-    background: var(--overlay-bg);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-    color: #9bf;
-    text-align: center;
-    display: inline-block;
-}
-
-#pg .audio-controls-col .sample-selector:hover .sample-selector-value {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-#pg .audio-controls-col .sample-selector:focus .sample-selector-value {
-    border-color: #9bf;
-    box-shadow: 0 0 0 1px rgba(153, 187, 255, 0.3);
-}
-
-#pg .audio-controls-col .sample-selector-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 2px;
-    background: var(--overlay-bg);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-    z-index: 1000;
-    min-width: 100%;
-    overflow: hidden;
-}
-
-#pg .audio-controls-col .sample-selector.open .sample-selector-dropdown {
-    display: block;
-}
-
-#pg .audio-controls-col .sample-option {
-    padding: 0.2em 0.5em;
-    color: #9bf;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-#pg .audio-controls-col .sample-option:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-#pg .audio-controls-col .sample-option[data-selected="true"] {
-    color: #bb9;
-    font-weight: 600;
-}
-
 #pg .audio-status.audio-loading {
     color: #bb9;
     font-style: italic;
@@ -109,21 +47,6 @@
     position: relative;
     min-height: 2.5em;
     max-height: 8em;
-}
-
-#pg .audio-controls-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-#pg .sample-res-label {
-    font-size: 0.8em;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: lowercase;
-    margin-bottom: 0.05em;
-    white-space: nowrap;
 }
 
 #pg .audio-waveform-container {

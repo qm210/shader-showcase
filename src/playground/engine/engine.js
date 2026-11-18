@@ -213,7 +213,7 @@ export class PlaygroundEngine {
 
     loadTimelineFromJSON(json) {
         this.reset();
-        for (const laneJson of json?.tracks ?? []) {
+        for (const laneJson of json?.lanes ?? []) {
             const lane = TimeLane.fromJSON(laneJson);
             this.lanes.set(lane.id, lane);
         }
