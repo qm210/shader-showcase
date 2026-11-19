@@ -1,6 +1,6 @@
 import {STORAGE_KEY} from "../app/constants.js";
 
-const OVERLAY_STATE_VERSION = 4;
+const OVERLAY_STATE_VERSION = 5;
 
 export function collectStorageJson(overlay) {
     const store = {
@@ -12,10 +12,11 @@ export function collectStorageJson(overlay) {
         overrides: overlay.engine.getOverrides(),
         selectedLaneId: overlay.lane.selectedId,
         selectedBatchId: overlay.batch.selectedId,
+        selectedUniforms: [...overlay.selectedUniforms],
         customBatches: overlay.ctx.batches.custom
             .map(b => b.toJSON()),
         randomIntensity: overlay.randomize.intensize,
-        randomBatchId: overlay.randomize.batchId,
+        randomBatchId: overlay.randomize.targetId,
     };
     return JSON.stringify(store);
 }

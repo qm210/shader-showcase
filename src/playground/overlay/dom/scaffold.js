@@ -33,11 +33,11 @@ const UI_SELECTORS = {
     uniformNames:          `#${DATALIST.UNIFORMS}`,
     uniformListBody:       ".uniform-list-body",
     randomize: {
-        targetSelector:    ".target-selector > .selector-display",
-        targetDropdown:    ".target-selector > .selector-dropdown",
-        button:            ".randomize-btn",
-        intensitySlider:   ".intensity-slider",
-        intensityValue:    ".intensity-value",
+        targetSelector:    ".randomizer-run .target-selector > .selector-display",
+        targetDropdown:    ".randomizer-run .target-selector > .selector-dropdown",
+        button:            ".randomizer-run .randomize-btn",
+        intensitySlider:   ".randomizer-run .intensity-slider",
+        intensityValue:    ".randomizer-run .intensity-value",
     },
     keyframePopup:         ".kf-popup"
 };

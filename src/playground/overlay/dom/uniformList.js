@@ -28,7 +28,19 @@ export function uniformPanelTemplate() {
     return `
         <div class="uniform-list-panel">
             <div class="uniform-list-header">
-                Uniforms
+                <span>Uniforms</span>
+                ${actionButton({
+                    action: ACTION.SELECT_ALL_UNIFORMS,
+                    label: 'Select All',
+                    className: 'btn subtle select-all-btn',
+                    title: 'Select all visible uniforms',
+                })}
+                ${actionButton({
+                    action: ACTION.DESELECT_ALL_UNIFORMS,
+                    label: 'Deselect All',
+                    className: 'btn subtle deselect-all-btn',
+                    title: 'Deselect all visible uniforms',
+                })}
                 ${actionButton({
                     action: ACTION.DESELECT_BATCHES,
                     label: 'Deselect Batch',
@@ -198,43 +210,40 @@ function groupSection(provider, groupName, entries, isChecked) {
         </div>`;
 }
 
-// NOTE: kept from the original, but it can never render: selectedEntries
-// is only non-empty when a batch is selected, which returns early here.
-function selectedSection(provider, selectedEntries, selectedBatchId) {
-    if (selectedBatchId || !selectedEntries.length) {
+function selectedBatchSection(provider, selectedBatchId) {
+    const batch = provider.getBatch(selectedBatchId);
+    if (!batch) {
         return "";
     }
     return `
         <div class="uniform-section selected-section">
-            <div class="section-header">Selected</div>
-            ${uniformTable(provider, selectedEntries, () => true)}
+            <div class="section-header">
+                Selected Batch:
+            </div>
+            ${uniformTable(provider, batch.uniforms, () => true)}
         </div>`;
 }
 
-export function renderUniformList(ui, provider, uiBatch) {
-    const {uniformListBody} = ui;
-    if (!uniformListBody) {
-        return;
-    }
+export function renderUniformList(container, provider, batchId, selectedUniforms) {
     const groups = provider.uniformGroups;
     if (!groups.size) {
-        uniformListBody.innerHTML =
+        container.innerHTML =
             '<div class="uniform-empty">No uniforms known yet</div>';
         return;
     }
 
-    const selectedNames = activeNames(provider.getBatch(uiBatch.selectedId));
-    const checkedNames = activeNames(provider.getBatch(uiBatch.renamingId))
-        ?? selectedNames;
-    const isChecked = (entry) => Boolean(checkedNames?.has(entry.name));
-
+    const selectedNames = batchId
+        ? activeNames(provider.getBatch(batchId))
+        : selectedUniforms;
+    const isChecked = (entry) =>
+        Boolean(selectedNames?.has(entry.name));
     const allEntries = [...groups.values()].flat();
     const selectedEntries = selectedNames
         ? allEntries.filter(entry => selectedNames.has(entry.name))
         : [];
 
-    uniformListBody.innerHTML =
-        selectedSection(provider, selectedEntries, uiBatch.selectedId)
+    container.innerHTML =
+        selectedBatchSection(provider, batchId)
         + [...groups]
             .map(([name, entries]) =>
                 groupSection(provider, name, entries, isChecked))

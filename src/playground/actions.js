@@ -18,6 +18,8 @@ export const ACTION = Object.freeze({
     ADD_BATCH: "add-batch",
     REMOVE_BATCH: "remove-batch",
     DESELECT_BATCHES: "deselect-batches",
+    SELECT_ALL_UNIFORMS: "select-all-uniforms",
+    DESELECT_ALL_UNIFORMS: "deselect-all-uniforms",
     ADD_UNIFORM: "add-uniform",
     REMOVE_UNIFORM: "remove-uniform",
     RANDOMIZE: "randomize",
@@ -149,6 +151,11 @@ export function runAction(overlay, data) {
             const count = overlay.ctx.batches.custom.length + 1;
             const name = `Batch ${count}`;
             const batch = overlay.ctx.addBatch(name);
+            // Populate from the globally tracked selected uniforms.
+            for (const name of overlay.selectedUniforms) {
+                const control = overlay.ctx.getControl(name);
+                batch.addUniform(name, {type: control?.type});
+            }
             overlay.batch.selectedId = batch.id;
             overlay.updateOnTargetsChanged();
             break;
@@ -168,6 +175,32 @@ export function runAction(overlay, data) {
             overlay.batch.selectedId = null;
             overlay.batch.renamingId = null;
             overlay.renderUniformPanel();
+            break;
+        }
+
+        case ACTION.SELECT_ALL_UNIFORMS: {
+            if (overlay.batch.selectedId) {
+                break;
+            }
+            const allEntries = [...overlay.ctx.uniformGroups.values()]
+                .flat();
+            for (const entry of allEntries) {
+                overlay.selectedUniforms.add(entry.name);
+            }
+            overlay.renderUniformPanel();
+            overlay.renderRandomizer();
+            overlay._scheduleSave();
+            break;
+        }
+
+        case ACTION.DESELECT_ALL_UNIFORMS: {
+            if (overlay.batch.selectedId) {
+                break;
+            }
+            overlay.selectedUniforms.clear();
+            overlay.renderUniformPanel();
+            overlay.renderRandomizer();
+            overlay._scheduleSave();
             break;
         }
 
@@ -207,15 +240,16 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.RANDOMIZE:
-            if (overlay.randomize.batchId) {
-                const values = overlay.ctx.randomizeBatch(
-                    overlay.randomize.batchId, overlay.randomize.intensity
-                );
-                for (const name of Object.keys(values)) {
-                    updateUniformRow(overlay.element, name, values[name]);
-                }
-                overlay._renderPreview();
+            const uniforms = overlay.ctx.collectUniforms(
+                overlay.randomize.targetId, overlay.selectedUniforms
+            );
+            const values = overlay.ctx.randomizer.apply(
+                uniforms, overlay.randomize.intensity,
+            );
+            for (const name of Object.keys(values)) {
+                updateUniformRow(overlay.element, name, values[name]);
             }
+            overlay._renderPreview();
             break;
 
         case ACTION.CANCEL_LANE_NAME:

@@ -29,30 +29,50 @@ export function randomizerTemplate() {
         </section>`;
 }
 
-/** Custom batches, auto batches, then every single uniform. */
-function randomizerTargets(provider) {
-    const targets = provider.allBatches()
-        .map(batch => ({
+function randomizerTargets(provider, selectedCount) {
+    /** @type {{ id: string | null, name: string, type: string, count?: number }[]} */
+    const targets = [
+        {
+            id: null,
+            name: "Current Selection",
+            type: "batch",
+            count: selectedCount,
+        },
+    ];
+    const ids = new Set([
+        targets[0].id
+    ]);
+    for (const batch of provider.allBatches()) {
+        targets.push({
             id: batch.id,
             name: batch.name,
             type: "batch",
-            count: batch.uniforms.length
-        }));
-    const ids = new Set(targets.map(t => t.id));
+            count: batch.uniforms.length,
+        });
+        ids.add(batch.id);
+    }
     for (const name of provider.getKnownUniformNames()) {
         const id = targetId(TARGET_PREFIX.UNIFORM, name);
         if (!ids.has(id)) {
-            targets.push({id, name, type: "uniform"});
+            targets.push({
+                id,
+                name,
+                type: "uniform",
+                count: undefined
+            });
         }
     }
     return targets;
 }
 
 function selectorItem(target, selectedId) {
-    const icon = target.type === "batch"
-        ? CHAR.BULLET_BATCH
-        : CHAR.BULLET_UNIFORM;
-    const countSpan = target.count !== undefined
+    const isCurrentSelection = target.id === null;
+    const icon = isCurrentSelection
+        ? CHAR.BULLET_UNIFORM
+        : target.type === "batch"
+            ? CHAR.BULLET_BATCH
+            : CHAR.BULLET_UNIFORM;
+    const countSpan = target.count !== undefined && target.count > 0
         ? `<span class="selector-count">[batch of ${target.count}]</span>`
         : "";
     return `
@@ -68,48 +88,37 @@ function selectorItem(target, selectedId) {
 
 function renderSelectorDisplay(display, target) {
     if (target) {
-        const icon = target.type === "batch"
-            ? CHAR.BULLET_BATCH
-            : CHAR.BULLET_UNIFORM;
-        const countSpan = target.count !== undefined
+        const isCurrentSelection = target.id === null;
+        const icon = isCurrentSelection
+            ? CHAR.BULLET_UNIFORM
+            : target.type === "batch"
+                ? CHAR.BULLET_BATCH
+                : CHAR.BULLET_UNIFORM;
+        const countSpan = target.count !== undefined && target.count > 0
             ? `<span class="selector-count">[batch of ${target.count}]</span>`
             : "";
         display.innerHTML = `
             <span class="selector-icon">${icon}</span>
             <span class="selector-name">${esc(target.name)}</span>
             ${countSpan}`;
-        display.title = `${target.type}: ${target.name}`;
+        display.title = isCurrentSelection
+            ? `Randomize ${target.count} selected uniform${target.count !== 1 ? 's' : ''}`
+            : `${target.type}: ${target.name}`;
     } else {
         display.textContent = "No target";
         display.title = "Click to select a target";
     }
 }
 
-/**
- * Renders the panel and returns the effective selection: an unknown
- * batch id falls back to "All Uniforms", then the first custom, then
- * the first auto batch.
- */
-export function renderRandomizerPanel(ui, provider, selectedBatchId) {
-    const {batches} = provider;
-    if (!provider.getBatch(selectedBatchId)) {
-        selectedBatchId = batches.auto[0]?.id
-            ?? batches.custom[0]?.id
-            ?? null;
-    }
-
-    const targets = randomizerTargets(provider);
+export function renderRandomizerPanel(ui, provider, targetId, selectedCount = 0) {
+    const targets = randomizerTargets(provider, selectedCount);
     ui.randomize.targetDropdown.innerHTML = targets
-        .map(target => selectorItem(target, selectedBatchId))
+        .map(target => selectorItem(target, targetId))
         .join("");
-    renderSelectorDisplay(
-        ui.randomize.targetSelector,
-        targets.find(t => t.id === selectedBatchId)
-    );
-    ui.randomize.button.disabled = !selectedBatchId;
+    const target = targets.find(t => t.id === targetId);
+    renderSelectorDisplay(ui.randomize.targetSelector, target);
+    ui.randomize.button.disabled = target?.count === 0;
     ui.uniformNames.innerHTML = provider.getKnownUniformNames()
         .map(name => `<option value="${esc(name)}"></option>`)
         .join("");
-
-    return {selectedBatchId};
 }

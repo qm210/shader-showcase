@@ -6,7 +6,7 @@ import "./styles/overlay.css";
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType, vectorComponents} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
-import {BatchTarget, deriveAutoBatches, groupUniforms, TARGET_PREFIX} from "./engine/targets.js";
+import {BatchTarget, deriveAutoBatches, findUniformName, groupUniforms, TARGET_PREFIX} from "./engine/targets.js";
 
 /** Parse a uniform name that may be a vector component (e.g. "foo.x"). */
 export function parseVectorComponent(name) {
@@ -35,9 +35,12 @@ export class PlaygroundContext {
         this.randomizer = new Randomizer(this._provider);
         this.overlay = new Overlay(this._provider);
 
-        this._controlMap = null;
-        this.batches = { auto: [], custom: [] };
-        this.uniformGroups = [];
+        this._controlMap = new Map();
+        this.uniformGroups = new Map();
+        this.batches = {
+            auto: [],
+            custom: []
+        };
         this._connect(state, controls, elements);
 
         this.overlay.init()
@@ -61,7 +64,7 @@ export class PlaygroundContext {
         const uniformControls = uniformsWithSeparators.filter(
             c => !c.separator
         );
-        this._controlMap = new Map();
+
         for (const control of uniformControls) {
             this._controlMap.set(control.name, {
                 min: control.min,
@@ -173,6 +176,18 @@ export class PlaygroundContext {
                     .find(b => b.id === id) ?? null;
             },
 
+            collectUniforms(targetId, selectedNames) {
+                const batch = this.getBatch(targetId);
+                if (batch) {
+                    return batch.uniforms.filter(
+                        u => u.active !== false
+                    );
+                }
+                const name = findUniformName(targetId);
+                return (name ? [name] : [...selectedNames])
+                    .map(name => this.getControl(name));
+            },
+
             loadCustomBatches(json) {
                 try {
                     if (Array.isArray(json)) {
@@ -208,14 +223,6 @@ export class PlaygroundContext {
                 if (idx !== -1) {
                     ctx.batches.custom.splice(idx, 1);
                 }
-            },
-
-            randomizeBatch(batchId, intensity) {
-                const batch = this.getBatch(batchId);
-                if (!batch) {
-                    return {};
-                }
-                return ctx.randomizer.randomizeBatch(batch, intensity);
             },
         };
     }

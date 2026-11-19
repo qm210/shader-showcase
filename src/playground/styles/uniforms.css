@@ -264,6 +264,17 @@
     justify-content: space-between;
 }
 
+#pg .uniform-list-header > span:first-of-type {
+    flex: 1;
+}
+
+#pg .uniform-list-header > .btn {
+    font-size: 0.75em;
+    padding: 0.1em 0.3em;
+    margin-left: 0.2em;
+}
+
+
 #pg .uniform-list-body {
     flex: 1 1 0;
     overflow-y: auto;

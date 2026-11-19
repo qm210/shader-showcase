@@ -17,6 +17,28 @@ export const targetId = (prefix, name) => {
     return id;
 };
 
+export const isUniformTarget = (id) =>
+    id?.startsWith(TARGET_PREFIX.UNIFORM);
+
+export const findUniformName = (targetId) => {
+    const prefix = TARGET_PREFIX.UNIFORM;
+    return targetId?.startsWith(prefix)
+        ? targetId.slice(prefix.length + 1)
+        : "";
+};
+
+export const checkValidTarget = (provider, targetId, selectedCount) => {
+    if (!targetId) {
+        return null;
+    }
+    if (isUniformTarget(targetId) || provider.getBatch(targetId)) {
+        return targetId;
+    }
+    if (selectedCount > 0) {
+        return null;
+    }
+    return provider.batches.auto[0] ?? null;
+}
 
 export class BatchTarget {
     constructor(name, {id = "", custom = false} = {}) {
@@ -126,12 +148,17 @@ export class BatchTarget {
 export function deriveAutoBatches(controls) {
     const batches = [];
     const allUniforms = [];
+
+    function push(batch) {
+        if (batch?.uniforms.length > 0) {
+            batches.push(batch);
+        }
+    }
+
     let batch = null;
     for (const control of controls) {
         if (control.separator) {
-            if (batch) {
-                batches.push(batch);
-            }
+            push(batch);
             batch = BatchTarget.newAuto(control.separator);
             continue;
         }
@@ -140,13 +167,11 @@ export function deriveAutoBatches(controls) {
         }
         allUniforms.push(control);
         if (!batch) {
-            batch = BatchTarget.newAuto("Any");
+            batch = BatchTarget.newAuto("Unnamed");
         }
         batch.addUniformFrom(control);
     }
-    if (batch) {
-        batches.push(batch);
-    }
+    push(batch);
     if (allUniforms.length > 0) {
         const allBatch = BatchTarget.newAuto("All Uniforms");
         allBatch.containsAll = true;

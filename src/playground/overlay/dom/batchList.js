@@ -83,9 +83,9 @@ function batchHeaderButtons(batchId, isSelected) {
     return toggle + remove;
 }
 
-function batchCard(provider, batch, selectedBatchId, editingBatchId) {
-    const isSelected = batch.id === selectedBatchId;
-    const isEditing = batch.id === editingBatchId;
+function batchCard(provider, batch, uiBatches) {
+    const isSelected = batch.id === uiBatches.selectedBatchId;
+    const isEditing = batch.id === uiBatches.editingBatchId;
     const data = {batchId: batch.id};
     const rows = batch.uniforms
         .map((entry, i) => batchUniformRow(provider, batch.id, entry, i))
@@ -109,9 +109,9 @@ function batchCard(provider, batch, selectedBatchId, editingBatchId) {
         </div>`;
 }
 
-export function renderBatchList(ui, provider, {selectedId, renamingId}) {
+export function renderBatchList(ui, provider, uiBatches) {
     ui.batchList.innerHTML = provider.batches.custom
         .map(batch =>
-            batchCard(provider, batch, selectedId, renamingId)
+            batchCard(provider, batch, uiBatches)
         ).join("");
 }

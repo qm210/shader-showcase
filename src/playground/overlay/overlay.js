@@ -17,6 +17,7 @@ import {renderAudioWaveforms} from "./dom/audioTrack.js";
 import {intAttr, isTypingTarget, setShown} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
+import {checkValidTarget} from "../engine/targets.js";
 
 // Default audio file for development (Vite asset import).
 // Place your audio file in the public/ directory and update the path below.
@@ -33,7 +34,7 @@ export class Overlay {
 
         this.batch = {
             selectedId: null,
-            editingId: null
+            renamingId: null
         };
         this.lane = {
             selectedId: null,
@@ -43,8 +44,9 @@ export class Overlay {
         };
         this.randomize = {
             intensity: 1,
-            batchId: null,
-        }
+            targetId: null,
+        };
+        this.selectedUniforms = new Set();
 
         // Dragging the panel by its header; position is {left, top}.
         this.drag = {
@@ -767,9 +769,11 @@ export class Overlay {
             return;
         }
 
-        const selectorItem = e.target.closest(".selector-item");
-        if (selectorItem) {
-            this.batch.selectedId = selectorItem.dataset.targetId || null;
+        const randomTargetItem = e.target.closest(".selector-item");
+        if (randomTargetItem) {
+            const targetId = randomTargetItem.dataset.targetId;
+            this.randomize.targetId = targetId || null;
+            this.ui.randomize.targetDropdown.hidden = true;
             this.updateOnTargetsChanged();
             return;
         }
@@ -888,7 +892,7 @@ export class Overlay {
         const batchHeader = e.target.closest(".batch-card-header");
         if (batchHeader) {
             const {batchId} = batchHeader.closest(".batch-card").dataset;
-            this.batch.editingId = batchId;
+            this.batch.renamingId = batchId;
             this.renderUniformPanel();
             requestAnimationFrame(() =>
                 this._focusName(".batch-card", "batch-id", batchId)
@@ -974,7 +978,7 @@ export class Overlay {
 
     _isEditingName(el) {
         return el.classList.contains("name")
-            && Boolean(this.lane.renamingId || this.batch.editingId);
+            && Boolean(this.lane.renamingId || this.batch.renamingId);
     }
 
     _onKeyDown(e) {
@@ -1017,12 +1021,12 @@ export class Overlay {
                 lane.name = name;
             }
             this._stopTrackNameEdit();
-        } else if (this.batch.editingId) {
-            const batch = this.ctx.getBatch(this.batch.editingId);
+        } else if (this.batch.renamingId) {
+            const batch = this.ctx.getBatch(this.batch.renamingId);
             if (name && batch) {
                 batch.name = name;
             }
-            this.batch.editingId = null;
+            this.batch.renamingId = null;
             this.updateOnTargetsChanged();
         }
     }
@@ -1030,8 +1034,8 @@ export class Overlay {
     _cancelNameEdit() {
         if (this.lane.renamingId) {
             this._stopTrackNameEdit();
-        } else if (this.batch.editingId) {
-            this.batch.editingId = null;
+        } else if (this.batch.renamingId) {
+            this.batch.renamingId = null;
             this.renderUniformPanel();
         }
     }
@@ -1080,7 +1084,7 @@ export class Overlay {
         } else if (el.closest(".batch-uniform-row")) {
             this._updateBatchUniformField(el);
         } else if (el.classList.contains("uniform-checkbox")) {
-            this._toggleUniformInBatch(el.dataset.uniformName, el.checked);
+            this._toggleUniform(el.dataset.uniformName, el.checked);
         } else if (el.matches(".uniform-min, .uniform-max")) {
             this._setUniformOverwrite(
                 el.dataset.uniformName,
@@ -1096,17 +1100,18 @@ export class Overlay {
         }
     }
 
-    _toggleUniformInBatch(name, active) {
-        // While editing a batch, edit that one instead of the selected.
-        const batch = this.ctx.getBatch(
-            this.batch.editingId || this.batch.selectedId
-        );
-        if (!batch) {
-            return;
+    _toggleUniform(name, active) {
+        if (active) {
+            this.selectedUniforms.add(name);
+        } else {
+            this.selectedUniforms.delete(name);
         }
-        // Deactivating keeps the uniform's values in the batch.
-        batch.toggleUniform(name, active);
+        const batch = this.ctx.getBatch(this.batch.selectedId);
+        if (batch) {
+            batch.toggleUniform(name, active);
+        }
         this.renderUniformPanel();
+        this.renderRandomizer();
         this._scheduleSave();
     }
 
@@ -1436,7 +1441,10 @@ export class Overlay {
         }
         this.ctx.loadCustomBatches(stored.customBatches);
         this.batch.selectedId = stored.selectedBatchId ?? null;
-        this.randomize.batchId = stored.randomBatchId ?? null;
+        this.selectedUniforms = new Set(
+            stored.selectedUniforms ?? []
+        );
+        this.randomize.targetId = stored.randomBatchId ?? null;
         const intensity = Number(stored.randomIntensity);
         this.randomize.intensity = Number.isFinite(intensity)
             ? clamp(intensity, 0, 1)
@@ -1547,16 +1555,26 @@ export class Overlay {
     }
 
     renderRandomizer() {
-        const {selectedBatchId} = renderRandomizerPanel(
-            this.ui, this.ctx, this.randomize.batchId
+        this.randomize.targetId =
+            checkValidTarget(
+                this.ctx,
+                this.randomize.targetId,
+                this.selectedUniforms.size
+            );
+        renderRandomizerPanel(
+            this.ui,
+            this.ctx,
+            this.randomize.targetId,
+            this.selectedUniforms.size
         );
-        this.randomize.batchId = selectedBatchId;
     }
 
     renderUniformPanel() {
         const {ui, ctx} = this;
         renderBatchList(ui, ctx, this.batch);
-        renderUniformList(ui, ctx, this.batch);
+        renderUniformList(
+            ui.uniformListBody, ctx, this.batch.selectedId, this.selectedUniforms
+        );
 
         this.element.querySelectorAll(
             `button[data-action="${ACTION.DESELECT_BATCHES}"]`
@@ -1565,7 +1583,6 @@ export class Overlay {
         );
     }
 
-    /** Targets show up in nearly every section, so re-render them all. */
     updateOnTargetsChanged() {
         this.renderUniformPanel();
         this.renderTimeline();

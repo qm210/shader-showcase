@@ -7,21 +7,21 @@ export class Randomizer {
         this._provider = contextProvider;
     }
 
-    randomizeBatch(batch, intensity) {
-        const values = this.getBatchRandomValues(batch, intensity);
+    apply(uniforms, intensity) {
+        const values = this.getRandomValues(uniforms, intensity);
         for (const [name, value] of Object.entries(values)) {
             this._provider.engine.setActualUniformValue(name, value);
         }
         return values;
     }
 
-    getBatchRandomValues(batch, intensity = 1) {
+    getRandomValues(uniforms, intensity = 1) {
         const result = {};
-        if (!batch) {
+        if (!uniforms?.length) {
             return result;
         }
-        for (const entry of batch.uniforms) {
-            if (!entry.name || entry.active === false) {
+        for (const entry of uniforms) {
+            if (!entry.name) {
                 continue;
             }
             const {min, max, components} = this._provider.getControl(entry);
