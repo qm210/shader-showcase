@@ -229,6 +229,7 @@ function valueLine(target, min, max, currentValue) {
 
 function keyframeStrip(lane, provider, view, selectedKeyframes) {
     const [min, max] = calcLaneRange(lane, provider);
+    const def = lane.range?.default ?? 0;
     const playhead = stripPosition(provider.engine.time(), view);
     const values = provider.engine.getUniformBaseValues();
     const uniformLines = lane.targets
@@ -238,6 +239,8 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
     const keyframes = keyframeDots(lane, view, selectedKeyframes, min, max);
     const showHint = lane.keyframes.length === 0
         ? "Click to set keyframe" : "";
+    // Default value line (dotted horizontal line at default position).
+    const defaultLine = defaultLineHtml(def, min, max, lane.id);
     return `
         <div class="keyframe-strip"
              ${dataAttrs({laneId: lane.id})}
@@ -249,11 +252,26 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
             <div class="playhead"
                  style="${playhead}"></div>
             ${uniformLines}
-            <span class="range-label max-label">${esc(max.toFixed(2))}</span>
-            <span class="range-label label"></span>
-            <span class="range-label min-label">${esc(min.toFixed(2))}</span>
+            ${defaultLine}
+            <span class="range-label max-label" data-range-part="max" title="Click to edit">${esc(max.toFixed(2))}</span>
+            <span class="range-label default-label" data-range-part="default" title="Click to edit">${esc(def.toFixed(2))}</span>
+            <span class="range-label min-label" data-range-part="min" title="Click to edit">${esc(min.toFixed(2))}</span>
         </div>
     `;
+}
+
+function defaultLineHtml(def, min, max, laneId) {
+    if (max === min) {
+        return "";
+    }
+    const fraction = (def - min) / (max - min);
+    const clamped = clamp(fraction, 0, 1);
+    const topPercent = (clamped * 100).toFixed(1);
+    return `
+        <div class="default-line"
+             style="top:${topPercent}%"
+             title="Default value: ${def.toFixed(4)}">
+        </div>`;
 }
 
 function laneActions(laneId) {

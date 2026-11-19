@@ -84,6 +84,12 @@
     cursor: pointer;
 }
 
+#pg select option {
+    background: rgb(30, 35, 55);
+    color: #cde;
+    padding: 0.3em 0.5em;
+}
+
 #pg :where(button, input, select):focus-visible {
     outline: 2px solid var(--overlay-accent);
     outline-offset: 2px;

@@ -71,9 +71,9 @@ function waveformPath(data, view, duration, pixelWidth = 0, maxColumns = 0) {
         pixelWidth, 2, maxColumns || MAX_COLUMNS
     ));
 
-    const key = `${first}:${last}:${columns}`;
+    const cacheKey = `${first}:${last}:${columns}`;
     const cached = _pathCache.get(data);
-    if (cached?.key === key) {
+    if (cached?.cacheKey === cacheKey) {
         return cached;
     }
 
@@ -86,10 +86,10 @@ function waveformPath(data, view, duration, pixelWidth = 0, maxColumns = 0) {
         // Floor-divided bounds spread samples evenly over the columns.
         // At least one sample per column, even if visible < columns.
         const sStart = first + Math.floor(col * visible / columns);
-        const sEnd = Math.min(last, Math.max(
-            sStart + 1,
-            first + Math.floor((col + 1) * visible / columns)
-        ));
+        const sEnd = clamp(
+            first + Math.floor((col + 1) * visible / columns),
+            sStart + 1, last
+        )
 
         let min = Infinity;
         let max = -Infinity;
@@ -114,7 +114,12 @@ function waveformPath(data, view, duration, pixelWidth = 0, maxColumns = 0) {
     }
     parts.push("Z");
 
-    const result = {key, path: parts.join(""), columns, bins};
+    const result = {
+        cacheKey,
+        path: parts.join(""),
+        columns,
+        bins
+    };
     _pathCache.set(data, result);
     return result;
 }
@@ -272,7 +277,7 @@ export function renderAudioWaveforms(ui, engine, view) {
             return false;
         }
         const { ratio, svg } = result;
-        const clampedPercentage = Math.max(0, Math.min(1, ratio));
+        const clampedRatio = clamp(ratio, 0, 1);
         const audioTrackId = svg.dataset.audioId;
         const analyzed = audioData.find(it => it.track.id === audioTrackId);
         const bins = analyzed?.bins;
@@ -280,12 +285,12 @@ export function renderAudioWaveforms(ui, engine, view) {
             return false;
         }
 
-        const binIndex = Math.floor(clampedPercentage * 100);
+        const binIndex = Math.floor(clampedRatio * bins.length / 2);
         const binStart = binIndex * 2;
         const binEnd = Math.min(binStart + 1, bins.length - 1);
         const minVal = parseFloat(bins[binStart]);
         const maxVal = parseFloat(bins[binEnd]);
-        const time = view.start + clampedPercentage * (view.end - view.start);
+        const time = view.start + clampedRatio * (view.end - view.start);
 
         tooltip.textContent = [
             `t = ${time.toFixed(2).padStart(6)} s`,

@@ -13,6 +13,8 @@ export class TimeLane {
         this.loop = false;
         this.duration = 0;
         this._undoStack = [];
+        // Per-lane value range: initialized to [-1, 0, +1], updated on first target.
+        this.range = {min: -1, default: 0, max: 1};
         this.updateDuration();
     }
 
@@ -30,7 +32,7 @@ export class TimeLane {
         );
     }
 
-    addTarget(uniformName, minValue = undefined, maxValue = undefined) {
+    addTarget(uniformName, minValue = undefined, maxValue = undefined, control = null) {
         minValue ??= FALLBACK_RANGE.min;
         maxValue ??= FALLBACK_RANGE.max;
         const existing = this.targets.find(t => t.uniformName === uniformName);
@@ -42,6 +44,10 @@ export class TimeLane {
         }
         const target = { uniformName, minValue, maxValue, enabled: true };
         this.targets.push(target);
+        // Initialize lane range from control on first target assignment.
+        if (this.targets.length === 1) {
+            this.initRangeFromControl(control);
+        }
         return target;
     }
 
@@ -137,9 +143,27 @@ export class TimeLane {
         }
     }
 
-    /** Map a [-1, +1] value to the target's min/max range. */
-    _mapToRange(value, target) {
-        return target.minValue + (value + 1) * (target.maxValue - target.minValue) / 2;
+    /** Map a [-1, +1] value to the lane's range. */
+    _mapToRange(value) {
+        return this.range.min + (value + 1) * (this.range.max - this.range.min) / 2;
+    }
+
+    /** Map a lane-range value to [-1, +1]. */
+    _mapFromRange(value) {
+        const range = this.range.max - this.range.min;
+        return range === 0 ? 0 : 2 * (value - this.range.min) / range - 1;
+    }
+
+    /** Update lane range from a control's min/max. Called on first target assignment. */
+    initRangeFromControl(control) {
+        if (this.targets.length > 0) {
+            return; // Already initialized
+        }
+        const scalarOr = (value, fallback) =>
+            Array.isArray(value) ? fallback : value;
+        this.range.min = scalarOr(control?.min, -1);
+        this.range.max = scalarOr(control?.max, 1);
+        this.range.default = 0;
     }
 
     /** Get interpolated value for a specific target uniform at current time */
@@ -176,24 +200,14 @@ export class TimeLane {
         return result;
     }
 
+    /** Normalize a value to [-1, +1] using this lane's range. */
     normalizeToFirstTarget(value) {
-        if (this.targets.length === 0) {
-            return value;
-        }
-        const {minValue, maxValue} = this.targets[0];
-        const range = maxValue - minValue;
-        return range === 0
-            ? 0
-            : 2 * (value - minValue) / range - 1;
+        return this._mapFromRange(value);
     }
 
+    /** Scale a normalized [-1, +1] value to this lane's range. */
     scaleToFirstTargetRange(normalized) {
-        if (this.targets.length === 0) {
-            return normalized;
-        }
-        const {minValue, maxValue} = this.targets[0];
-        const range = maxValue - minValue;
-        return minValue + (normalized + 1) * range / 2;
+        return this._mapToRange(normalized);
     }
 
     toJSON() {

@@ -24,7 +24,7 @@ export class KeyframeBoxSelect {
         this.rect = document.createElement("div");
         this.rect.className = "shift-drag-rect";
         this.rect.style.cssText = RECT_STYLE;
-        document.body.append(this.rect);
+        root.append(this.rect);
 
         root.addEventListener("mousedown", (e) => this._begin(e));
         window.addEventListener("mousemove", (e) => this._move(e));

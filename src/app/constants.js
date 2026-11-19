@@ -34,7 +34,7 @@ export const CHAR = {
     NOT_ALLOWED: "\u2298",         // ⊘
     RESET: "\u21BA",               // ↺
     CLEANUP: "\u{1F9F9}",          // 🧹
-    UNDO: "\u8617",                // ↩
+    UNDO: "\u21A9",                // ↩
     REDO: "\u21AA",                // ↪
 
     PLAY: "\u25B6",                // ▶

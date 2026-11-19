@@ -1,7 +1,7 @@
 import {ACTION} from "../../actions.js";
 import {CHAR} from "../index.js";
 import {actionButton} from "./html.js";
-import {contextBarTemplate} from "./contextBar.js";
+import {keyframePopupTemplate} from "./keyframePopup.js";
 import {timelineTemplate} from "./timeline.js";
 import {uniformPanelTemplate} from "./uniformList.js";
 import {randomizerTemplate} from "./randomizer.js";
@@ -39,7 +39,7 @@ const UI_SELECTORS = {
         intensitySlider:   ".intensity-slider",
         intensityValue:    ".intensity-value",
     },
-    contextBar:            ".context-action-bar"
+    keyframePopup:         ".kf-popup"
 };
 
 function headerTemplate() {
@@ -123,7 +123,7 @@ export function createPlaygroundOverlay() {
         uniformPanelTemplate(),
         `<div class="timeline-tooltip"></div>`,
         randomizerTemplate(),
-        contextBarTemplate(),
+        keyframePopupTemplate(),
     ].join("");
 
     const ui = queryUI(overlay, UI_SELECTORS);

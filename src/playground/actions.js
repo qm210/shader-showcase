@@ -24,6 +24,7 @@ export const ACTION = Object.freeze({
     CANCEL_LANE_NAME: "cancel-lane-name",
     CLEAR_LANE: "clear-lane",
     RESCALE_LANE: "rescale-lane",
+    LANE_OPTIONS: "lane-options",
     COPY_LANE: "copy-lane",
     PASTE_LANE: "paste-lane",
     LOAD_SNAPSHOT: "load-snapshot",
@@ -260,6 +261,11 @@ export function runAction(overlay, data) {
             break;
         }
 
+        case ACTION.LANE_OPTIONS: {
+            overlay._showLaneOptions(data.laneId);
+            break;
+        }
+
         case ACTION.COPY_LANE: {
             const lane = overlay.engine.getLane(data.laneId);
             if (lane && lane.keyframes.length) {
@@ -328,9 +334,9 @@ export const LANE_ACTIONS = [
     {action: ACTION.ADD_KEYFRAME,
         label: "+",
         title: "Add keyframe at current time"},
-    {action: ACTION.RESCALE_LANE,
-        label: CHAR.RESCALE,
-        title: "Rescale time range"},
+    {action: ACTION.LANE_OPTIONS,
+        label: "⚙",
+        title: "Lane options (rescale/shift)"},
     {action: ACTION.COPY_LANE,
         label: CHAR.ARROW_PAIR_RIGHT,
         title: "Copy keyframes"},

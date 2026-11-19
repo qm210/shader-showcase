@@ -1,6 +1,6 @@
 import {collectStorageJson, downloadJson, pickJsonFile, readStoredState} from "../persistence.js";
 import {FALLBACK_RANGE, isRangeValue} from "../engine/valueRanges.js";
-import {EASING_TYPES, keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
+import {keyframeKey, parseKeyframeKey} from "../engine/keyframes.js";
 import {ACTION, runAction} from "../actions.js";
 import {CHAR, clamp, DEBUG, DELAY_MS, STORAGE_KEY} from "./index.js";
 import {KeyframeBoxSelect} from "./boxSelect.js";
@@ -12,7 +12,7 @@ import {renderAllLanes, renderLane, stripFraction} from "./dom/lanes.js";
 import {collectUniformComponents, renderUniformList, updateUniformRow} from "./dom/uniformList.js";
 import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
-import {positionContextBar, renderContextActionBar} from "./dom/contextBar.js";
+import {positionKeyframePopup, renderKeyframePopup} from "./dom/keyframePopup.js";
 import {renderAudioWaveforms} from "./dom/audioTrack.js";
 import {intAttr, isTypingTarget} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
@@ -98,7 +98,6 @@ export class Overlay {
         this.ui = dom.ui;
         this.ui.onSeek = (time) => this._seek(time);
         document.body.append(this.element);
-        document.body.append(this.ui.contextBar);
     }
 
     /**
@@ -163,7 +162,7 @@ export class Overlay {
             seek: (time) => this._seek(time),
         });
 
-        this._bindContextBar();
+        this._bindKeyframePopup();
     }
 
     _bindPanelDrag() {
@@ -221,20 +220,30 @@ export class Overlay {
         window.addEventListener("mouseup", () => this._onKeyframeDragEnd());
     }
 
-    _bindContextBar() {
-        const bar = this.ui.contextBar;
-        bar.addEventListener("click", (e) => {
+    _bindKeyframePopup() {
+        const popup = this.ui.keyframePopup;
+        popup.addEventListener("click", (e) => {
             if (e.target.classList.contains("kf-undo-btn")) {
                 this._doUndo();
+            } else if (e.target.classList.contains("kf-seek-btn")) {
+                const kfId = popup.dataset.kfId;
+                if (kfId) {
+                    this._seekFromKeyframe(kfId);
+                }
+            } else if (e.target.classList.contains("kf-remove-btn")) {
+                const kfId = popup.dataset.kfId;
+                if (kfId) {
+                    this._removeKeyframeFromKeyframePopup(kfId);
+                }
             }
         });
-        bar.querySelector(".kf-ease-select")
+        popup.querySelector(".kf-ease-select")
             .addEventListener("change", (e) => {
                 this._editSelectedKeyframe(kf => {
                     kf.ease = e.target.value;
                 });
             });
-        bar.querySelector(".kf-current-val")
+        popup.querySelector(".kf-current-val")
             .addEventListener("change", (e) => {
                 const displayValue = parseFloat(e.target.value);
                 if (isNaN(displayValue)) {
@@ -248,7 +257,6 @@ export class Overlay {
 
     // ─── Selection helpers ──────────────────────────────────────
 
-    /** All selected keyframes as {laneId, kfId}. */
     _selectedKeys() {
         return [...this.lane.selectedKeyframes].map(parseKeyframeKey);
     }
@@ -257,7 +265,6 @@ export class Overlay {
         return this._selectedKeys()[0] ?? null;
     }
 
-    /** The first selected keyframe with its lane and keyframe, or null. */
     _selection() {
         const first = this._firstSelectedKey();
         if (!first) {
@@ -292,6 +299,28 @@ export class Overlay {
         }
     }
 
+    /** Seek to a keyframe by ID (from context bar seek button). */
+    _seekFromKeyframe(kfId) {
+        // Find the keyframe in the selection or first selected.
+        const first = this._firstSelectedKey();
+        if (!first) return;
+        const lane = this.engine.getLane(first.laneId);
+        const kf = lane?.findKeyframe(kfId);
+        if (kf) {
+            this._seek(kf.time);
+        }
+    }
+
+    /** Remove a keyframe by ID (from context bar remove button). */
+    _removeKeyframeFromKeyframePopup(kfId) {
+        const first = this._firstSelectedKey();
+        if (!first) return;
+        const lane = this.engine.getLane(first.laneId);
+        if (lane?.findKeyframe(kfId)) {
+            this._removeKeyframe(first.laneId, kfId);
+        }
+    }
+
     _selectLaneRow(row) {
         this.lane.selectedId = row.dataset.laneId;
         this.element.querySelectorAll(".lane-wrapper.selected")
@@ -303,8 +332,7 @@ export class Overlay {
     _queryInLane(laneId, selector) {
         laneId = CSS.escape(laneId);
         return this.ui.laneRows.querySelector(
-            `.lane-wrapper[data-lane-id="${laneId}"]`
-            + ` ${selector}`
+            `.lane-wrapper[data-lane-id="${laneId}"] ${selector}`
         );
     }
 
@@ -436,6 +464,152 @@ export class Overlay {
             `t = ${time.toFixed(2).padStart(7)} s`,
             `y = ${formatNumber(value).padStart(7)}`
         ].join("<br>");
+    }
+
+    /** Prompt the user to edit a lane's range (min/max/default). */
+    _promptRangeEdit(laneId, part, labelEl) {
+        const lane = this.engine.getLane(laneId);
+        if (!lane?.range) return;
+        const current = lane.range[part];
+        const str = prompt(`Enter new ${part} for lane "${lane.name}":`, current.toFixed(4));
+        if (str === null) return;
+        const val = parseFloat(str);
+        if (isNaN(val)) return;
+        // Enforce ordering: min < default < max.
+        if (part === "min") {
+            lane.range.min = Math.min(val, lane.range.default - 0.01);
+        } else if (part === "max") {
+            lane.range.max = Math.max(val, lane.range.default + 0.01);
+        } else {
+            lane.range.default = clamp(val, lane.range.min + 0.01, lane.range.max - 0.01);
+        }
+        this.renderTimeline();
+        this._scheduleSave();
+    }
+
+    /** Show the lane options popup with rescale/shift sliders. */
+    _showLaneOptions(laneId) {
+        const lane = this.engine.getLane(laneId);
+        if (!lane || !lane.keyframes.length) return;
+
+        // Remove existing popup if any.
+        this._hideLaneOptions();
+
+        const popup = document.createElement("div");
+        popup.className = "lane-options-popup";
+        popup.innerHTML = `
+            <div class="popup-title">Lane Options</div>
+            <div class="popup-row">
+                <span class="popup-label">Rescale values</span>
+                <input class="popup-field" type="range" id="lane-rescale-val"
+                       min="0" max="100" step="1" value="50">
+                <span class="popup-value" id="lane-rescale-val-display">1.0</span>
+            </div>
+            <div class="popup-row">
+                <span class="popup-label">Shift values</span>
+                <input class="popup-field" type="range" id="lane-shift-val"
+                       min="-1" max="1" step="0.01" value="0">
+                <span class="popup-value" id="lane-shift-val-display">0.00</span>
+            </div>
+            <div class="popup-row">
+                <span class="popup-label">Time range</span>
+                <button class="popup-btn" id="lane-time-reset">Reset</button>
+            </div>
+            <div class="popup-row">
+                <button class="popup-btn" id="lane-options-apply">Apply</button>
+                <button class="popup-btn" id="lane-options-cancel">Cancel</button>
+            </div>
+        `;
+
+        // Set slider ranges based on lane's value range.
+        const {min, max} = lane.range;
+        const shiftSlider = popup.querySelector("#lane-shift-val");
+        shiftSlider.min = (-1 - min).toFixed(4);
+        shiftSlider.max = (1 - max).toFixed(4);
+
+        const applyBtn = popup.querySelector("#lane-options-apply");
+        const cancelBtn = popup.querySelector("#lane-options-cancel");
+        const timeResetBtn = popup.querySelector("#lane-time-reset");
+        const rescaleValSlider = popup.querySelector("#lane-rescale-val");
+        const shiftValDisplay = popup.querySelector("#lane-shift-val-display");
+        const rescaleValDisplay = popup.querySelector("#lane-rescale-val-display");
+
+        // Logarithmic scale: map 0-100 slider to 0.1-10 range.
+        function sliderToRescale(val) {
+            const t = val / 100;
+            return 0.1 * Math.pow(100, t);
+        }
+        function rescaleToSlider(val) {
+            if (val <= 0) return 0;
+            return (Math.log(val / 0.1) / Math.log(100)) * 100;
+        }
+        // Initialize slider position.
+        rescaleValSlider.value = rescaleToSlider(1);
+        // Update display values on slider input.
+        rescaleValSlider.addEventListener("input", () => {
+            const val = sliderToRescale(parseFloat(rescaleValSlider.value));
+            rescaleValDisplay.textContent = val.toFixed(1);
+        });
+        shiftSlider.addEventListener("input", () => {
+            shiftValDisplay.textContent = parseFloat(shiftSlider.value).toFixed(2);
+        });
+
+        // Time range reset.
+        timeResetBtn.addEventListener("click", () => {
+            // Reset keyframe times to default [0, duration].
+            const oldStart = lane.keyframes[0].time;
+            const oldEnd = lane.keyframes[lane.keyframes.length - 1].time;
+            const range = oldEnd - oldStart;
+            if (range <= 0) return;
+            for (const kf of lane.keyframes) {
+                const t = (kf.time - oldStart) / range;
+                kf.time = t * lane.duration;
+            }
+            lane.updateDuration();
+            this.renderTimeline();
+            this._scheduleSave();
+        });
+
+        // Apply changes to keyframes.
+        applyBtn.addEventListener("click", () => {
+            const rescaleFactor = sliderToRescale(parseFloat(rescaleValSlider.value));
+            const shiftAmount = parseFloat(shiftSlider.value);
+            for (const kf of lane.keyframes) {
+                // Rescale value: map from [-1,1] to [min,max], apply rescale+shift, map back.
+                const normalized = lane.normalizeToFirstTarget(kf.value);
+                const rescaled = normalized * rescaleFactor;
+                const shifted = clamp(rescaled + shiftAmount, -1, 1);
+                kf.value = lane.scaleToFirstTargetRange(shifted);
+            }
+            lane.updateDuration();
+            this.renderTimeline();
+            this._hideLaneOptions();
+            this._scheduleSave();
+        });
+
+        // Cancel: just close.
+        cancelBtn.addEventListener("click", () => {
+            this._hideLaneOptions();
+        });
+
+        // Store reference for cleanup.
+        this._laneOptionsPopup = popup;
+
+        // Position the popup near the lane actions.
+        const laneWrapper = this.element.querySelector(`.lane-wrapper[data-lane-id="${laneId}"]`);
+        const actionsCol = laneWrapper?.querySelector(".lane-actions-col");
+        if (actionsCol) {
+            const rect = actionsCol.getBoundingClientRect();
+            popup.style.left = `${rect.right + 8 + window.scrollX}px`;
+            popup.style.top = `${rect.top + window.scrollY}px`;
+        }
+
+        document.body.append(popup);
+    }
+
+    _hideLaneOptions() {
+        this._laneOptionsPopup?.remove();
+        this._laneOptionsPopup = null;
     }
 
     /** Re-reads the target rows; call after every lane render. */
@@ -599,11 +773,22 @@ export class Overlay {
         }
 
         if (!e.target.closest(".target-selector")) {
-            this.ui.randomize.targetDropdown.hidden = true;f
+            this.ui.randomize.targetDropdown.hidden = true;
         }
 
         e.target.closest(".uniform-group-header")
             ?.classList.toggle("collapsed");
+
+        // Handle clicks on range labels (min/max/default).
+        const rangeLabel = e.target.closest(".range-label[data-range-part]");
+        if (rangeLabel) {
+            const laneId = rangeLabel.closest(".keyframe-strip")?.dataset.laneId;
+            const part = rangeLabel.dataset.rangePart;
+            if (laneId && part) {
+                this._promptRangeEdit(laneId, part, rangeLabel);
+            }
+            return;
+        }
     }
 
     _onKeyframeDotClick(dot, e) {
@@ -632,7 +817,6 @@ export class Overlay {
 
         // Selection may change on several tracks, so render them all.
         this.renderTimeline();
-        this._showKeyframePopups();
     }
 
     _debugKeyFrames(laneId) {
@@ -654,7 +838,6 @@ export class Overlay {
             keyframeKey(lane.id, kf.id)
         );
         this.renderLane(lane.id);
-        this._showKeyframePopups();
     }
 
     _addKeyframeAtPointer(strip, e) {
@@ -719,96 +902,15 @@ export class Overlay {
         const {laneId} = dot.dataset;
         const kfId = dot.dataset.kfId;
         if (!this.engine.getLane(laneId)?.findKeyframe(kfId)) {
-            this._removeKeyframePopups();
             return;
         }
         this.lane.selectedKeyframes.add(keyframeKey(laneId, kfId));
         this.renderTimeline();
-        this._showKeyframePopups();
         requestAnimationFrame(() => {
-            const input = this.ui.contextBar.querySelector(".kf-current-val");
+            const input = this.ui.keyframePopup.querySelector(".kf-current-val");
             input.focus();
             input.select();
         });
-    }
-
-    _showKeyframePopups() {
-        this._removeKeyframePopups();
-        for (const {laneId, kfId} of this._selectedKeys()) {
-            const kf = this.engine.getLane(laneId)?.findKeyframe(kfId);
-            const laneWidget = this._queryInLane(laneId, ".lane-widget");
-            const dot = laneWidget?.querySelector(
-                `.keyframe-dot[data-kf-id="${kfId}"]`
-            );
-            if (!kf || !dot) {
-                continue;
-            }
-            const popup = this._createKeyframePopup(laneId, kfId, kf);
-            const widgetRect = laneWidget.getBoundingClientRect();
-            const dotRect = dot.getBoundingClientRect();
-            popup.style.top = `${widgetRect.height + 4}px`;
-            popup.style.left = `${dotRect.left - widgetRect.left}px`;
-            popup.style.transform = "translateX(-50%)";
-            popup.style.maxWidth = "none";
-            popup.style.width = "auto";
-            laneWidget.appendChild(popup);
-        }
-    }
-
-    _createKeyframePopup(laneId, kfId, kf) {
-        const lane = this.engine.getLane(laneId);
-        const ease = kf.ease || "linear";
-        const displayValue = lane.scaleToFirstTargetRange(kf.value);
-        const popup = document.createElement("div");
-        popup.className = "keyframe-popup";
-        popup.innerHTML = `
-            <div class="popup-title">Keyframe</div>
-            <div class="popup-row">
-                <span class="popup-label">Time:</span>
-                <button class="popup-value kf-seek-btn"
-                        title="Seek"
-                    >
-                    ${kf.time.toFixed(2)}&nbsp;s
-                </button>
-            </div>
-            <div class="popup-row">
-                <span class="popup-label">Value:</span>
-                <span class="popup-value">${
-                    formatNumber(displayValue)
-                }&nbsp;&nbsp;&nbsp;</span>
-            </div>
-            <div class="popup-row">
-                <span class="popup-label">Ease:</span>
-                <select class="field kf-ease-select-popup">
-                    ${EASING_TYPES.map(t =>
-                        `<option value="${t}"${t === ease ? " selected" : ""}>
-                            ${t}
-                        </option>`
-                    ).join('')}
-                </select>
-            </div>
-            <div class="popup-remove">
-                ${CHAR.TRASH}️ Remove Keyframe
-            </div>`;
-
-        popup.querySelector(".popup-remove")
-            .addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._removeKeyframe(laneId, kfId);
-            });
-        popup.querySelector(".kf-ease-select-popup")
-            .addEventListener("change", (e) => {
-                e.stopPropagation();
-                kf.ease = e.target.value;
-                this.renderLane(laneId);
-                this._showKeyframePopups();
-            });
-        popup.querySelector(".kf-seek-btn")
-            .addEventListener("click", (e) => {
-                e.stopPropagation();
-                this._seek(kf.time);
-            });
-        return popup;
     }
 
     _selectRange(laneId, kfId) {
@@ -837,13 +939,6 @@ export class Overlay {
         }
     }
 
-    _removeKeyframePopups() {
-        const popups = this.ui.laneRows.querySelectorAll(".keyframe-popup");
-        for (const popup of popups) {
-            popup.remove();
-        }
-    }
-
     _removeKeyframe(laneId, kfId) {
         const lane = this.engine.getLane(laneId);
         const kf = lane?.findKeyframe(kfId);
@@ -851,7 +946,6 @@ export class Overlay {
             return;
         }
         lane.removeKeyframe(kf.time);
-        this._removeKeyframePopups();
         this._deselectTrack(laneId);
         this.renderLane(laneId);
     }
@@ -1082,7 +1176,8 @@ export class Overlay {
 
         // Typing into the trailing "add" row creates a real target.
         if (newName && targetIdx === lane.targets.length) {
-            lane.addTarget(newName);
+            const control = this.ctx.getControl(newName);
+            lane.addTarget(newName, undefined, undefined, control);
             this.renderLane(laneId);
             this._refocusTargetSelector(laneId, targetIdx);
             return;
@@ -1122,6 +1217,11 @@ export class Overlay {
             Array.isArray(value) ? fallback : value;
         target.minValue = scalarOr(range.min, FALLBACK_RANGE.min);
         target.maxValue = scalarOr(range.max, FALLBACK_RANGE.max);
+        // Update lane range if it's still at fallback.
+        if (lane.range.min === FALLBACK_RANGE.min && lane.range.max === FALLBACK_RANGE.max
+            && lane.targets.length === 1 && targetIdx === 0) {
+            lane.initRangeFromControl(target.uniformName ? this.ctx.getControl(target.uniformName) : null);
+        }
     }
 
     _updateBatchUniformField(el) {
@@ -1175,22 +1275,22 @@ export class Overlay {
         }
     }
 
-    _positionContextBar() {
+    _positionKeyframePopup() {
         const selection = this._selection();
-        renderContextActionBar(
-            this.ui.contextBar,
+        renderKeyframePopup(
+            this.ui.keyframePopup,
             selection?.kf,
             selection?.lane,
             selection && this._neighbours(selection),
         );
-        const anchor = selection && this._contextBarAnchor();
+        const anchor = selection && this._keyframePopupAnchor();
         if (anchor) {
-            positionContextBar(this.ui.contextBar, anchor);
+            positionKeyframePopup(this.ui.keyframePopup, anchor);
         }
     }
 
     /** Rect of the first selected dot, else the playhead on the first strip. */
-    _contextBarAnchor() {
+    _keyframePopupAnchor() {
         const first = this._firstSelectedKey();
         if (!first) {
             return null;
@@ -1400,7 +1500,7 @@ export class Overlay {
         const view = visibleRange(this.zoom, this.render.renderedSpan);
         renderAudioWaveforms(this.ui, this.engine, view);
         this._renderPreview();
-        this._positionContextBar();
+        this._positionKeyframePopup();
         this._scheduleSave();
     }
 
@@ -1421,7 +1521,7 @@ export class Overlay {
         }
         this._refreshTargetRows();
         this._renderPreview();
-        this._positionContextBar();
+        this._positionKeyframePopup();
         this._scheduleSave();
     }
 
