@@ -93,10 +93,8 @@ function renderSelectorDisplay(display, target) {
 export function renderRandomizerPanel(ui, provider, selectedBatchId) {
     const {batches} = provider;
     if (!provider.getBatch(selectedBatchId)) {
-        selectedBatchId =
-            batches.auto.find(b => b.id === "auto:All Uniforms")?.id
+        selectedBatchId = batches.auto[0]?.id
             ?? batches.custom[0]?.id
-            ?? batches.auto[0]?.id
             ?? null;
     }
 

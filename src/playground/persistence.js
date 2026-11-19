@@ -14,7 +14,8 @@ export function collectStorageJson(overlay) {
         selectedBatchId: overlay.batch.selectedId,
         customBatches: overlay.ctx.batches.custom
             .map(b => b.toJSON()),
-        randomIntensity: overlay.randomIntensity,
+        randomIntensity: overlay.randomize.intensize,
+        randomBatchId: overlay.randomize.batchId,
     };
     return JSON.stringify(store);
 }

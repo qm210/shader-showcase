@@ -68,7 +68,7 @@ button {
   cursor: pointer;
   transition: 0.25s;
 }
-button:hover {
+button:hover:not(:disabled) {
   border-color: #aa6cb4;
   box-shadow: 0 0 1px 0 #f004;
   transform: translate(-1px, -1px);

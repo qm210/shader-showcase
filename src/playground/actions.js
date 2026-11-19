@@ -207,15 +207,14 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.RANDOMIZE:
-            if (overlay.batch.selectedId) {
+            if (overlay.randomize.batchId) {
                 const values = overlay.ctx.randomizeBatch(
-                    overlay.batch.selectedId, overlay.randomIntensity
+                    overlay.randomize.batchId, overlay.randomize.intensity
                 );
                 for (const name of Object.keys(values)) {
                     updateUniformRow(overlay.element, name, values[name]);
                 }
                 overlay._renderPreview();
-                overlay._scheduleSave();
             }
             break;
 
@@ -300,6 +299,12 @@ export function runAction(overlay, data) {
         }
 
         case ACTION.CLEAR_OVERRIDES: {
+            if (!confirm(
+                "Snapshot loaded, do you want to discard all previous Overwrites?"
+            )) {
+                return;
+            }
+
             overlay.engine.clearOverrides();
             for (const [name, value] of Object.entries(overlay.engine.latestSnapshot)) {
                 updateUniformRow(overlay.element, name, value);
@@ -322,12 +327,8 @@ export function runAction(overlay, data) {
             break;
         }
     }
-}
 
-function userWantsToDiscardOverrides() {
-    return confirm(
-        "Snapshot loaded, do you want to discard all previous Overwrites?"
-    );
+    overlay._scheduleSave();
 }
 
 export const LANE_ACTIONS = [

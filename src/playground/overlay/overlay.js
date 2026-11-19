@@ -14,7 +14,7 @@ import {renderBatchList} from "./dom/batchList.js";
 import {renderRandomizerPanel} from "./dom/randomizer.js";
 import {positionKeyframePopup, renderKeyframePopup} from "./dom/keyframePopup.js";
 import {renderAudioWaveforms} from "./dom/audioTrack.js";
-import {intAttr, isTypingTarget} from "./dom/html.js";
+import {intAttr, isTypingTarget, setShown} from "./dom/html.js";
 import {formatNumber, formatRange, parseRangeInput} from "./format.js";
 import {toggleTargetDropdown} from "./dom/targetSelector.js";
 
@@ -31,10 +31,9 @@ export class Overlay {
         this.element = null;
         this.ui = null;
 
-        // Batch and lane ids that are selected or being renamed.
         this.batch = {
             selectedId: null,
-            renamingId: null
+            editingId: null
         };
         this.lane = {
             selectedId: null,
@@ -42,7 +41,10 @@ export class Overlay {
             collapsedIds: new Set(),
             selectedKeyframes: new Set(),
         };
-        this.randomIntensity = 1;
+        this.randomize = {
+            intensity: 1,
+            batchId: null,
+        }
 
         // Dragging the panel by its header; position is {left, top}.
         this.drag = {
@@ -886,7 +888,7 @@ export class Overlay {
         const batchHeader = e.target.closest(".batch-card-header");
         if (batchHeader) {
             const {batchId} = batchHeader.closest(".batch-card").dataset;
-            this.batch.renamingId = batchId;
+            this.batch.editingId = batchId;
             this.renderUniformPanel();
             requestAnimationFrame(() =>
                 this._focusName(".batch-card", "batch-id", batchId)
@@ -972,7 +974,7 @@ export class Overlay {
 
     _isEditingName(el) {
         return el.classList.contains("name")
-            && Boolean(this.lane.renamingId || this.batch.renamingId);
+            && Boolean(this.lane.renamingId || this.batch.editingId);
     }
 
     _onKeyDown(e) {
@@ -1015,12 +1017,12 @@ export class Overlay {
                 lane.name = name;
             }
             this._stopTrackNameEdit();
-        } else if (this.batch.renamingId) {
-            const batch = this.ctx.getBatch(this.batch.renamingId);
+        } else if (this.batch.editingId) {
+            const batch = this.ctx.getBatch(this.batch.editingId);
             if (name && batch) {
                 batch.name = name;
             }
-            this.batch.renamingId = null;
+            this.batch.editingId = null;
             this.updateOnTargetsChanged();
         }
     }
@@ -1028,8 +1030,8 @@ export class Overlay {
     _cancelNameEdit() {
         if (this.lane.renamingId) {
             this._stopTrackNameEdit();
-        } else if (this.batch.renamingId) {
-            this.batch.renamingId = null;
+        } else if (this.batch.editingId) {
+            this.batch.editingId = null;
             this.renderUniformPanel();
         }
     }
@@ -1097,7 +1099,7 @@ export class Overlay {
     _toggleUniformInBatch(name, active) {
         // While editing a batch, edit that one instead of the selected.
         const batch = this.ctx.getBatch(
-            this.batch.renamingId || this.batch.selectedId
+            this.batch.editingId || this.batch.selectedId
         );
         if (!batch) {
             return;
@@ -1131,9 +1133,9 @@ export class Overlay {
                 tooltip.classList.add("dragging");
             }
         } else if (el === this.ui.randomize.intensitySlider) {
-            this.randomIntensity = parseFloat(el.value);
+            this.randomize.intensity = parseFloat(el.value);
             this.ui.randomize.intensityValue.textContent =
-                this.randomIntensity.toFixed(2);
+                this.randomize.intensity.toFixed(2);
             this._scheduleSave();
         } else if (el.matches(
             ".uniform-min, .uniform-max," +
@@ -1369,7 +1371,7 @@ export class Overlay {
         this.lane.selectedKeyframes.clear();
         this.lane.collapsedIds.clear();
         this.batch.selectedId = null;
-        this.randomIntensity = 1;
+        this.randomize.intensity = 1;
         this.zoom = null;
         this.drag.position = null;
         this.element.style.left = "";
@@ -1434,8 +1436,9 @@ export class Overlay {
         }
         this.ctx.loadCustomBatches(stored.customBatches);
         this.batch.selectedId = stored.selectedBatchId ?? null;
+        this.randomize.batchId = stored.randomBatchId ?? null;
         const intensity = Number(stored.randomIntensity);
-        this.randomIntensity = Number.isFinite(intensity)
+        this.randomize.intensity = Number.isFinite(intensity)
             ? clamp(intensity, 0, 1)
             : 1;
         this.lane.selectedId = stored.selectedLaneId ?? null;
@@ -1468,8 +1471,8 @@ export class Overlay {
     syncUI() {
         this.ui.timeSlider.value = this.engine.time();
         this._syncPlayButton();
-        this.ui.randomize.intensitySlider.value = this.randomIntensity;
-        this.ui.randomize.intensityValue.textContent = this.randomIntensity.toFixed(2);
+        this.ui.randomize.intensitySlider.value = this.randomize.intensity;
+        this.ui.randomize.intensityValue.textContent = this.randomize.intensity.toFixed(2);
     }
 
     // ─── Time zoom ──────────────────────────────────────────────
@@ -1545,15 +1548,21 @@ export class Overlay {
 
     renderRandomizer() {
         const {selectedBatchId} = renderRandomizerPanel(
-            this.ui, this.ctx, this.batch.selectedId
+            this.ui, this.ctx, this.randomize.batchId
         );
-        this.batch.selectedId = selectedBatchId;
+        this.randomize.batchId = selectedBatchId;
     }
 
     renderUniformPanel() {
         const {ui, ctx} = this;
         renderBatchList(ui, ctx, this.batch);
         renderUniformList(ui, ctx, this.batch);
+
+        this.element.querySelectorAll(
+            `button[data-action="${ACTION.DESELECT_BATCHES}"]`
+        ).forEach(button =>
+            setShown(button, !!this.batch.selectedId)
+        );
     }
 
     /** Targets show up in nearly every section, so re-render them all. */
