@@ -66,12 +66,7 @@ export class PlaygroundContext {
         );
 
         for (const control of uniformControls) {
-            this._controlMap.set(control.name, {
-                min: control.min,
-                max: control.max,
-                defaultValue: control.defaultValue,
-                type: control.type,
-            });
+            this._controlMap.set(control.name, control);
             const mainElements = elements.uniforms[control.name];
             if (!mainElements?.updateValue) {
                 console.warn("Uniform Elements have no updateValue:", {
@@ -103,13 +98,18 @@ export class PlaygroundContext {
     }
 
     resolveControl(entry) {
-        const name = typeof entry === "string" ? entry : entry.name;
+        const name = typeof entry === "string"
+            ? entry
+            : entry.name;
         const parsed = parseVectorComponent(name);
         let control = this._controlMap?.get(parsed.baseName);
         if (!control) {
-            control = { ...FALLBACK_RANGE, defaultValue: 0, type: "float" };
+            control = {
+                ...FALLBACK_RANGE,
+                defaultValue: 0,
+                type: "float"
+            };
         }
-        // For vector components, return scalar min/max from the vector's range
         let min = entry.min ?? control.min;
         let max = entry.max ?? control.max;
         if (parsed.component && !Array.isArray(min)) {
@@ -121,9 +121,12 @@ export class PlaygroundContext {
             name: entry.name,
             min,
             max,
-            components: parsed.component ? 1 :
-                (Array.isArray(control.defaultValue)
-                    ? control.defaultValue.length : 1)
+            components: parsed.component
+                ? 1
+                : (Array.isArray(control.defaultValue)
+                    ? control.defaultValue.length
+                    : 1
+                )
         };
     }
 
@@ -186,6 +189,11 @@ export class PlaygroundContext {
                 const name = findUniformName(targetId);
                 return (name ? [name] : [...selectedNames])
                     .map(name => this.getControl(name));
+            },
+
+            get randomize() {
+                return ctx.randomizer.randomize
+                    .bind(ctx.randomizer);
             },
 
             loadCustomBatches(json) {

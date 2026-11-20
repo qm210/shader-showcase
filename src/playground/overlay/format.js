@@ -1,5 +1,6 @@
 import {CHAR} from "./index.js";
 import {isInView} from "../engine/timeZoom.js";
+import {FALLBACK_RANGE} from "../engine/valueRanges.js";
 
 const VECTOR_COMPONENTS = ["x", "y", "z", "w"];
 
@@ -36,7 +37,9 @@ export function formatComponent(value, index, normalized) {
     if (isNil(value)) {
         return "";
     }
-    const v = Array.isArray(value) ? value[index] ?? 0 : value;
+    const v = Array.isArray(value)
+        ? value[index] ?? 0
+        : value;
     if (normalized) {
         return v.toFixed(2);
     }
@@ -46,13 +49,16 @@ export function formatComponent(value, index, normalized) {
 /** Min/max/step of one component of a control range. */
 export function componentRange(range, index, isInteger) {
     if (isNil(range)) {
-        return {min: 0, max: 1, step: isInteger ? 1 : 0.01};
+        return {
+            ...FALLBACK_RANGE,
+            step: isInteger ? 1 : 0.01
+        };
     }
     const pick = (v) => Array.isArray(v) ? v[index] : v;
     return {
-        min: pick(range.min) ?? 0,
-        max: pick(range.max) ?? 1,
-        step: range.step ?? (isInteger ? 1 : 0.01),
+        min: pick(range.min) ?? FALLBACK_RANGE.min,
+        max: pick(range.max) ?? FALLBACK_RANGE.max,
+        step: pick(range.step) ?? (isInteger ? 1 : 0.01),
     };
 }
 

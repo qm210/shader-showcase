@@ -254,7 +254,7 @@ export class Overlay {
                     return;
                 }
                 this._editSelectedKeyframe(({lane, kf}) => {
-                    kf.value = lane.normalizeToFirstTarget(displayValue);
+                    kf.value = lane.mapFromRange(displayValue);
                 });
             });
     }
@@ -422,7 +422,7 @@ export class Overlay {
 
         if (this._keyframeDrag) {
             const {kf, lane} = this._keyframeDrag;
-            const value = lane.scaleToFirstTargetRange(kf.value);
+            const value = lane._mapToRange(kf.value);
             this._setTooltipText(kf.time, value);
             tooltip.classList.add("visible");
             return;
@@ -580,10 +580,10 @@ export class Overlay {
             const shiftAmount = parseFloat(shiftSlider.value);
             for (const kf of lane.keyframes) {
                 // Rescale value: map from [-1,1] to [min,max], apply rescale+shift, map back.
-                const normalized = lane.normalizeToFirstTarget(kf.value);
+                const normalized = lane.mapFromRange(kf.value);
                 const rescaled = normalized * rescaleFactor;
                 const shifted = clamp(rescaled + shiftAmount, -1, 1);
-                kf.value = lane.scaleToFirstTargetRange(shifted);
+                kf.value = lane._mapToRange(shifted);
             }
             lane.updateDuration();
             this.renderTimeline();
@@ -1152,19 +1152,11 @@ export class Overlay {
             );
         } else if (el.classList.contains("uniform-slider")) {
             const name = el.dataset.uniformName;
-            const normalized = collectUniformComponents(name, el);
-            const range = this.ctx.getControl(name);
-            const value = Array.isArray(normalized)
-                ? normalized.map((v, i) => {
-                    const min = Array.isArray(range.min) ? range.min[i] : range.min;
-                    const max = Array.isArray(range.max) ? range.max[i] : range.max;
-                    return min + (v + 1) * (max - min) / 2;
-                })
-                : range.min + (normalized + 1) * (range.max - range.min) / 2;
+            const value = collectUniformComponents(name, el);
             this.engine.setActualUniformValue(name, value);
             const tooltip = sliderTooltip(el);
             if (tooltip) {
-                tooltip.textContent = formatNumber(value);
+                tooltip.textContent = String(value);
             }
             this._renderPreview();
         } else if (el.classList.contains("target-selector")) {
@@ -1184,7 +1176,7 @@ export class Overlay {
         // Typing into the trailing "add" row creates a real target.
         if (newName && targetIdx === lane.targets.length) {
             const control = this.ctx.getControl(newName);
-            lane.addTarget(newName, undefined, undefined, control);
+            lane.addTarget(newName, control);
             this.renderLane(laneId);
             this._refocusTargetSelector(laneId, targetIdx);
             return;
@@ -1198,7 +1190,6 @@ export class Overlay {
             lane.removeTarget(target.uniformName);
         }
         target.uniformName = newName;
-        DEBUG.log("[TARGET INPUT]", {lane, targetIdx, target});
         this._resetTargetRange(lane, targetIdx, target);
         this._scheduleSave();
     }
@@ -1225,9 +1216,12 @@ export class Overlay {
         target.minValue = scalarOr(range.min, FALLBACK_RANGE.min);
         target.maxValue = scalarOr(range.max, FALLBACK_RANGE.max);
         // Update lane range if it's still at fallback.
-        if (lane.range.min === FALLBACK_RANGE.min && lane.range.max === FALLBACK_RANGE.max
-            && lane.targets.length === 1 && targetIdx === 0) {
-            lane.initRangeFromControl(target.uniformName ? this.ctx.getControl(target.uniformName) : null);
+        if (lane.range.min === FALLBACK_RANGE.min &&
+            lane.range.max === FALLBACK_RANGE.max &&
+            lane.targets.length === 1 && targetIdx === 0) {
+            lane.initRangeFromControl(
+                target.uniformName ? this.ctx.getControl(target.uniformName) : null
+            );
         }
     }
 

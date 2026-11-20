@@ -1,12 +1,5 @@
 import {ACTION} from "../../actions.js";
-import {
-    componentRange,
-    formatComponent,
-    formatNumber,
-    formatRange,
-    isIntegerType,
-    vectorComponents,
-} from "../format.js";
+import {componentRange, formatComponent, formatNumber, isIntegerType, vectorComponents,} from "../format.js";
 import {actionButton, cls, dataAttrs, esc} from "./html.js";
 
 const TABLE_HEADER = `
@@ -78,7 +71,7 @@ function overwriteCell(kind, entry, index, placeholder) {
         <td class="cell-${kind}">
             <input type="text"
                    class="uniform-${kind}"
-                   placeholder="${esc(formatRange(placeholder))}"
+                   placeholder="${esc(placeholder)}"
                    value="${esc(formatComponent(entry[kind], index))}"
                    ${dataAttrs({uniformName: entry.name, component: index})}
                    title="${OVERWRITE_TITLE[kind]}"
@@ -131,11 +124,10 @@ function uniformRows(provider, entry, isChecked) {
                     <input type="range"
                            class="uniform-slider"
                            ${data}
-                           min="-1"
-                           max="1"
-                           step="0.01"
-                           value="${formatComponent(currentValue, i, true)}"
-                           title="${compValue}">
+                           min="${entry.min ?? compRange.min}"
+                           max="${entry.max ?? compRange.max}"
+                           step="${compRange.step}"
+                           value="${formatComponent(currentValue, i, true)}">
                 </td>
                 ${overwriteCell('max', entry, i, compRange.max)}
             </tr>`;
@@ -157,7 +149,9 @@ export function updateUniformRow(container, name, value, range) {
         const compMin = Array.isArray(range?.min) ? range.min[idx] ?? 0 : (range?.min ?? 0);
         const compMax = Array.isArray(range?.max) ? range.max[idx] ?? 1 : (range?.max ?? 1);
         const compRange = compMax - compMin;
-        const normalized = compRange === 0 ? 0 : 2 * (compValue - compMin) / compRange - 1;
+        const normalized = compRange === 0
+            ? 0
+            : 2 * (compValue - compMin) / compRange - 1;
         slider.value = normalized;
         slider.title = formatNumber(compValue);
         const tooltip = slider.parentElement
@@ -188,8 +182,9 @@ export function collectUniformComponents(uniformName, container) {
 
 function uniformTable(provider, entries, isChecked, extraClass = "") {
     const rows = entries
-        .map(entry => uniformRows(provider, entry, isChecked(entry)))
-        .join("");
+        .map(entry =>
+            uniformRows(provider, entry, isChecked(entry))
+        ).join("");
     return `
         <table class="${cls('uniform-table', extraClass)}">
             ${TABLE_HEADER}
@@ -237,15 +232,14 @@ export function renderUniformList(container, provider, batchId, selectedUniforms
         : selectedUniforms;
     const isChecked = (entry) =>
         Boolean(selectedNames?.has(entry.name));
-    const allEntries = [...groups.values()].flat();
-    const selectedEntries = selectedNames
-        ? allEntries.filter(entry => selectedNames.has(entry.name))
-        : [];
+    // const allEntries = [...groups.values()].flat();
+    // const selectedEntries = selectedNames
+    //     ? allEntries.filter(entry => selectedNames.has(entry.name))
+    //     : [];
 
     container.innerHTML =
         selectedBatchSection(provider, batchId)
-        + [...groups]
-            .map(([name, entries]) =>
-                groupSection(provider, name, entries, isChecked))
-            .join("");
+        + [...groups].map(([name, entries]) =>
+            groupSection(provider, name, entries, isChecked)
+        ).join("");
 }

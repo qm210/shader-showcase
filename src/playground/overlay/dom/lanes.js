@@ -253,9 +253,8 @@ function keyframeStrip(lane, provider, view, selectedKeyframes) {
                  style="${playhead}"></div>
             ${uniformLines}
             ${defaultLine}
-            <span class="range-label max-label" data-range-part="max" title="Click to edit">${esc(max.toFixed(2))}</span>
-            <span class="range-label default-label" data-range-part="default" title="Click to edit">${esc(def.toFixed(2))}</span>
-            <span class="range-label min-label" data-range-part="min" title="Click to edit">${esc(min.toFixed(2))}</span>
+            <span class="range-label max-label" data-range-part="max" title="Click to edit">${max.toFixed(2)}</span>
+            <span class="range-label min-label" data-range-part="min" title="Click to edit">${min.toFixed(2)}</span>
         </div>
     `;
 }

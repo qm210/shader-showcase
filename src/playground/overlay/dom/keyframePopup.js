@@ -74,7 +74,7 @@ function showNeighbour(el, neighbour, kf, lane) {
     setShown(el, visible);
     if (visible) {
         el.textContent = formatValue(
-            lane.scaleToFirstTargetRange(neighbour.value)
+            lane._mapToRange(neighbour.value)
         );
     }
 }
@@ -90,7 +90,7 @@ export function renderKeyframePopup(popup, kf, lane, surrounding) {
     }
     popup.querySelector(".kf-time-value").textContent =`${kf.time.toFixed(1)}s`;
     popup.querySelector(".kf-current-val").value = formatValue(
-        lane.scaleToFirstTargetRange(kf.value)
+        lane._mapToRange(kf.value)
     );
     popup.querySelector(".kf-ease-select").value = kf.ease || "linear";
     showNeighbour(popup.querySelector(".kf-prev-val"), surrounding?.prev, kf, lane);

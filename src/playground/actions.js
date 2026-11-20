@@ -241,15 +241,16 @@ export function runAction(overlay, data) {
 
         case ACTION.RANDOMIZE:
             const uniforms = overlay.ctx.collectUniforms(
-                overlay.randomize.targetId, overlay.selectedUniforms
+                overlay.randomize.targetId,
+                overlay.selectedUniforms
             );
-            const values = overlay.ctx.randomizer.apply(
+            const values = overlay.ctx.randomize(
                 uniforms, overlay.randomize.intensity,
             );
             for (const name of Object.keys(values)) {
                 updateUniformRow(overlay.element, name, values[name]);
             }
-            overlay._renderPreview();
+            overlay.renderTimeline();
             break;
 
         case ACTION.CANCEL_LANE_NAME:

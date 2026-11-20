@@ -10,11 +10,10 @@ export class TimeLane {
         this.name = name;
         this.targets = [];
         this.keyframes = [];
+        this.range = {min: -1, default: 0, max: 1};
         this.loop = false;
         this.duration = 0;
         this._undoStack = [];
-        // Per-lane value range: initialized to [-1, 0, +1], updated on first target.
-        this.range = {min: -1, default: 0, max: 1};
         this.updateDuration();
     }
 
@@ -32,22 +31,23 @@ export class TimeLane {
         );
     }
 
-    addTarget(uniformName, minValue = undefined, maxValue = undefined, control = null) {
-        minValue ??= FALLBACK_RANGE.min;
-        maxValue ??= FALLBACK_RANGE.max;
-        const existing = this.targets.find(t => t.uniformName === uniformName);
+    addTarget(uniformName, control = null) {
+        this.initRangeFromControl(control);
+        const min = control?.min ?? FALLBACK_RANGE.min;
+        const max = control?.max ?? FALLBACK_RANGE.max;
+        const existing = this.targets.find(t =>
+            t.uniformName === uniformName
+        );
         if (existing) {
-            existing.minValue = minValue;
-            existing.maxValue = maxValue;
+            existing.minValue = min;
+            existing.maxValue = max;
             existing.enabled = true;
             return existing;
         }
-        const target = { uniformName, minValue, maxValue, enabled: true };
+        const target = {
+            uniformName, minValue: min, maxValue: max, enabled: true
+        };
         this.targets.push(target);
-        // Initialize lane range from control on first target assignment.
-        if (this.targets.length === 1) {
-            this.initRangeFromControl(control);
-        }
         return target;
     }
 
@@ -143,26 +143,25 @@ export class TimeLane {
         }
     }
 
-    /** Map a [-1, +1] value to the lane's range. */
-    _mapToRange(value) {
-        return this.range.min + (value + 1) * (this.range.max - this.range.min) / 2;
+    mapToRange(value) {
+        const span = this.range.max - this.range.min;
+        return this.range.min + (value + 1) * span / 2;
     }
 
-    /** Map a lane-range value to [-1, +1]. */
-    _mapFromRange(value) {
-        const range = this.range.max - this.range.min;
-        return range === 0 ? 0 : 2 * (value - this.range.min) / range - 1;
+    mapFromRange(value) {
+        const span = this.range.max - this.range.min;
+        return span === 0 ? 0 : 2 * (value - this.range.min) / span - 1;
     }
 
-    /** Update lane range from a control's min/max. Called on first target assignment. */
     initRangeFromControl(control) {
-        if (this.targets.length > 0) {
-            return; // Already initialized
+        const isFirst = this.targets.every(t => !t.enabled);
+        if (!isFirst) {
+            return;
         }
         const scalarOr = (value, fallback) =>
             Array.isArray(value) ? fallback : value;
-        this.range.min = scalarOr(control?.min, -1);
-        this.range.max = scalarOr(control?.max, 1);
+        this.range.min = scalarOr(control?.min, FALLBACK_RANGE.min);
+        this.range.max = scalarOr(control?.max, FALLBACK_RANGE.max);
         this.range.default = 0;
     }
 
@@ -175,7 +174,7 @@ export class TimeLane {
 
         const surrounding = findSurroundingKeyframes(this.keyframes, currentTime);
         if (!surrounding) {
-            return this._mapToRange(-1, target);
+            return this.mapToRange(-1, target);
         }
 
         const rawValue = interpolateKeyframes(surrounding.prev, surrounding.next, surrounding.t,
@@ -184,10 +183,10 @@ export class TimeLane {
         if (Array.isArray(rawValue)) {
             return rawValue.map((v, i) => {
                 const t = this.targets[i];
-                return t ? this._mapToRange(v, t) : v;
+                return t ? this.mapToRange(v, t) : v;
             });
         }
-        return this._mapToRange(rawValue, target);
+        return this.mapToRange(rawValue, target);
     }
 
     getAllValues(currentTime) {
@@ -200,16 +199,6 @@ export class TimeLane {
         return result;
     }
 
-    /** Normalize a value to [-1, +1] using this lane's range. */
-    normalizeToFirstTarget(value) {
-        return this._mapFromRange(value);
-    }
-
-    /** Scale a normalized [-1, +1] value to this lane's range. */
-    scaleToFirstTargetRange(normalized) {
-        return this._mapToRange(normalized);
-    }
-
     toJSON() {
         return {
             id: this.id,
@@ -217,18 +206,21 @@ export class TimeLane {
             targets: this.targets,
             keyframes: this.keyframes,
             loop: this.loop,
+            range: this.range,
+            duration: this.duration,
         };
     }
 
     static fromJSON(json) {
         const lane = new TimeLane(json.name);
         lane.id = json.id ?? lane.id;
-        lane.loop = json.loop || false;
-        lane.targets = json.targets || [];
-        lane.keyframes = json.keyframes || [];
+        lane.targets = json.targets ?? lane.targets;
+        lane.keyframes = json.keyframes ?? lane.keyframes;
         for (const kf of lane.keyframes) {
             kf.id ??= createKeyframeId();
         }
+        lane.loop = json.loop ?? lane.loop;
+        lane.range = json.range ?? lane.range;
         lane.updateDuration();
         return lane;
     }

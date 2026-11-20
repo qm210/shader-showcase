@@ -1,5 +1,7 @@
-function randomBetween(min, max, intensity) {
-    return min + Math.random() * (max - min) * intensity;
+function randomBetween(min, max, intensity, step = 0.01) {
+    return step * Math.round((
+        min + Math.random() * (max - min) * intensity
+    ) / step);
 }
 
 export class Randomizer {
@@ -7,7 +9,7 @@ export class Randomizer {
         this._provider = contextProvider;
     }
 
-    apply(uniforms, intensity) {
+    randomize(uniforms, intensity) {
         const values = this.getRandomValues(uniforms, intensity);
         for (const [name, value] of Object.entries(values)) {
             this._provider.engine.setActualUniformValue(name, value);
@@ -24,14 +26,17 @@ export class Randomizer {
             if (!entry.name) {
                 continue;
             }
-            const {min, max, components} = this._provider.getControl(entry);
+            const {
+                min, max, components, step
+            } = this._provider.getControl(entry);
             const factor = entry.factor ?? 1;
 
             function drawRandom(index = 0) {
                 return randomBetween(
                     component(min, index),
                     component(max, index),
-                    intensity
+                    intensity,
+                    component(step, index),
                 ) * factor;
             }
 

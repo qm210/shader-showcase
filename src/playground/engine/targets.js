@@ -84,7 +84,7 @@ export class BatchTarget {
     addUniformFrom(control) {
         return this.addUniform(
             control.name,{
-                type: control.type
+                type: control.type,
             }
         );
     }
