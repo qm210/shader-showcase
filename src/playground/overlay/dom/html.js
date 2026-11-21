@@ -89,3 +89,6 @@ export function isTypingTarget(target) {
 
 export const intAttr = (el, key) =>
     parseInt(el.dataset[key], 10);
+
+export const sibling = (el, selector) =>
+    el.parentElement.querySelector(selector);

@@ -6,11 +6,9 @@ import {actionButton, cls, dataAttrs, editableName, esc, pointerFraction,} from 
 import {DATALIST} from "./scaffold.js";
 import {isInView} from "../../engine/timeZoom.js";
 import {keyframeKey} from "../../engine/keyframes.js";
-import {parseVectorComponent} from "../../context.js";
 
 import {percentageInView} from "../format.js";
-
-const COMPONENT_INDEX = {x: 0, y: 1, z: 2, w: 3};
+import {parseVectorComponent} from "../../engine/targets.js";
 
 function easedT(t, ease) {
     if (ease === "step") {
@@ -93,7 +91,7 @@ function curveLines(lane, view) {
 
 
 function knownTargetNames(provider) {
-    const names = new Set(provider.getKnownUniformNames());
+    const names = new Set(provider.getUniformTargetNames());
     for (const batch of provider.allBatches()) {
         names.add(batch.id);
     }
@@ -200,19 +198,18 @@ function valueLine(target, min, max, currentValue) {
     if (!target || !target.uniformName) {
         return "";
     }
-    const {baseName, component} = parseVectorComponent(target.uniformName);
-    const rawValue = currentValue?.[baseName];
-    if (rawValue === undefined || rawValue === null) {
-        return "";
-    }
-    // Extract scalar value from vector or use scalar directly
-    const value = component
-        ? (Array.isArray(rawValue) ? rawValue[COMPONENT_INDEX[component]] : rawValue)
-        : rawValue;
-    if (value === undefined || value === null) {
-        return "";
-    }
     if (max === min) {
+        return "";
+    }
+    const parsed = parseVectorComponent(target.uniformName);
+    let value = currentValue?.[parsed.name];
+    if (Array.isArray(value)) {
+        if (parsed.index < 0) {
+            return "";
+        }
+        value = value[parsed.index];
+    }
+    if (value === undefined || value === null) {
         return "";
     }
     const fraction = valueFraction(value, min, max);
@@ -331,9 +328,10 @@ function createLaneRow(
 
 export function renderAllLanes(ui, provider, ...state) {
     const knownNames = knownTargetNames(provider);
-    const rows = provider.engine.getAllLanes().map(lane =>
-        createLaneRow(lane, provider, knownNames, ...state)
-    );
+    const rows = provider.engine.getAllLanes()
+        .map(lane =>
+            createLaneRow(lane, provider, knownNames, ...state)
+        );
     ui.laneRows.replaceChildren(...rows);
 }
 

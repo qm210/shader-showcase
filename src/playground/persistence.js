@@ -1,6 +1,6 @@
 import {STORAGE_KEY} from "../app/constants.js";
 
-const OVERLAY_STATE_VERSION = 5;
+const OVERLAY_STATE_VERSION = 6;
 
 export function collectStorageJson(overlay) {
     const store = {
@@ -11,6 +11,7 @@ export function collectStorageJson(overlay) {
         timeline: overlay.engine.timelineToJSON(),
         overrides: overlay.engine.getOverrides(),
         selectedLaneId: overlay.lane.selectedId,
+        selectedKeyframes: [...overlay.lane.selectedKeyframes],
         selectedBatchId: overlay.batch.selectedId,
         selectedUniforms: [...overlay.selectedUniforms],
         customBatches: overlay.ctx.batches.custom

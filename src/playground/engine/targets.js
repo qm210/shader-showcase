@@ -198,3 +198,24 @@ export function groupUniforms(autoBatches) {
     }
     return groups;
 }
+
+/** Parse a uniform name that may be a vector component (e.g. "foo.x"). */
+export function parseVectorComponent(name) {
+    const result = {
+        name: null,
+        component: null,
+        index: null,
+    };
+    if (!name) {
+        return result;
+    }
+    const dot = name.lastIndexOf(".");
+    if (dot <= 0 || name.length < dot + 2) {
+        result.name = name;
+        return result;
+    }
+    result.name = name.slice(0, dot);
+    result.component = name.slice(dot + 1, dot + 2);
+    result.index = "xyzw".indexOf(result.component);
+    return result;
+}

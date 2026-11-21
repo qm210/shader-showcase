@@ -8,19 +8,17 @@ const ANCHOR_GAP = 8;
 
 function neighbourValue(className, title) {
     return `
-        <span class="kf-val ${className}"
-              title="${title}">
-            ${CHAR.NO_VALUE}
-        </span>
+        <div class="kf-val ${className}"
+              title="${title}"></div>
     `;
 }
 
 export function keyframePopupTemplate() {
     return `
         <div class="kf-popup" style="display:none">
-            <div class="row">
+            <div class="row kf-popup-main">
                 <div class="kf-info">
-                    <span class="kf-time-label">t=</span>
+                    <span class="kf-time-label">t =</span>
                     <button type="button"
                             class="btn icon kf-seek-btn"
                             title="Seek to keyframe time">
@@ -28,25 +26,21 @@ export function keyframePopupTemplate() {
                     </button>
                 </div>
                 <div class="kf-values">
-                    <div class="kf-field-group">
-                        <label>Prev</label>
-                        ${neighbourValue('kf-prev-val', 'Previous keyframe value')}
-                    </div>
-                    <div class="kf-field-group">
-                        <label>Val</label>
-                        <input class="field kf-current-val"
-                               type="text"
-                               inputmode="decimal"
-                               spellcheck="false"
-                               autocomplete="off">
-                    </div>
-                    <div class="kf-field-group">
-                        <label>Next</label>
-                        ${neighbourValue('kf-next-val', 'Next keyframe value')}
-                    </div>
+                    <label>prev</label>
+                    <label>value</label>
+                    <label>next</label>
+                    <div class="kf-val kf-prev-val"
+                        title="Previous keyframe value"></div>
+                    <input class="field kf-current-val"
+                           type="text"
+                           inputmode="decimal"
+                           spellcheck="false"
+                           autocomplete="off">
+                    <div class="kf-val kf-next-val"
+                         title="Next keyframe value"></div>
                 </div>
                 <div class="kf-ease">
-                    <label>Ease:</label>
+                    <label>Easing:</label>
                     <select class="field kf-ease-select">
                         ${EASING_TYPES.map(t =>
                             `<option value="${t}">${t === "smoothstep" ? "smooth" : t}</option>`
@@ -57,25 +51,25 @@ export function keyframePopupTemplate() {
             <div class="row">
                 <button type="button"
                         class="btn icon kf-undo-btn"
-                        title="Undo (Ctrl+Z)">
-                    ${CHAR.UNDO}
+                        title="Undo">
+                    ${CHAR.UNDO} Undo
                 </button>
                 <button type="button"
                         class="btn icon kf-remove-btn"
                         title="Remove keyframe">
-                    ${CHAR.TRASH}
+                    ${CHAR.TRASH} Remove keyframe
                 </button>
             </div>
         </div>`;
 }
 
 function showNeighbour(el, neighbour, kf, lane) {
-    const visible = Boolean(neighbour) && neighbour !== kf;
-    setShown(el, visible);
-    if (visible) {
+    if (neighbour && neighbour !== kf) {
         el.textContent = formatValue(
-            lane._mapToRange(neighbour.value)
+            lane.mapToRange(neighbour.value)
         );
+    } else {
+        el.textContent = "--";
     }
 }
 
@@ -88,9 +82,9 @@ export function renderKeyframePopup(popup, kf, lane, surrounding) {
     if (!kf) {
         return;
     }
-    popup.querySelector(".kf-time-value").textContent =`${kf.time.toFixed(1)}s`;
+    popup.querySelector(".kf-time-value").textContent =`${kf.time.toFixed(1)}\u2009s`;
     popup.querySelector(".kf-current-val").value = formatValue(
-        lane._mapToRange(kf.value)
+        lane.mapToRange(kf.value)
     );
     popup.querySelector(".kf-ease-select").value = kf.ease || "linear";
     showNeighbour(popup.querySelector(".kf-prev-val"), surrounding?.prev, kf, lane);

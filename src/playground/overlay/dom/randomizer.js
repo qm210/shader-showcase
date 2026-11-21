@@ -51,7 +51,7 @@ function randomizerTargets(provider, selectedCount) {
         });
         ids.add(batch.id);
     }
-    for (const name of provider.getKnownUniformNames()) {
+    for (const name of provider.getUniformTargetNames()) {
         const id = targetId(TARGET_PREFIX.UNIFORM, name);
         if (!ids.has(id)) {
             targets.push({
@@ -118,7 +118,7 @@ export function renderRandomizerPanel(ui, provider, targetId, selectedCount = 0)
     const target = targets.find(t => t.id === targetId);
     renderSelectorDisplay(ui.randomize.targetSelector, target);
     ui.randomize.button.disabled = target?.count === 0;
-    ui.uniformNames.innerHTML = provider.getKnownUniformNames()
+    ui.uniformNames.innerHTML = provider.getUniformTargetNames()
         .map(name => `<option value="${esc(name)}"></option>`)
         .join("");
 }

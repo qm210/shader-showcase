@@ -10,7 +10,7 @@ export class TimeLane {
         this.name = name;
         this.targets = [];
         this.keyframes = [];
-        this.range = {min: -1, default: 0, max: 1};
+        this.range = {...FALLBACK_RANGE};
         this.loop = false;
         this.duration = 0;
         this._undoStack = [];
@@ -32,27 +32,29 @@ export class TimeLane {
     }
 
     addTarget(uniformName, control = null) {
-        this.initRangeFromControl(control);
         const min = control?.min ?? FALLBACK_RANGE.min;
         const max = control?.max ?? FALLBACK_RANGE.max;
         const existing = this.targets.find(t =>
             t.uniformName === uniformName
         );
         if (existing) {
-            existing.minValue = min;
-            existing.maxValue = max;
+            existing.min = min;
+            existing.max = max;
             existing.enabled = true;
             return existing;
         }
         const target = {
-            uniformName, minValue: min, maxValue: max, enabled: true
+            uniformName, min, max, enabled: true
         };
         this.targets.push(target);
+        this.initRangeFromFirstControl();
         return target;
     }
 
     removeTarget(uniformName) {
-        this.targets = this.targets.filter(t => t.uniformName !== uniformName);
+        this.targets = this.targets.filter(t =>
+            t.uniformName !== uniformName
+        );
     }
 
     createKeyframe(time, value, ease = "linear") {
@@ -100,32 +102,28 @@ export class TimeLane {
         return this.keyframes.find(k => k.id === kfId);
     }
 
-    /** Undo the last action on this lane. Returns true if something was undone. */
     undo() {
         const entry = this._undoStack.pop();
         if (!entry) return false;
         if (entry.type === "add") {
-            // Remove the added keyframe(s)
             for (const kf of entry.keyframes) {
                 this.keyframes = this.keyframes.filter(
                     k => Math.abs(k.time - kf.time) > MIN_TIME_STEP
                 );
             }
         } else if (entry.type === "remove") {
-            // Re-insert the removed keyframe(s)
             for (const kf of entry.keyframes) {
-                let inserted = false;
+                let reinserted = false;
                 for (let i = 0; i < this.keyframes.length; i++) {
                     if (kf.time < this.keyframes[i].time) {
                         this.keyframes.splice(i, 0, kf);
-                        inserted = true;
+                        reinserted = true;
                         break;
                     }
                 }
-                if (!inserted) this.keyframes.push(kf);
+                if (!reinserted) this.keyframes.push(kf);
             }
         } else if (entry.type === "edit") {
-            // Restore previous keyframe state
             for (const { index, prev } of entry.keyframes) {
                 if (this.keyframes[index]) {
                     this.keyframes[index] = prev;
@@ -153,16 +151,16 @@ export class TimeLane {
         return span === 0 ? 0 : 2 * (value - this.range.min) / span - 1;
     }
 
-    initRangeFromControl(control) {
-        const isFirst = this.targets.every(t => !t.enabled);
-        if (!isFirst) {
-            return;
+    initRangeFromFirstControl() {
+        const control = this.targets.find(t => t.enabled);
+        if (!control) {
+            this.range = {...FALLBACK_RANGE};
+        } else {
+            this.range = {
+                min: control.min,
+                max: control.max
+            };
         }
-        const scalarOr = (value, fallback) =>
-            Array.isArray(value) ? fallback : value;
-        this.range.min = scalarOr(control?.min, FALLBACK_RANGE.min);
-        this.range.max = scalarOr(control?.max, FALLBACK_RANGE.max);
-        this.range.default = 0;
     }
 
     /** Get interpolated value for a specific target uniform at current time */

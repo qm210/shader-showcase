@@ -224,7 +224,7 @@
 
 #pg .kf-popup .kf-info {
     display: flex;
-    align-items: baseline;
+    flex-direction: column;
     gap: 0.2em;
     color: var(--overlay-accent);
     font-family: var(--overlay-mono), monospace;
@@ -238,13 +238,24 @@
     justify-content: space-between;
 }
 
+#pg .kf-popup .row.kf-popup-main {
+    align-items: flex-end;
+}
+
+#pg .kf-popup .row.kf-popup-main > div {
+    align-items: flex-end;
+}
+
 #pg .kf-popup .kf-time-label {
+    width: 100%;
+    text-align: center;
     opacity: 0.6;
 }
 
 #pg .kf-popup .kf-values {
-    display: flex;
-    align-items: center;
+    display: grid;
+    place-items: center;
+    grid-template-columns: repeat(3, 1fr);
     gap: 0.3em;
     padding: 0 0.3em;
     border-left: 1px solid var(--overlay-divider);
@@ -277,7 +288,6 @@
 }
 
 #pg .kf-popup .kf-remove-btn {
-    padding: 0.2em 0.2em 0;
     border: 1px solid var(--overlay-border);
     border-radius: var(--overlay-radius-sm);
     background: rgba(255, 100, 100, 0.15);
@@ -292,8 +302,6 @@
 #pg .kf-popup .kf-val {
     font-family: var(--overlay-mono), monospace;
     color: #cde;
-    min-width: 3.5em;
-    text-align: right;
     font-size: 0.9em;
 }
 
@@ -314,13 +322,16 @@
 
 #pg .kf-popup .kf-ease {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.2em;
 }
 
 #pg .kf-popup .kf-ease label {
-    font-size: 0.8em;
-    opacity: 0.5;
+    font-size: 0.9em;
+    opacity: 0.7;
+    width: 100%;
+    text-align: center;
     user-select: none;
 }
 
@@ -334,8 +345,6 @@
 }
 
 #pg .kf-popup .kf-undo-btn {
-    padding: 0.15em 0.35em;
-    font-size: 0.9em;
     border-color: rgba(255, 200, 100, 0.4);
     background: rgba(255, 200, 100, 0.1);
     color: #fc8;

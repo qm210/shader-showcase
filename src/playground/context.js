@@ -6,17 +6,14 @@ import "./styles/overlay.css";
 import {DEBUG} from "./overlay/index.js";
 import {isIntegerType, vectorComponents} from "./overlay/format.js";
 import {PlaygroundEngine} from "./engine/engine.js";
-import {BatchTarget, deriveAutoBatches, findUniformName, groupUniforms, TARGET_PREFIX} from "./engine/targets.js";
-
-/** Parse a uniform name that may be a vector component (e.g. "foo.x"). */
-export function parseVectorComponent(name) {
-    if (!name) return {baseName: null, component: null};
-    const dot = name.lastIndexOf(".");
-    if (dot <= 0) return {baseName: name, component: null};
-    const base = name.slice(0, dot);
-    const comp = name.slice(dot + 1);
-    return {baseName: base, component: comp};
-}
+import {
+    BatchTarget,
+    deriveAutoBatches,
+    findUniformName,
+    groupUniforms,
+    parseVectorComponent,
+    TARGET_PREFIX
+} from "./engine/targets.js";
 
 export class PlaygroundContext {
 
@@ -97,30 +94,29 @@ export class PlaygroundContext {
         this.overlay.update();
     }
 
-    resolveControl(entry) {
-        const name = typeof entry === "string"
-            ? entry
-            : entry.name;
-        const parsed = parseVectorComponent(name);
-        let control = this._controlMap?.get(parsed.baseName);
+    _resolveControl(entry) {
+        const parsed = parseVectorComponent(entry.name);
+        let control = this._controlMap?.get(parsed.name);
         if (!control) {
             control = {
                 ...FALLBACK_RANGE,
-                defaultValue: 0,
                 type: "float"
             };
         }
         let min = entry.min ?? control.min;
         let max = entry.max ?? control.max;
-        if (parsed.component && !Array.isArray(min)) {
-            min = -1;
-            max = 1;
+        let defaultValue = 0;
+        if (parsed.component) {
+            min = min[parsed.index] ?? FALLBACK_RANGE.min;
+            max = max[parsed.index] ?? FALLBACK_RANGE.max;
+            defaultValue = control.defaultValue[parsed.index] ?? 0;
         }
         return {
             ...control,
             name: entry.name,
             min,
             max,
+            defaultValue,
             components: parsed.component
                 ? 1
                 : (Array.isArray(control.defaultValue)
@@ -140,25 +136,29 @@ export class PlaygroundContext {
                 if (typeof entry === "string") {
                     entry = {name: entry};
                 }
-                return ctx.resolveControl(entry);
+                return ctx._resolveControl(entry);
             },
 
             getUniformValue(name) {
                 return ctx.engine.getUniformBaseValue(name);
             },
 
-            getKnownUniformNames() {
+            getUniformTargetNames() {
                 if (!ctx._controlMap) {
                     return [];
                 }
                 const names = [];
                 for (const [name, ctrl] of ctx._controlMap) {
-                    if (isIntegerType(ctrl.type)) continue;
-                    names.push(name);
-                    // Add vector component entries (e.g. "foo.x", "foo.y", "foo.z")
-                    const comps = vectorComponents(ctrl.type);
-                    for (const comp of comps) {
-                        if (comp) names.push(`${name}.${comp}`);
+                    if (isIntegerType(ctrl.type)) {
+                        continue;
+                    }
+                    const components = vectorComponents(ctrl.type);
+                    if (components.length > 1) {
+                        for (const comp of components) {
+                            names.push(`${name}.${comp}`);
+                        }
+                    } else {
+                        names.push(name);
                     }
                 }
                 return names;
